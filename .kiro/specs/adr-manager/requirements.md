@@ -7,7 +7,7 @@ ADR Manager: A git-overlay application for managing Architecture Decision Record
 Teams that maintain Architecture Decision Records as plain MADR-format Markdown files in git today have no tooling beyond a text editor and raw git commands: there is no GUI for authoring, no visibility into typed relationships between decisions, no consolidated history or comparison view, and no way to discover related or duplicate decisions elsewhere in the ADR tree. The ADR Manager introduces a GUI overlay for authoring and browsing ADRs while keeping the version-controlled ADR repository as the sole source of truth. It adds typed relationships between ADRs, version history, version-to-version and ADR-to-ADR comparisons, keyword search, and semantic similarity search scoped to a folder subtree. Authentication and authorization are not part of this iteration: the system is accessible to anyone who can reach it, consistent with a trusted internal-tool deployment, and identity is recorded as a free-text author name per change rather than through a login session.
 
 ## Boundary Context (Optional)
-- **In scope**: Creating and editing ADRs through a GUI; organizing ADRs into folders; declaring and viewing typed relationships between ADRs; viewing version history; comparing two versions of the same ADR; comparing two different ADRs field by field; keyword search across ADRs; semantic similarity search scoped to a folder subtree; optimistic concurrency control on concurrent edits; full recoverability of search and similarity data from the ADR repository.
+- **In scope**: Creating and editing ADRs through a GUI; organizing ADRs into folders; browsing and navigating the ADR/folder tree; declaring and viewing typed relationships between ADRs; viewing version history; comparing two versions of the same ADR; comparing two different ADRs field by field; keyword search across ADRs; semantic similarity search scoped to a folder subtree; optimistic concurrency control on concurrent edits; full recoverability of search and similarity data from the ADR repository.
 - **Out of scope**: Status lifecycle workflow or enforcement beyond selecting a status value; tag taxonomy management; ADR schema validation beyond the required-field checks stated in these requirements; automatic detection of `supersedes` relationships; export to other formats; user authentication, login sessions, and role-based permissions (no access control in this iteration).
 - **Adjacent expectations**: This feature expects a version-controlled ADR repository to already exist and be reachable by the system; it does not own provisioning or initial setup of that repository. It expects a similarity-ranking capability to be available for semantic search to function, but does not own configuring or selecting the underlying provider of that capability.
 
@@ -35,16 +35,26 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 5. When a save succeeds, the ADR Manager shall confirm the save and update the editor to reflect the newly saved version.
 
 ### Requirement 3: Folder-Based Organization
-**Objective:** As an ADR maintainer, I want to organize ADRs into folders, so that related decisions are grouped and easy to browse.
+**Objective:** As an ADR maintainer, I want to organize ADRs into folders, so that related decisions are grouped consistently with how the team manages the repository.
 
 #### Acceptance Criteria
-1. The ADR Manager shall display ADRs organized in a folder tree that reflects how they are grouped in the repository.
-2. When a user creates a new folder, the ADR Manager shall add it to the folder tree at the location the user specified.
-3. When a user moves an ADR to a different folder, the ADR Manager shall update the ADR's location while preserving its identifier, content, relations, and history.
-4. If a user attempts to create a folder with a name that already exists at the same location, then the ADR Manager shall reject the action and inform the user of the conflict.
-5. When a user selects a folder in the tree, the ADR Manager shall display only the ADRs contained in that folder and its subfolders.
+1. When a user creates a new folder, the ADR Manager shall add it to the folder tree at the location the user specified.
+2. When a user moves an ADR to a different folder, the ADR Manager shall update the ADR's location while preserving its identifier, content, relations, and history.
+3. If a user attempts to create a folder with a name that already exists at the same location, then the ADR Manager shall reject the action and inform the user of the conflict.
 
-### Requirement 4: ADR Relationships
+### Requirement 4: ADR and Folder Tree Navigation
+**Objective:** As an ADR reader, I want to browse a tree of folders and ADRs, so that I can quickly locate and navigate to the decision I'm looking for.
+
+#### Acceptance Criteria
+1. The ADR Manager shall display, by default, the full folder tree starting from the root of the ADR repository.
+2. The ADR Manager shall display each ADR entry in the tree with at least its title, identifier, and status.
+3. When a user expands a folder in the tree, the ADR Manager shall display that folder's direct subfolders and ADRs.
+4. When a user collapses an expanded folder, the ADR Manager shall hide that folder's subfolders and ADRs without removing them from the tree structure.
+5. If a folder contains no subfolders and no ADRs, then the ADR Manager shall display it as empty rather than omitting it from the tree.
+6. When a user selects a folder in the tree, the ADR Manager shall display only the ADRs contained in that folder and its subfolders.
+7. When a user selects an ADR in the tree, the ADR Manager shall open that ADR for viewing.
+
+### Requirement 5: ADR Relationships
 **Objective:** As an ADR author, I want to link ADRs to one another with typed relationships, so that readers understand how decisions relate, supersede, or conflict with each other.
 
 #### Acceptance Criteria
@@ -54,7 +64,7 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 4. If a user attempts to create a relationship pointing to an ADR that does not exist, then the ADR Manager shall reject the action and inform the user the target ADR could not be found.
 5. When a user removes a relationship, the ADR Manager shall remove the corresponding reciprocal relationship if one was displayed.
 
-### Requirement 5: Version History
+### Requirement 6: Version History
 **Objective:** As an ADR reader, I want to see the history of changes to an ADR, so that I understand how a decision evolved over time.
 
 #### Acceptance Criteria
@@ -63,7 +73,7 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 3. The ADR Manager shall display the history timeline in order from the most recent saved version to the earliest.
 4. If an ADR has only one saved version, then the ADR Manager shall display that single version in the timeline without indicating any prior versions.
 
-### Requirement 6: Version Comparison
+### Requirement 7: Version Comparison
 **Objective:** As an ADR reader, I want to compare two versions of the same ADR, so that I can see exactly what changed between them.
 
 #### Acceptance Criteria
@@ -71,7 +81,7 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 2. The ADR Manager shall visually distinguish added, removed, and unchanged content in a version comparison.
 3. If a user selects only one version, or selects versions from two different ADRs, for a version comparison, then the ADR Manager shall reject the comparison and explain that two versions of the same ADR are required.
 
-### Requirement 7: ADR-to-ADR Comparison
+### Requirement 8: ADR-to-ADR Comparison
 **Objective:** As an ADR reader, I want to compare two different ADRs field by field, so that I can evaluate how their decisions, context, or status differ.
 
 #### Acceptance Criteria
@@ -79,7 +89,7 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 2. The ADR Manager shall visually distinguish fields that differ between the two compared ADRs from fields that are identical.
 3. If a user attempts to compare an ADR against itself, then the ADR Manager shall reject the comparison and inform the user that two distinct ADRs are required.
 
-### Requirement 8: Full-Text Search
+### Requirement 9: Full-Text Search
 **Objective:** As an ADR reader, I want to search ADRs by keyword, so that I can quickly find decisions relevant to a topic.
 
 #### Acceptance Criteria
@@ -88,7 +98,7 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 3. If no ADR matches the search term, then the ADR Manager shall inform the user that no results were found.
 4. When a user selects a search result, the ADR Manager shall open that ADR for viewing.
 
-### Requirement 9: Semantic Similarity Search
+### Requirement 10: Semantic Similarity Search
 **Objective:** As an ADR author, I want to find ADRs that are conceptually similar to one I'm viewing, so that I can avoid duplicating past decisions or find related context.
 
 #### Acceptance Criteria
@@ -97,7 +107,7 @@ Teams that maintain Architecture Decision Records as plain MADR-format Markdown 
 3. If the folder subtree contains no other ADRs, then the ADR Manager shall inform the user that no similar ADRs are available in that scope.
 4. When an ADR's content is saved with changes to its body, the ADR Manager shall ensure subsequent similarity results reflect the updated content.
 
-### Requirement 10: Projection Rebuild and Resilience
+### Requirement 11: Projection Rebuild and Resilience
 **Objective:** As an ADR Manager operator, I want the search and similarity data to be fully recoverable from the repository, so that no operational data store is a single point of failure for ADR content.
 
 #### Acceptance Criteria
