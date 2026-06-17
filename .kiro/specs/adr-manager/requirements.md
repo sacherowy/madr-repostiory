@@ -1,0 +1,7 @@
+# Requirements Document
+
+## Project Description (Input)
+ADR Manager: A git-overlay application for managing Architecture Decision Records (MADR format). Problem: teams maintaining ADRs as plain Markdown files in git lack a GUI, relationship tracking (supersedes/superseded-by/relates-to/depends-on/conflicts-with), version history visualization, structured comparisons, and semantic similarity search. Current situation: ADRs exist only as versioned Markdown files in git with no tooling layer; git remains the sole source of truth and SQLite is only a rebuildable secondary projection/index (cache of Gemini text-embedding-004 embeddings keyed by blob SHA, plus search index). Tech stack: React+Vite+TypeScript frontend (apps/web), Node.js+Fastify+TypeScript backend (apps/api), pure TypeScript domain core with zero I/O (packages/core) using hexagonal architecture (GitPort, EmbeddingProvider, EmbeddingStore, SearchIndex ports), simple-git for git access, better-sqlite3 for the projection. What should change: build a GUI to create/edit ADRs, link them via typed relations, browse git-derived history/diffs, compare ADR versions and ADR-to-ADR fields, and run semantic similarity search scoped to a folder/branch of the ADR tree using cached embeddings. Concurrency uses optimistic locking on blob SHA with per-repo write queue. Roadmap items (status lifecycle, tags, schema validation, supersedes detection, export) are out of scope for this first spec and should be tracked separately.
+
+## Requirements
+<!-- Will be generated in /kiro-spec-requirements phase -->
