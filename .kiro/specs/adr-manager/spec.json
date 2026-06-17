@@ -1,16 +1,16 @@
 {
   "feature_name": "adr-manager",
   "created_at": "2026-06-17T16:54:54Z",
-  "updated_at": "2026-06-17T17:05:00Z",
+  "updated_at": "2026-06-17T17:20:00Z",
   "language": "en",
-  "phase": "requirements-generated",
+  "phase": "design-generated",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "tasks": {
