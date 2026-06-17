@@ -1,0 +1,13 @@
+{
+  "name": "@adr/core",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@adr/shared": "workspace:*",
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": { "vitest": "^2.0.5", "typescript": "^5.5.4" },
+  "scripts": { "test": "vitest run", "dev": "vitest", "build": "tsc -p tsconfig.json" }
+}
