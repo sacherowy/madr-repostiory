@@ -1,0 +1,8 @@
+{
+  "name": "@adr/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": { "build": "tsc -p tsconfig.json", "test": "echo 'brak testów' " }
+}

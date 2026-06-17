@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+# Projekcja — zawsze odtwarzalna z gita przez `pnpm reindex`
+data/*.sqlite
+data/.embeddings/

@@ -1,0 +1,13 @@
+{
+  "name": "adr-manager",
+  "private": true,
+  "packageManager": "pnpm@9.7.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm -r test:integration",
+    "reindex": "pnpm --filter @adr/api reindex"
+  }
+}
