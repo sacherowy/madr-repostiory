@@ -104,6 +104,16 @@
 - **Rationale**: No requirement implies deep-linking/back-button semantics; avoids a new dependency for a need that doesn't exist yet.
 - **Trade-offs**: Revisit if a future spec requires shareable URLs into a specific ADR/version/comparison.
 
+### Decision: Adopt the user-supplied visual design system verbatim as `docs/design.md`, wired in as plain CSS custom properties
+- **Context**: No visual design system existed in the codebase prior to this round (confirmed: no CSS framework dependency, no token file, no shared component styling). A complete, fully-specified design system ("ADR Manager — System projektowy", teal/"morski" variant) was supplied externally, with color tokens, a three-typeface type system, spacing/shape/shadow scales, component conventions, relation/status color mappings, voice/tone rules, and an accessibility bar, including its own suggested repo location (`docs/design.md`).
+- **Alternatives Considered**:
+  1. Adopt a CSS/component framework (e.g. Tailwind, MUI, Chakra) and re-derive the supplied palette/type scale as theme overrides.
+  2. Store the supplied design system verbatim at `docs/design.md` and wire it into `apps/web` as plain CSS custom properties (`apps/web/src/styles/tokens.css`) plus a Google Fonts `<link>`, with no new npm dependency.
+- **Selected Approach**: Option 2.
+- **Rationale**: The supplied document is already implementation-ready (a complete `:root{...}` token block and font `<link>` snippet are included verbatim in the source document); a framework would add an abstraction layer and a new dependency for no functional gain, and would risk drifting from the exact hex/spacing values already specified. This is consistent with this design's existing no-new-frontend-dependency stance (see "No frontend router" decision above).
+- **Trade-offs**: No component library means each `apps/web/src/features/*` component implements its own markup/styling against the tokens; acceptable given the component set is small and explicitly enumerated in the File Structure Plan.
+- **Follow-up**: Verify WCAG AA contrast and `prefers-reduced-motion` handling for each new component during this spec's implementation/testing tasks, per the design system's own "Dostępność (próg jakości)" bar.
+
 ## Risks & Mitigations
 - Live computation of the folder tree and relation graph re-scans all ADR files on every request — mitigated by the documented PostgreSQL+pgvector scaling path (README "Ścieżka skalowania"); out of scope to pre-optimize for this spec.
 - No authentication means any reachable client can write commits as any author name — accepted explicitly by the requirements' Introduction ("Authentication and authorization are not part of this iteration"); not a gap this design introduces.

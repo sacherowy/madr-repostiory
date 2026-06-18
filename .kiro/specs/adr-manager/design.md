@@ -111,6 +111,7 @@ flowchart TB
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|------------------|-------|
 | Frontend | React 18.3 + Vite 5.4 + TypeScript (`apps/web`) | Feature panels (editor, tree, relations, history, diff, search, similarity) | No new dependency; no router added (see `research.md`) |
+| Styling | Plain CSS custom properties + Google Fonts (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono) | Visual design system (color, type, spacing, shape tokens) for every `apps/web` feature | No new npm dependency; tokens defined in `docs/design.md`, see UI Design System below |
 | Backend / Services | Node.js + Fastify 4.28 + TypeScript (`apps/api`) | Route plugins, composition root, write queue | New route plugins only; same Fastify instance |
 | Domain Core | Pure TypeScript (`packages/core`) | New use-case services, extended `GitPort` | Zero I/O preserved; depends only on ports |
 | Data / Storage | better-sqlite3 ^11.3.0 (FTS5 + existing `embedding_cache`) | New `adr_fts` virtual table for keyword search | FTS5 already compiled in; no new package |
@@ -165,18 +166,22 @@ apps/api/src/
 │   └── concurrency/writeQueue.ts      # NEW: WriteQueue (per-repo serialized saves)
 └── scripts/reindex.ts                 # MODIFIED: also populates SqliteSearchIndex; prunes stale ids
 
-apps/web/src/
-├── App.tsx                            # MODIFIED: real shell with local view-state navigation
-├── api/client.ts                      # NEW: ApiClient (typed fetch wrapper over @adr/shared types)
-└── features/
-    ├── adr-editor/AdrEditor.tsx       # NEW: Req 1, 2
-    ├── folder-tree/FolderTree.tsx     # NEW: Req 3, 4
-    ├── relations-graph/RelationsPanel.tsx # NEW: Req 5
-    ├── history-timeline/HistoryTimeline.tsx # NEW: Req 6
-    ├── diff-viewer/VersionDiffView.tsx # NEW: Req 7
-    ├── diff-viewer/AdrCompareView.tsx  # NEW: Req 8
-    ├── search/SearchPanel.tsx          # NEW: Req 9
-    └── similarity-panel/SimilarityPanel.tsx # NEW: Req 10
+apps/web/
+├── index.html                              # MODIFIED: add Google Fonts <link> (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono)
+└── src/
+    ├── App.tsx                            # MODIFIED: real shell with local view-state navigation
+    ├── main.tsx                           # MODIFIED: import ./styles/tokens.css
+    ├── api/client.ts                      # NEW: ApiClient (typed fetch wrapper over @adr/shared types)
+    ├── styles/tokens.css                  # NEW: design tokens (CSS custom properties) from docs/design.md
+    └── features/
+        ├── adr-editor/AdrEditor.tsx       # NEW: Req 1, 2
+        ├── folder-tree/FolderTree.tsx     # NEW: Req 3, 4
+        ├── relations-graph/RelationsPanel.tsx # NEW: Req 5
+        ├── history-timeline/HistoryTimeline.tsx # NEW: Req 6
+        ├── diff-viewer/VersionDiffView.tsx # NEW: Req 7
+        ├── diff-viewer/AdrCompareView.tsx  # NEW: Req 8
+        ├── search/SearchPanel.tsx          # NEW: Req 9
+        └── similarity-panel/SimilarityPanel.tsx # NEW: Req 10
 ```
 The `apps/web/src/features/*` layout matches the feature names already named in the existing `App.tsx` scaffold comment; `apps/api/src/routes/*` matches the module names already named in the existing `server.ts` TODO comment.
 
@@ -186,6 +191,22 @@ The `apps/web/src/features/*` layout matches the feature names already named in 
 - `apps/api/src/scripts/reindex.ts` — after upserting current ADRs into `EmbeddingStore`, also upsert into `SqliteSearchIndex`, then remove any indexed id no longer present among current ADR files.
 - `apps/api/src/server.ts` — replace the TODO with registration of the seven route plugins built from `container.ts`.
 - `apps/web/src/App.tsx` — replace the static placeholder with a shell holding `{ selectedFolder, selectedAdrId, activePanel }` view-state and rendering the relevant feature components.
+- `docs/design.md` — NEW. Visual design system (color/type/spacing/shape tokens, component conventions, voice, accessibility bar) authored independently of this spec; canonical styling reference for all `apps/web` features. See UI Design System below.
+- `apps/web/index.html` — add the Google Fonts `<link>` for Bricolage Grotesque / Hanken Grotesk / JetBrains Mono.
+- `apps/web/src/styles/tokens.css` — NEW. The `:root` CSS custom properties block from `docs/design.md`, imported once in `main.tsx`.
+
+## UI Design System
+
+`docs/design.md` is the canonical visual design system for every `apps/web` component built by this spec ("morski" / teal variant). It was authored independently of this design and is treated as a Supporting Reference (see below) rather than duplicated here; this section only records how its tokens and conventions tie back to specific requirements and components.
+
+- **Delivery mechanism**: plain CSS custom properties (`apps/web/src/styles/tokens.css`, imported once in `main.tsx`) plus a Google Fonts `<link>` in `apps/web/index.html`. No CSS framework or component library is introduced — consistent with this design's existing no-new-dependency stance (see "No frontend router" decision in `research.md`).
+- **Status badges** (Req 1.5, 4.2) — `AdrSummary.status` and `Adr.status` render using the four-status color table (`proposed`/`accepted`/`deprecated`/`superseded`) in `FolderTree`, `AdrEditor`, and `HistoryTimeline` wherever a status badge appears.
+- **Relation chips** (Req 5.1, 5.3) — `RelationsPanel` renders each relation as a monospace chip with the colored marker from the design system's Relations table: solid teal for `supersedes`/`superseded-by`, solid indigo for `depends-on`, dashed slate for `relates-to`, solid danger-red for `conflicts-with`.
+- **Diff view** (Req 7.2) — `VersionDiffView` and `AdrCompareView` use the `--add`/`--del` tokens (text + background) for added/removed lines, with line numbers on `--surface`.
+- **Similarity meter** (Req 10.2) — `SimilarityPanel` renders the teal-gradient bar plus a monospace score (e.g. `0.86`) per the "Miara podobieństwa" component spec.
+- **Conflict and validation errors** (Req 1.3, 2.2, 2.3, 3.3, 5.4, 7.3, 8.3) — all use the reserved `--danger`/`--danger-bg` tokens for field/error states. This spec defines no irreversible delete action, so the `danger` button variant itself is not used; `--danger` appears only for error and 409-conflict states. Error copy follows the system's voice rule (state what happened and how to fix it, no apology) — e.g. Req 2.2's stale-write conflict message mirrors the design system's own example: "Plik zmienił się od ostatniego odczytu. Odśwież i zapisz ponownie."
+- **Machine identifiers** — `AdrSummary.id` / `Adr.id` (ADR ID), `CommitMeta.sha` (blob SHA), and raw `AdrStatus` keys are always rendered in JetBrains Mono per the design system's monospace signature rule, across `FolderTree`, `HistoryTimeline`, and `AdrEditor`.
+- **Accessibility bar** — visible keyboard focus, mobile responsiveness, respect for `prefers-reduced-motion`, and WCAG AA text contrast apply to every new component listed in the File Structure Plan's `apps/web/src/features/*` tree; verified during this spec's implementation/testing phase, not re-specified per component.
 
 ## System Flows
 
@@ -803,3 +824,4 @@ Folder tree (`FolderService.buildTree`) and reverse relations (`RelationGraphSer
 - `research.md` — discovery findings, architecture pattern evaluation, and full rationale for each Build-vs-Adopt and Simplification decision referenced above.
 - `requirements.md` — approved (pending) requirements this design traces to.
 - `README.md` — existing architecture description, concurrency model, and stated scaling path.
+- `docs/design.md` — canonical UI design system (color, type, spacing, shape tokens; component conventions; voice; accessibility bar) referenced by the UI Design System section above.
