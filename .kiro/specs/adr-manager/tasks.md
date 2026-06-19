@@ -2,7 +2,7 @@
 
 - [ ] 1. Foundation: shared contracts, infrastructure adapters, and test tooling
 
-- [ ] 1.1 (P) Extend git access with tree listing, move, and rename-aware history
+- [x] 1.1 (P) Extend git access with tree listing, move, and rename-aware history
   - Add the ability to list every folder and ADR file under a given root path, classified as folder or ADR entry, including folders that contain only a placeholder file
   - Add the ability to move an ADR to a new path as a single committed change without losing its identifier or content
   - Change version history retrieval so it keeps following an ADR's history across a prior move/rename
@@ -280,3 +280,8 @@
   - Run every unit, integration, and component test added across this feature together with the project's pre-existing tests
   - The full suite passes with no failing or skipped-unexpectedly tests
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
+
+## Implementation Notes
+
+- (1.1) `SimpleGitAdapter.writeAndCommit` does not create parent directories before `writeFile`; writing into a not-yet-existing subfolder throws ENOENT. `move()` works around this for its own destination via `mkdir(dirname(toPath), { recursive: true })`, but `writeAndCommit` itself is unchanged. Task 2.2 (`FolderService.createFolder`, which writes a `.gitkeep` via `writeAndCommit`) and task 2.7 (`AdrEditingService.create`, which may write a new ADR into a brand-new folder) should account for this — either pre-create the directory before calling `writeAndCommit`, or fix `writeAndCommit` itself if that's cleaner within their boundary.
+- (1.1) `simple-git`'s log options parser appends `--follow` automatically whenever `file` is set, independent of the explicit `"--follow": null` key — so rename-aware history was already implicit. The explicit option was kept anyway since it matches design.md's prescribed snippet and documents intent; no action needed, just don't assume removing it would break anything different from before.
