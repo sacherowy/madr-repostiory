@@ -30,7 +30,7 @@
   - _Requirements: 2.4_
   - _Boundary: WriteQueue_
 
-- [ ] 1.5 (P) Wire the ADR Manager visual design system into the web app
+- [x] 1.5 (P) Wire the ADR Manager visual design system into the web app
   - Add the design system's color, typography, spacing, and shape tokens as CSS custom properties, loaded once at app startup
   - Add the Google Fonts reference for the design system's three typefaces
   - Loading the web app in a browser renders text in the design system's typefaces and exposes the documented CSS custom properties on the root element
