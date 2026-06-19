@@ -9,6 +9,8 @@ import { RelationGraphService } from "./relationGraphService.js";
  * its own tests.
  */
 class FakeGitPort implements GitPort {
+  public listAdrFilesCalls: string[] = [];
+
   constructor(private files: Map<string, string>) {}
 
   async read(path: string): Promise<string> {
@@ -33,7 +35,8 @@ class FakeGitPort implements GitPort {
     throw new Error("not used in this test");
   }
 
-  async listAdrFiles(): Promise<AdrFile[]> {
+  async listAdrFiles(branchPath: string): Promise<AdrFile[]> {
+    this.listAdrFilesCalls.push(branchPath);
     return Array.from(this.files.keys())
       .filter((p) => p.endsWith(".md"))
       .map((path) => ({ path, blobSha: `sha-${path}` }));
@@ -201,5 +204,16 @@ describe("RelationGraphService", () => {
       expect.objectContaining({ direction: "inbound", type: "superseded-by" })
     );
     expect(after).toHaveLength(0);
+  });
+
+  it("scans all ADRs with the whole-repo pathspec '.', never an empty string (real git rejects '' as an invalid pathspec)", async () => {
+    const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "First")]]);
+    const gitPort = new FakeGitPort(files);
+    const svc = new RelationGraphService(gitPort);
+
+    await svc.relationsFor("adr-0001");
+    await svc.targetExists("adr-0001");
+
+    expect(gitPort.listAdrFilesCalls).toEqual([".", "."]);
   });
 });

@@ -27,7 +27,7 @@ export class RelationGraphService {
   constructor(private readonly git: GitPort) {}
 
   async relationsFor(id: string): Promise<RelationView[]> {
-    const files = await this.git.listAdrFiles("");
+    const files = await this.git.listAdrFiles(".");
     const views: RelationView[] = [];
 
     for (const file of files) {
@@ -59,7 +59,7 @@ export class RelationGraphService {
   }
 
   async targetExists(targetId: string): Promise<boolean> {
-    const files = await this.git.listAdrFiles("");
+    const files = await this.git.listAdrFiles(".");
     for (const file of files) {
       const raw = await this.git.read(file.path);
       const adr = parseAdr(raw, file.path, file.blobSha);
