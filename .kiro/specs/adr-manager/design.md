@@ -174,12 +174,13 @@ apps/web/
     ├── api/client.ts                      # NEW: ApiClient (typed fetch wrapper over @adr/shared types)
     ├── styles/tokens.css                  # NEW: design tokens (CSS custom properties) from docs/design.md
     └── features/
-        ├── adr-editor/AdrEditor.tsx       # NEW: Req 1, 2
-        ├── folder-tree/FolderTree.tsx     # NEW: Req 3, 4
-        ├── relations-graph/RelationsPanel.tsx # NEW: Req 5
+        ├── adr-editor/AdrEditor.tsx       # NEW: Req 1, 2, 5.1, 5.4, 5.5 (relation add/remove); author from App.tsx session state
+        ├── folder-tree/FolderTree.tsx     # NEW: Req 3, 4 (incl. create folder, move ADR); author from App.tsx session state
+        ├── relations-graph/RelationsPanel.tsx # NEW: Req 5.2, 5.3 (read-only relation view)
         ├── history-timeline/HistoryTimeline.tsx # NEW: Req 6
         ├── diff-viewer/VersionDiffView.tsx # NEW: Req 7
         ├── diff-viewer/AdrCompareView.tsx  # NEW: Req 8
+        ├── diff-viewer/CompareLauncher.tsx # NEW: selects the two versions (Req 7) / two ADRs (Req 8) to compare
         ├── search/SearchPanel.tsx          # NEW: Req 9
         └── similarity-panel/SimilarityPanel.tsx # NEW: Req 10
 ```
@@ -190,7 +191,7 @@ The `apps/web/src/features/*` layout matches the feature names already named in 
 - `apps/api/src/infrastructure/git/simpleGitAdapter.ts` — implement the two new methods; change `log()` to pass `--follow`.
 - `apps/api/src/scripts/reindex.ts` — after upserting current ADRs into `EmbeddingStore`, also upsert into `SqliteSearchIndex`, then remove any indexed id no longer present among current ADR files.
 - `apps/api/src/server.ts` — replace the TODO with registration of the seven route plugins built from `container.ts`.
-- `apps/web/src/App.tsx` — replace the static placeholder with a shell holding `{ selectedFolder, selectedAdrId, activePanel }` view-state and rendering the relevant feature components.
+- `apps/web/src/App.tsx` — replace the static placeholder with a shell holding `{ selectedFolder, selectedAdrId, activePanel, authorName }` view-state, a panel-switching control, a session author-name input, and rendering the relevant feature components.
 - `docs/design.md` — NEW. Visual design system (color/type/spacing/shape tokens, component conventions, voice, accessibility bar) authored independently of this spec; canonical styling reference for all `apps/web` features. See UI Design System below.
 - `apps/web/index.html` — add the Google Fonts `<link>` for Bricolage Grotesque / Hanken Grotesk / JetBrains Mono.
 - `apps/web/src/styles/tokens.css` — NEW. The `:root` CSS custom properties block from `docs/design.md`, imported once in `main.tsx`.
@@ -201,9 +202,10 @@ The `apps/web/src/features/*` layout matches the feature names already named in 
 
 - **Delivery mechanism**: plain CSS custom properties (`apps/web/src/styles/tokens.css`, imported once in `main.tsx`) plus a Google Fonts `<link>` in `apps/web/index.html`. No CSS framework or component library is introduced — consistent with this design's existing no-new-dependency stance (see "No frontend router" decision in `research.md`).
 - **Status badges** (Req 1.5, 4.2) — `AdrSummary.status` and `Adr.status` render using the four-status color table (`proposed`/`accepted`/`deprecated`/`superseded`) in `FolderTree`, `AdrEditor`, and `HistoryTimeline` wherever a status badge appears.
-- **Relation chips** (Req 5.1, 5.3) — `RelationsPanel` renders each relation as a monospace chip with the colored marker from the design system's Relations table: solid teal for `supersedes`/`superseded-by`, solid indigo for `depends-on`, dashed slate for `relates-to`, solid danger-red for `conflicts-with`.
+- **Relation chips** (Req 5.1, 5.3) — `RelationsPanel` (read-only display) and `AdrEditor` (relation add/remove controls) both render each relation as a monospace chip with the colored marker from the design system's Relations table: solid teal for `supersedes`/`superseded-by`, solid indigo for `depends-on`, dashed slate for `relates-to`, solid danger-red for `conflicts-with`.
 - **Diff view** (Req 7.2) — `VersionDiffView` and `AdrCompareView` use the `--add`/`--del` tokens (text + background) for added/removed lines, with line numbers on `--surface`.
 - **Similarity meter** (Req 10.2) — `SimilarityPanel` renders the teal-gradient bar plus a monospace score (e.g. `0.86`) per the "Miara podobieństwa" component spec.
+- **Similarity scope source** (Req 10.1) — `SimilarityPanel` scopes `findSimilar` to `App.tsx`'s `selectedFolder` view-state (the folder currently selected in `FolderTree`); if no folder is selected, it falls back to the open ADR's own containing folder.
 - **Conflict and validation errors** (Req 1.3, 2.2, 2.3, 3.3, 5.4, 7.3, 8.3) — all use the reserved `--danger`/`--danger-bg` tokens for field/error states. This spec defines no irreversible delete action, so the `danger` button variant itself is not used; `--danger` appears only for error and 409-conflict states. Error copy follows the system's voice rule (state what happened and how to fix it, no apology) — e.g. Req 2.2's stale-write conflict message mirrors the design system's own example: "Plik zmienił się od ostatniego odczytu. Odśwież i zapisz ponownie."
 - **Machine identifiers** — `AdrSummary.id` / `Adr.id` (ADR ID), `CommitMeta.sha` (blob SHA), and raw `AdrStatus` keys are always rendered in JetBrains Mono per the design system's monospace signature rule, across `FolderTree`, `HistoryTimeline`, and `AdrEditor`.
 - **Accessibility bar** — visible keyboard focus, mobile responsiveness, respect for `prefers-reduced-motion`, and WCAG AA text contrast apply to every new component listed in the File Structure Plan's `apps/web/src/features/*` tree; verified during this spec's implementation/testing phase, not re-specified per component.
@@ -283,15 +285,15 @@ Because `EmbeddingStore` is keyed by blob SHA, an edited ADR gets a new blob SHA
 | 1.3 | Reject save missing title/body, list missing fields | AdrEditingService | PUT /api/adrs/:id (400) | Save flow |
 | 1.4 | Show currently saved content while editing | AdrEditor, ApiClient | GET /api/adrs/:id | — |
 | 1.5 | Status editable as one of 4 fixed values | AdrEditor | PUT /api/adrs/:id | — |
-| 1.6 | Author name entry per save | AdrEditor, AdrEditingService | PUT /api/adrs/:id | Save flow |
+| 1.6 | Author name entry per save | App.tsx, AdrEditor, AdrEditingService | PUT /api/adrs/:id | Save flow |
 | 2.1 | Track loaded version (base blob SHA) | AdrEditor | GET /api/adrs/:id | — |
 | 2.2 | Reject save if newer version exists | AdrEditingService, GitAdapter | PUT /api/adrs/:id (409) | Save flow |
 | 2.3 | Allow reload of latest after conflict | AdrEditor, ApiClient | GET /api/adrs/:id | Save flow |
 | 2.4 | Serialize concurrent saves, no lost writes | WriteQueue | — | Save flow |
 | 2.5 | Confirm save, refresh editor to new version | AdrEditor, AdrEditingService | PUT /api/adrs/:id (200) | Save flow |
-| 3.1 | Create folder at specified location | FolderService, GitAdapter | POST /api/folders | — |
-| 3.2 | Move ADR, preserve id/content/relations/history | FolderService, GitAdapter | POST /api/adrs/:id/move | — |
-| 3.3 | Reject duplicate folder name at same location | FolderService | POST /api/folders (409) | — |
+| 3.1 | Create folder at specified location | FolderTree, FolderService, GitAdapter | POST /api/folders | — |
+| 3.2 | Move ADR, preserve id/content/relations/history | FolderTree, FolderService, GitAdapter | POST /api/adrs/:id/move | — |
+| 3.3 | Reject duplicate folder name at same location | FolderTree, FolderService | POST /api/folders (409) | — |
 | 4.1 | Display full tree from repo root by default | FolderTree, FolderService | GET /api/tree | — |
 | 4.2 | Each ADR entry shows title, id, status | FolderTree, FolderService | GET /api/tree | — |
 | 4.3 | Expanding a folder shows its direct children | FolderTree | GET /api/tree | — |
@@ -299,21 +301,21 @@ Because `EmbeddingStore` is keyed by blob SHA, an edited ADR gets a new blob SHA
 | 4.5 | Empty folder shown as empty, not omitted | FolderService | GET /api/tree | — |
 | 4.6 | Selecting a folder filters to its subtree | FolderTree, FolderService | GET /api/tree | — |
 | 4.7 | Selecting an ADR opens it for viewing | FolderTree, AdrEditor | GET /api/adrs/:id | — |
-| 5.1 | Relation type required from fixed 5-value set | AdrEditor, RelationsPanel, AdrEditingService | PUT /api/adrs/:id | — |
+| 5.1 | Relation type required from fixed 5-value set | AdrEditor, AdrEditingService | PUT /api/adrs/:id | — |
 | 5.2 | Supersedes implies reciprocal superseded-by | RelationGraphService | GET /api/adrs/:id/relations | — |
 | 5.3 | Show all relations, declared here or pointing here | RelationGraphService, RelationsPanel | GET /api/adrs/:id/relations | — |
-| 5.4 | Reject relation to nonexistent target | AdrEditingService, RelationGraphService | PUT /api/adrs/:id (400) | — |
-| 5.5 | Removing a relation removes its reciprocal | RelationGraphService, RelationsPanel | GET /api/adrs/:id/relations | — |
+| 5.4 | Reject relation to nonexistent target | AdrEditor, AdrEditingService, RelationGraphService | PUT /api/adrs/:id (400) | — |
+| 5.5 | Removing a relation removes its reciprocal | AdrEditor, RelationGraphService | PUT /api/adrs/:id | — |
 | 6.1 | Timeline with author, date, message per version | HistoryService, GitAdapter | GET /api/adrs/:id/history | — |
 | 6.2 | Selecting a version shows its full content | HistoryService, GitAdapter | GET /api/adrs/:id/versions/:sha | — |
 | 6.3 | Timeline ordered newest to oldest | HistoryService | GET /api/adrs/:id/history | — |
 | 6.4 | Single-version ADR shown without implying priors | HistoryTimeline | GET /api/adrs/:id/history | — |
-| 7.1 | Show diff between two versions of same ADR | ComparisonService, GitAdapter | GET /api/adrs/:id/diff | — |
+| 7.1 | Show diff between two versions of same ADR | CompareLauncher, ComparisonService, GitAdapter | GET /api/adrs/:id/diff | — |
 | 7.2 | Visually distinguish added/removed/unchanged | VersionDiffView | GET /api/adrs/:id/diff | — |
-| 7.3 | Reject single-version or cross-ADR comparison | ComparisonService | GET /api/adrs/:id/diff (400) | — |
-| 8.1 | Side-by-side title/status/date/deciders/tags/body | ComparisonService | GET /api/compare | — |
+| 7.3 | Reject single-version or cross-ADR comparison | CompareLauncher, ComparisonService | GET /api/adrs/:id/diff (400) | — |
+| 8.1 | Side-by-side title/status/date/deciders/tags/body | CompareLauncher, ComparisonService | GET /api/compare | — |
 | 8.2 | Visually distinguish differing vs identical fields | AdrCompareView | GET /api/compare | — |
-| 8.3 | Reject comparing an ADR against itself | ComparisonService | GET /api/compare (400) | — |
+| 8.3 | Reject comparing an ADR against itself | CompareLauncher, ComparisonService | GET /api/compare (400) | — |
 | 9.1 | Match search term against title/tags/body | SearchService, SqliteSearchIndex | GET /api/search | — |
 | 9.2 | Rank closer matches above weaker ones | SqliteSearchIndex (bm25) | GET /api/search | — |
 | 9.3 | Inform user when no results found | SearchPanel | GET /api/search (200, empty) | — |
@@ -344,9 +346,9 @@ Because `EmbeddingStore` is keyed by blob SHA, an edited ADR gets a new blob SHA
 | AdrRoutes / FolderRoutes / RelationRoutes / HistoryRoutes / CompareRoutes / SearchRoutes / SimilarityRoutes | Backend | Fastify plugins translating HTTP to core services | 1–10 | container.ts services (P0) | API |
 | reindex.ts (extended) | Backend / Batch | Rebuild EmbeddingStore + SqliteSearchIndex from git | 11 | GitPort, EmbeddingProvider/Store, SearchIndex (all P0) | Batch |
 | ApiClient | Frontend | Typed fetch wrapper | 1–10 | Fastify routes (P0) | API (client) |
-| AdrEditor | Frontend | Create/edit form, conflict UI, status/relations inputs | 1, 2, 5.1, 5.4 | ApiClient (P0) | State |
-| FolderTree | Frontend | Tree browse, expand/collapse, folder/ADR selection | 3.1, 4 | ApiClient (P0) | State |
-| RelationsPanel | Frontend | Display/edit relations on an ADR | 5 | ApiClient (P0) | State |
+| AdrEditor | Frontend | Create/edit form, conflict UI, status input, relation add/remove | 1, 2, 5.1, 5.4, 5.5 | ApiClient (P0) | State |
+| FolderTree | Frontend | Tree browse, expand/collapse, folder/ADR selection, create folder, move ADR | 3.1, 3.2, 4 | ApiClient (P0) | State |
+| RelationsPanel | Frontend | Read-only display of an ADR's relations (declared + reciprocal) | 5.2, 5.3 | ApiClient (P0) | State |
 | HistoryTimeline | Frontend | Chronological version list, version selection | 6 | ApiClient (P0) | State |
 | VersionDiffView | Frontend | Added/removed/unchanged highlighting for 2 versions | 7 | ApiClient (P0) | State |
 | AdrCompareView | Frontend | Side-by-side field comparison, diff highlighting | 8 | ApiClient (P0) | State |
@@ -404,8 +406,8 @@ type SaveResult =
 | Requirements | 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.5, 4.6 |
 
 **Responsibilities & Constraints**
-- `createFolder(path)` rejects if a folder already exists at that exact path (3.3); otherwise writes a `.gitkeep` placeholder via `GitPort.writeAndCommit` (3.1).
-- `moveAdr(id, targetFolder)` resolves the ADR's current path, calls `GitPort.move`, and leaves id/content/relations untouched; history continuity comes from `--follow` in `GitPort.log` (3.2).
+- `createFolder(path, author)` rejects if a folder already exists at that exact path (3.3); otherwise writes a `.gitkeep` placeholder via `GitPort.writeAndCommit`, which requires the same `author` as any other commit (3.1).
+- `moveAdr(id, targetFolder, author)` resolves the ADR's current path, calls `GitPort.move`, and leaves id/content/relations untouched; history continuity comes from `--follow` in `GitPort.log` (3.2).
 - `buildTree(rootPath)` combines `GitPort.listTreeEntries` (folders) with `GitPort.listAdrFiles` (ADRs, parsed for title/id/status) into a `FolderNode` tree, including folders with no children (4.5).
 
 **Dependencies**
@@ -416,7 +418,7 @@ type SaveResult =
 ##### Service Interface
 ```typescript
 interface FolderService {
-  createFolder(path: string): Promise<CreateFolderResult>;
+  createFolder(path: string, author: string): Promise<CreateFolderResult>;
   moveAdr(id: string, targetFolder: string, author: string): Promise<MoveAdrResult>;
   buildTree(rootPath: string): Promise<FolderNode>;
 }
@@ -724,9 +726,9 @@ interface SearchIndex {
 
 ### Frontend (presentational components)
 
-All frontend components share `ApiClient` (a typed `fetch` wrapper returning `@adr/shared` types) and a local view-state object owned by `App.tsx` (`{ selectedFolder, selectedAdrId, activePanel }` — no router, see `research.md`).
+All frontend components share `ApiClient` (a typed `fetch` wrapper returning `@adr/shared` types) and a local view-state object owned by `App.tsx` (`{ selectedFolder, selectedAdrId, activePanel, authorName }` — no router, see `research.md`). `App.tsx` also renders the panel-switching control that sets `activePanel` (editor, relations, history, comparison, similarity) for the currently selected ADR and mounts the matching feature area, and an input for `authorName` entered once per session and passed down to `AdrEditor` (save/create) and `FolderTree` (move and folder creation) as the `author` value for their respective requests.
 
-**Implementation Notes** (apply to `AdrEditor`, `FolderTree`, `RelationsPanel`, `HistoryTimeline`, `VersionDiffView`, `AdrCompareView`, `SearchPanel`, `SimilarityPanel`):
+**Implementation Notes** (apply to `AdrEditor`, `FolderTree`, `RelationsPanel`, `HistoryTimeline`, `VersionDiffView`, `AdrCompareView`, `CompareLauncher`, `SearchPanel`, `SimilarityPanel`):
 - Integration: each component receives data via `ApiClient` calls keyed off `App.tsx`'s view-state; selection callbacks update that shared state (e.g., `FolderTree`'s ADR selection sets `selectedAdrId` and switches `activePanel` to the editor).
 - Validation: client-side required-field checks in `AdrEditor` mirror `AdrEditingService`'s checks for fast feedback, but the server check is authoritative (1.3).
 - Risks: none beyond standard React state management; no new dependency introduced.
@@ -770,7 +772,7 @@ interface SimilarityResult { adr: AdrSummary; score: number; }
 
 interface CreateAdrRequest { title: string; deciders?: string[]; tags?: string[]; folder: string; }
 interface UpdateAdrRequest { title: string; status: AdrStatus; date: string; deciders?: string[]; tags?: string[]; relations?: AdrRelation[]; body: string; author: string; baseBlobSha: string; }
-interface CreateFolderRequest { path: string; }
+interface CreateFolderRequest { path: string; author: string; }
 interface MoveAdrRequest { targetFolder: string; author: string; }
 ```
 - Validation rules: `UpdateAdrRequest.title`/`.body` non-empty (1.3); `baseBlobSha` required (2.1, 2.2); `relations[].target` checked server-side regardless of client validation (5.4).
@@ -805,14 +807,15 @@ Reuses Fastify's built-in request logger (already configured with `logger: true`
   - `FolderService.buildTree` includes a folder containing only a `.gitkeep` as an empty folder rather than omitting it (4.5); `ComparisonService.adrDiff` rejects `idA === idB` (8.3) and `versionDiff` rejects mismatched ADR ids (7.3).
   - `SimilarityService.findSimilar` returns `{ kind: "emptyScope" }` for a scope with only the target ADR (10.3), and produces a different ranking after a re-save changes an ADR's blob SHA (10.4).
 - **Integration Tests** (real tmp-dir git repo + real SQLite file, `FakeEmbeddingProvider`):
-  - `WriteQueue` serializes two concurrent `AdrEditingService.save` calls against the same ADR so the second always observes the first's committed blob SHA (2.4).
+  - `WriteQueue` serializes concurrent repository writes — `AdrEditingService.create`/`save`, `FolderService.createFolder`, and `FolderService.moveAdr` — against the same repository, so each later write always observes the prior one's committed result (2.4).
   - `SqliteSearchIndex.search` ranks an exact-title match above a body-only match for the same query (9.2).
   - `SimpleGitAdapter.move` + `log` with `--follow` returns history entries from before *and* after a move for the same ADR (3.2).
   - `reindex.ts` run twice in a row against an unchanged repo produces no duplicate `adr_fts` rows and removes entries for an ADR file deleted between runs (11.4).
 - **E2E/UI Tests** (`apps/web`):
   - Create-then-edit-then-save flow in `AdrEditor`, including triggering and recovering from a 409 conflict via reload (1, 2).
-  - `FolderTree` expand/collapse/select interactions against a tree containing one empty folder (4).
+  - `FolderTree` expand/collapse/select interactions against a tree containing one empty folder (4), plus create-folder and move-ADR controls round-tripping through the API (3.1, 3.2).
   - `SearchPanel` empty-state message for a no-match query (9.3) and `SimilarityPanel` empty-state message for a single-ADR folder (10.3).
+  - `CompareLauncher` selection flow drives both the two-version diff view (7.1, 7.3) and the two-ADR comparison view (8.1, 8.3).
 
 ## Security Considerations
 No authentication or authorization is introduced or assumed, per the requirements' explicit scope. The recorded "author" on every save is free-text supplied by the caller, not a verified identity — this is a deliberate product decision already stated in requirements.md's Introduction, not a gap introduced by this design. Anyone who can reach the API can read and write any ADR.
@@ -822,6 +825,6 @@ Folder tree (`FolderService.buildTree`) and reverse relations (`RelationGraphSer
 
 ## Supporting References
 - `research.md` — discovery findings, architecture pattern evaluation, and full rationale for each Build-vs-Adopt and Simplification decision referenced above.
-- `requirements.md` — approved (pending) requirements this design traces to.
+- `requirements.md` — approved requirements this design traces to.
 - `README.md` — existing architecture description, concurrency model, and stated scaling path.
 - `docs/design.md` — canonical UI design system (color, type, spacing, shape tokens; component conventions; voice; accessibility bar) referenced by the UI Design System section above.
