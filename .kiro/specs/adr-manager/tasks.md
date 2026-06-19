@@ -36,7 +36,7 @@
   - Loading the web app in a browser renders text in the design system's typefaces and exposes the documented CSS custom properties on the root element
   - _Boundary: Frontend Design Tokens_
 
-- [ ] 1.6 (P) Set up component-level test tooling for the web app
+- [x] 1.6 (P) Set up component-level test tooling for the web app
   - Add a component-test framework (test runner plus a React rendering/assertion library) as a new dependency, replacing the current placeholder test script — the web workspace has no test runner installed today
   - Add the configuration needed to render React components and assert on their output under that framework
   - Running the web app's test command executes a trivial smoke test against a rendered component and passes
