@@ -60,7 +60,7 @@
   - _Boundary: FolderService_
   - _Depends: 1.1_
 
-- [ ] 2.3 (P) Implement version history retrieval
+- [x] 2.3 (P) Implement version history retrieval
   - Add the ability to return an ADR's full version timeline ordered from most recent to earliest, including author, date, and message per version
   - Add the ability to return an ADR's full content as it existed at a specific historical version
   - Requesting the timeline for an ADR with only one saved version returns exactly one entry with no indication of prior versions
