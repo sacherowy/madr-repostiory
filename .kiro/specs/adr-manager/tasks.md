@@ -12,7 +12,7 @@
 
 - [ ] 1.2 (P) Define shared view and request types for tree, relations, history, comparison, and similarity
   - Add the data shapes the API and web app will exchange for: folder/ADR tree nodes, relation views, version diff views, ADR-to-ADR field comparisons, and similarity results
-  - Add the request shapes for creating an ADR, saving an ADR (including the concurrency token and author), creating a folder, and moving an ADR
+  - Add the request shapes for creating an ADR, saving an ADR (including the concurrency token and author), creating a folder (including author), and moving an ADR (including author)
   - The new types compile and are importable from the shared package by both the API and web workspaces
   - _Requirements: 4.2, 5.1, 6.1, 7.1, 8.1, 9.1, 10.1, 10.2_
   - _Boundary: Shared Types_
@@ -52,8 +52,8 @@
   - _Boundary: RelationGraphService_
 
 - [ ] 2.2 (P) Implement folder creation, ADR moves, and tree assembly
-  - Add the ability to create a folder at a given location, rejecting the request if a folder already exists there
-  - Add the ability to move an ADR to a different folder while preserving its identifier, content, relations, and history
+  - Add the ability to create a folder at a given location with a recorded author, rejecting the request if a folder already exists there
+  - Add the ability to move an ADR to a different folder with a recorded author, while preserving its identifier, content, relations, and history
   - Add the ability to assemble the full folder/ADR tree under a given root, including folders that have no subfolders or ADRs
   - Assembling the tree for a root containing one folder with only a placeholder file shows that folder as present and empty, not omitted
   - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.5, 4.6, 11.1_
@@ -109,7 +109,7 @@
   - _Depends: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
 
 - [ ] 3.2 (P) Implement ADR creation, retrieval, and concurrency-safe save endpoints
-  - Expose endpoints to create an ADR, retrieve an ADR by id, and save an ADR's changes, routing saves through the write queue so concurrent saves to the same ADR never run simultaneously
+  - Expose endpoints to create an ADR, retrieve an ADR by id, and save an ADR's changes, routing both the create and the save operations through the per-repository write queue so no two repository writes ever run simultaneously
   - Map each save outcome to the corresponding response: success, missing-field rejection, stale-version conflict, and missing-relation-target rejection
   - Two save requests issued concurrently against the same ADR resolve one at a time, with the second always seeing the first's committed result
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.4_
@@ -118,6 +118,7 @@
 
 - [ ] 3.3 (P) Implement folder creation, move, and tree endpoints
   - Expose endpoints to create a folder, move an ADR to a different folder, and retrieve the folder/ADR tree from a given root
+  - Route the folder-create and ADR-move operations through the per-repository write queue so they never run concurrently with each other or with an ADR create/save
   - Requesting the tree from the repository root returns every folder and ADR, including empty folders
   - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.5, 4.6, 4.7_
   - _Boundary: FolderRoutes_
@@ -180,37 +181,42 @@
   - _Depends: 3.9_
 
 - [ ] 4.2 Wire the application shell with cross-panel navigation state
-  - Replace the placeholder shell with one that tracks the selected folder, selected ADR, and active panel, and renders the corresponding feature area
+  - Replace the placeholder shell with one that tracks the selected folder, selected ADR, active panel, and a session author name, and renders the corresponding feature area
+  - Add an input where the user enters their name once per session as the author, made available to every write action (ADR create, ADR save, folder create, ADR move) instead of being re-entered each time
   - Add the navigation behavior that selecting an ADR (from the tree or from search results) opens it in the editor panel
-  - Selecting an ADR anywhere in the app updates the shell's state and renders that ADR in the editor
-  - _Requirements: 4.7, 9.4_
+  - Add a panel-switching control (editor, relations, history, comparison, similarity) that sets the active panel for the currently selected ADR and renders the matching feature area
+  - Selecting an ADR anywhere in the app updates the shell's state and renders that ADR in the editor, switching the active panel renders the corresponding feature area for that same ADR, and a name entered in the session author field is sent as the author on a subsequent save or move without being asked for again
+  - _Requirements: 1.6, 4.7, 9.4_
   - _Boundary: App.tsx_
   - _Depends: 4.1_
 
 - [ ] 5. Frontend feature panels
 
 - [ ] 5.1 (P) Build the ADR editor panel
-  - Build the create/edit form covering title, status (one of the four fixed values), date, deciders, tags, relations, author, and body, showing the currently saved content when editing
-  - Show which fields are missing when a save is rejected for missing title or body
+  - Build the create/edit form covering title, status (one of the four fixed values), date, deciders, tags, and body, showing the currently saved content when editing, and submitting the shell's session author name as the author of the save
+  - Provide controls within the form to add a relationship (choosing one of the five fixed types and a target ADR) and to remove an existing one, persisted as part of the save
+  - Show which fields are missing when a save is rejected for missing title or body, and show the rejection message identifying the target when a save is rejected because a relationship points to a nonexistent ADR
   - Show the conflict state when a save is rejected for a stale version, with an action to reload the latest version
   - Saving with a current version confirms success and updates the form to the newly saved version; saving with a stale version shows the conflict state instead
-  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 2.5, 5.1, 5.4_
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 2.5, 5.1, 5.4, 5.5_
   - _Boundary: AdrEditor_
   - _Depends: 4.2_
 
 - [ ] 5.2 (P) Build the folder/ADR tree panel
   - Build the tree view showing the full repository tree by default, with each ADR entry showing title, id, and status
   - Add expand/collapse behavior that shows or hides a folder's direct children without removing them from the tree, and selection behavior that filters to a folder's subtree or opens a selected ADR
+  - Add a control to create a new folder at a chosen location, submitting the shell's session author name as the author of the folder creation and showing the conflict message when a folder already exists there
+  - Add a control to move an ADR into a different folder, submitting the shell's session author name as the author of the move and refreshing the tree to show the ADR at its new location afterward
   - Expanding a folder containing only an empty subfolder shows that subfolder as present and empty
-  - _Requirements: 3.1, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
+  - Creating a folder adds it to the rendered tree, and moving an ADR shows it under the destination folder after the tree refreshes
+  - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
   - _Boundary: FolderTree_
   - _Depends: 4.2_
 
 - [ ] 5.3 (P) Build the relations panel
-  - Build the display of every relationship an ADR participates in, each labeled with its type, and the controls to add a relationship (choosing one of the five fixed types) or remove one
-  - Attempting to add a relationship to a nonexistent target shows the rejection message from the save
-  - Adding a "supersedes" relationship and viewing the target ADR shows the derived "superseded-by" entry
-  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+  - Build the read-only display of every relationship an ADR participates in — both the relations it declares and the relations other ADRs declare pointing to it — each labeled with its type and direction (relation editing lives in the editor, task 5.1)
+  - Viewing an ADR targeted by a "supersedes" declaration made elsewhere shows the derived "superseded-by" entry alongside the relations it declares itself
+  - _Requirements: 5.2, 5.3_
   - _Boundary: RelationsPanel_
   - _Depends: 4.2_
 
@@ -236,11 +242,20 @@
   - _Depends: 4.2_
 
 - [ ] 5.7 (P) Build the similarity panel
-  - Build the ranked list of similar ADRs with a visible similarity score or ranking per suggestion
+  - Build the ranked list of similar ADRs with a visible similarity score or ranking per suggestion, scoped to the currently selected folder in the tree (falling back to the open ADR's own containing folder when no folder is selected)
   - A folder subtree with no other ADRs shows a message that no similar ADRs are available in that scope
   - _Requirements: 10.1, 10.2, 10.3_
   - _Boundary: SimilarityPanel_
   - _Depends: 4.2_
+
+- [ ] 5.8 Build the comparison selection flows that drive the diff and compare views
+  - Add a flow to pick two versions of the same ADR from its history and open the version-to-version diff view with that pair
+  - Add a flow to pick two different ADRs and open the side-by-side ADR comparison view with that pair
+  - Surface the rejection message when the version selection is invalid (only one version, or versions from two different ADRs) and when the same ADR is picked twice, instead of opening a comparison
+  - Selecting two versions of one ADR renders the diff view, selecting two distinct ADRs renders the side-by-side comparison, and an invalid selection shows the rejection message instead of a comparison
+  - _Requirements: 7.1, 7.3, 8.1, 8.3_
+  - _Boundary: CompareLauncher_
+  - _Depends: 5.5_
 
 - [ ] 6. Validation: end-to-end flows and regression coverage
 
