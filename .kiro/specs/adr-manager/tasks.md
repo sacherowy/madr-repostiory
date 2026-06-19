@@ -44,7 +44,7 @@
 
 - [ ] 2. Core domain services for ADR editing, organization, and discovery
 
-- [ ] 2.1 (P) Implement relationship computation and validation between ADRs
+- [x] 2.1 (P) Implement relationship computation and validation between ADRs
   - Compute, for a given ADR, every relationship it participates in — both the ones it declares and the ones other ADRs declare pointing to it — deriving the matching reciprocal type (e.g., a "supersedes" declaration produces a derived "superseded-by" view on the target)
   - Provide a check for whether a given ADR id exists, for use before a relationship is committed
   - Removing a relationship from an ADR's declared list causes its reciprocal to stop appearing on the target ADR the next time relationships are computed, with no separate removal step
