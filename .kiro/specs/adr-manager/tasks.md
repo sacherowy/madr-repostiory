@@ -24,7 +24,7 @@
   - _Requirements: 9.1, 9.2, 11.2, 11.3, 11.4_
   - _Boundary: SqliteSearchIndex_
 
-- [ ] 1.4 (P) Build a per-repository write queue that serializes save operations
+- [x] 1.4 (P) Build a per-repository write queue that serializes save operations
   - Add a mechanism that runs submitted write jobs strictly one at a time, in the order they were submitted, regardless of how many are submitted concurrently
   - Two jobs submitted at the same instant resolve in submission order, with the second always observing the effects of the first
   - _Requirements: 2.4_
