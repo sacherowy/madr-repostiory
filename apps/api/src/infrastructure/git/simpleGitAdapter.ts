@@ -27,6 +27,7 @@ export class SimpleGitAdapter implements GitPort {
     message: string,
     author: string
   ): Promise<CommitMeta> {
+    await mkdir(join(this.repoPath, dirname(path)), { recursive: true });
     await writeFile(join(this.repoPath, path), content, "utf8");
     await this.git.add(path);
     await this.git.commit(message, undefined, { "--author": author });

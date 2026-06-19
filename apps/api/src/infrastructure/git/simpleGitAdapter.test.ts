@@ -32,6 +32,25 @@ describe("SimpleGitAdapter (tree listing, move, rename-aware history)", () => {
     await rm(repoPath, { recursive: true, force: true });
   });
 
+  describe("writeAndCommit", () => {
+    it("creates the destination directory when writing into a brand-new, not-yet-existing subdirectory", async () => {
+      // Note: unlike "decisions" (pre-created in beforeEach), "brand-new-folder" is
+      // never mkdir'd before this call — writeAndCommit itself must create it.
+      const result = await adapter.writeAndCommit(
+        "brand-new-folder/0001-first.md",
+        "# First\n",
+        "add first adr in new folder",
+        AUTHOR
+      );
+
+      expect(result.sha).toBeTruthy();
+      expect(result.message).toBe("add first adr in new folder");
+
+      const content = await adapter.read("brand-new-folder/0001-first.md");
+      expect(content).toBe("# First\n");
+    });
+  });
+
   describe("listTreeEntries", () => {
     it("classifies .md files as adr entries and directories as folder entries", async () => {
       await adapter.writeAndCommit(
