@@ -10,7 +10,7 @@
   - _Requirements: 3.2, 4.1, 4.5, 6.1_
   - _Boundary: GitPort, SimpleGitAdapter_
 
-- [ ] 1.2 (P) Define shared view and request types for tree, relations, history, comparison, and similarity
+- [x] 1.2 (P) Define shared view and request types for tree, relations, history, comparison, and similarity
   - Add the data shapes the API and web app will exchange for: folder/ADR tree nodes, relation views, version diff views, ADR-to-ADR field comparisons, and similarity results
   - Add the request shapes for creating an ADR, saving an ADR (including the concurrency token and author), creating a folder (including author), and moving an ADR (including author)
   - The new types compile and are importable from the shared package by both the API and web workspaces
@@ -285,3 +285,4 @@
 
 - (1.1) `SimpleGitAdapter.writeAndCommit` does not create parent directories before `writeFile`; writing into a not-yet-existing subfolder throws ENOENT. `move()` works around this for its own destination via `mkdir(dirname(toPath), { recursive: true })`, but `writeAndCommit` itself is unchanged. Task 2.2 (`FolderService.createFolder`, which writes a `.gitkeep` via `writeAndCommit`) and task 2.7 (`AdrEditingService.create`, which may write a new ADR into a brand-new folder) should account for this — either pre-create the directory before calling `writeAndCommit`, or fix `writeAndCommit` itself if that's cleaner within their boundary.
 - (1.1) `simple-git`'s log options parser appends `--follow` automatically whenever `file` is set, independent of the explicit `"--follow": null` key — so rename-aware history was already implicit. The explicit option was kept anyway since it matches design.md's prescribed snippet and documents intent; no action needed, just don't assume removing it would break anything different from before.
+- (1.2) `CommitMeta` is declared independently in `packages/shared/src/types.ts` rather than imported from `@adr/core`, to avoid a circular workspace dependency (`@adr/core` already depends on `@adr/shared`). The two declarations (`packages/core/src/ports/git.ts` and `packages/shared/src/types.ts`) are structurally identical today (`sha, author, date, message`) but TypeScript will not catch drift between them since they are separate named interfaces. Any future change to one must be mirrored in the other by hand.

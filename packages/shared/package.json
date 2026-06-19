@@ -4,5 +4,6 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "scripts": { "build": "tsc -p tsconfig.json", "test": "echo 'brak testów' " }
+  "devDependencies": { "vitest": "^2.0.5", "typescript": "^5.5.4" },
+  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" }
 }
