@@ -124,7 +124,7 @@
   - _Boundary: FolderRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.4 (P) Implement the relations endpoint
+- [x] 3.4 (P) Implement the relations endpoint
   - Expose an endpoint that returns every relationship an ADR participates in, declared on it or pointing to it
   - Requesting relations for an ADR with a "supersedes" declaration elsewhere returns the derived "superseded-by" entry alongside any relations it declares itself
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
