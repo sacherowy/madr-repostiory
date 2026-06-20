@@ -108,7 +108,7 @@
   - _Boundary: container.ts_
   - _Depends: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
 
-- [ ] 3.2 (P) Implement ADR creation, retrieval, and concurrency-safe save endpoints
+- [x] 3.2 (P) Implement ADR creation, retrieval, and concurrency-safe save endpoints
   - Expose endpoints to create an ADR, retrieve an ADR by id, and save an ADR's changes, routing both the create and the save operations through the per-repository write queue so no two repository writes ever run simultaneously
   - Map each save outcome to the corresponding response: success, missing-field rejection, stale-version conflict, and missing-relation-target rejection
   - Two save requests issued concurrently against the same ADR resolve one at a time, with the second always seeing the first's committed result
