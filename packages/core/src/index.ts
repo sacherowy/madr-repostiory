@@ -7,3 +7,4 @@ export * from "./relations/relationGraphService.js";
 export * from "./folders/folderService.js";
 export * from "./history/historyService.js";
 export * from "./compare/comparisonService.js";
+export * from "./search/searchService.js";

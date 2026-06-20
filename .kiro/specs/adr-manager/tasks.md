@@ -75,7 +75,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 8.1, 8.2, 8.3_
   - _Boundary: ComparisonService_
 
-- [ ] 2.5 (P) Implement keyword search ranking
+- [x] 2.5 (P) Implement keyword search ranking
   - Add a thin ranking pass-through that returns ADRs matching a query term, ordered by descending closeness of match
   - A query with no matching ADRs returns an empty result set rather than an error
   - _Requirements: 9.1, 9.2, 9.4_
