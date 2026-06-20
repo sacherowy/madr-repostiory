@@ -131,7 +131,7 @@
   - _Boundary: RelationRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.5 (P) Implement history, version content, and version diff endpoints
+- [x] 3.5 (P) Implement history, version content, and version diff endpoints
   - Expose endpoints to retrieve an ADR's version timeline, the full content of a specific historical version, and the diff between two versions of the same ADR
   - Requesting a diff between versions of two different ADRs returns a rejection rather than a diff
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 7.1, 7.2, 7.3_
