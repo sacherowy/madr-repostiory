@@ -152,7 +152,7 @@
   - _Boundary: SearchRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.8 (P) Implement the similarity search endpoint
+- [x] 3.8 (P) Implement the similarity search endpoint
   - Expose an endpoint that returns ADRs ranked by similarity to a given ADR within a folder subtree, including a distinct response when the subtree has no other ADRs
   - Requesting similarity for an ADR alone in its subtree returns the empty-scope response rather than an empty ranked list
   - _Requirements: 10.1, 10.2, 10.3, 10.4_
