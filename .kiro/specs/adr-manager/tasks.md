@@ -68,7 +68,7 @@
   - _Boundary: HistoryService_
   - _Depends: 1.1_
 
-- [ ] 2.4 (P) Implement version diff and ADR-to-ADR comparison
+- [x] 2.4 (P) Implement version diff and ADR-to-ADR comparison
   - Add the ability to compare two versions of the same ADR and produce content differences tagged as added, removed, or unchanged, rejecting the request if the two versions belong to different ADRs
   - Add the ability to compare two different ADRs field by field (title, status, date, deciders, tags, body), flagging which fields differ, rejecting the request if the same ADR is compared against itself
   - Comparing two versions from different ADRs and comparing an ADR against itself both return a rejection result rather than a comparison
