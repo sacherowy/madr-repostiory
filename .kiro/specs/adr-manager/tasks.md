@@ -89,7 +89,7 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4_
   - _Boundary: SimilarityService_
 
-- [ ] 2.7 Implement ADR creation and concurrency-safe saving
+- [x] 2.7 Implement ADR creation and concurrency-safe saving
   - Add the ability to create a new ADR with a generated identifier and pre-filled required fields
   - Add the ability to save an ADR's title, status, date, deciders, tags, relations, author, and body as one new version, rejecting the save with the list of missing fields when title or body is empty
   - Reject a save when the version the editor loaded no longer matches the ADR's current version, returning the latest version so the caller can offer a reload
