@@ -22,6 +22,18 @@ export class SqliteSearchIndex implements SearchIndex {
     this.db.prepare("DELETE FROM adr_fts WHERE id = ?").run(id);
   }
 
+  /**
+   * Returns every id currently present in the index. Not part of the
+   * abstract `SearchIndex` port (which intentionally has no enumeration
+   * method) — this is a concrete-class-only extension used by `reindex.ts`
+   * to discover which ids are stale (no longer present in the repository)
+   * since a fresh process has no memory other than what's persisted here.
+   */
+  ids(): string[] {
+    const rows = this.db.prepare("SELECT id FROM adr_fts").all() as Array<{ id: string }>;
+    return rows.map((row) => row.id);
+  }
+
   search(query: string, limit?: number): SearchHit[] {
     const matchExpression = toFtsMatchExpression(query);
     if (matchExpression === null) {

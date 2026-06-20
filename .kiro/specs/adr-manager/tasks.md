@@ -165,7 +165,7 @@
   - _Boundary: server.ts_
   - _Depends: 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
 
-- [ ] 3.10 (P) Extend the projection rebuild script to cover keyword search
+- [x] 3.10 (P) Extend the projection rebuild script to cover keyword search
   - After the existing embedding rebuild step, also populate the keyword search index from the current repository state, then remove any indexed ADR id no longer present in the repository
   - Running the rebuild script twice in a row against an unchanged repository produces no duplicate or stale entries in either projection
   - _Requirements: 11.1, 11.2, 11.3, 11.4_

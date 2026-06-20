@@ -108,4 +108,22 @@ describe("SqliteSearchIndex", () => {
 
     expect(hits).toEqual([]);
   });
+
+  it("ids() returns every upserted id", () => {
+    index.upsert(doc({ id: "0001", title: "Use Postgres for storage" }));
+    index.upsert(doc({ id: "0002", title: "Use MySQL for storage" }));
+    index.upsert(doc({ id: "0003", title: "Use SQLite for storage" }));
+
+    expect(index.ids().sort()).toEqual(["0001", "0002", "0003"]);
+  });
+
+  it("ids() no longer includes an id after remove(id) was called on it", () => {
+    index.upsert(doc({ id: "0001", title: "Use Postgres for storage" }));
+    index.upsert(doc({ id: "0002", title: "Use MySQL for storage" }));
+
+    index.remove("0001");
+
+    expect(index.ids()).not.toContain("0001");
+    expect(index.ids()).toContain("0002");
+  });
 });
