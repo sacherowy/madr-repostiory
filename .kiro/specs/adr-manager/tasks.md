@@ -159,7 +159,7 @@
   - _Boundary: SimilarityRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.9 Register all route plugins on the running API server
+- [x] 3.9 Register all route plugins on the running API server
   - Replace the placeholder route registration with the seven route plugins built from the composition root
   - Starting the API process and requesting each new route returns its documented status code instead of a 404
   - _Boundary: server.ts_
