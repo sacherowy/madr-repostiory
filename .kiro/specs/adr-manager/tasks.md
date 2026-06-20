@@ -116,7 +116,7 @@
   - _Boundary: AdrRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.3 (P) Implement folder creation, move, and tree endpoints
+- [x] 3.3 (P) Implement folder creation, move, and tree endpoints
   - Expose endpoints to create a folder, move an ADR to a different folder, and retrieve the folder/ADR tree from a given root
   - Route the folder-create and ADR-move operations through the per-repository write queue so they never run concurrently with each other or with an ADR create/save
   - Requesting the tree from the repository root returns every folder and ADR, including empty folders
