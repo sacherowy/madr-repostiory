@@ -145,7 +145,7 @@
   - _Boundary: CompareRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.7 (P) Implement the keyword search endpoint
+- [x] 3.7 (P) Implement the keyword search endpoint
   - Expose an endpoint that returns ranked ADRs matching a query term
   - A query with no matches returns an empty list with a successful status, not an error
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
