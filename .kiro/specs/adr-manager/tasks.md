@@ -82,7 +82,7 @@
   - _Boundary: SearchService_
   - _Depends: 1.3_
 
-- [ ] 2.6 (P) Implement folder-scoped similarity ranking
+- [x] 2.6 (P) Implement folder-scoped similarity ranking
   - Add the ability to rank ADRs within a folder subtree by similarity of meaning to a given ADR, using a cache-first lookup that only computes a new embedding on a cache miss
   - Add a distinct result for a subtree that contains no other ADRs besides the target
   - Re-running similarity for an ADR after its body content changes returns a result reflecting the updated content rather than a stale ranking
