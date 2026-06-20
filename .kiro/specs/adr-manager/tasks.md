@@ -138,7 +138,7 @@
   - _Boundary: HistoryRoutes_
   - _Depends: 3.1_
 
-- [ ] 3.6 (P) Implement the ADR-to-ADR comparison endpoint
+- [x] 3.6 (P) Implement the ADR-to-ADR comparison endpoint
   - Expose an endpoint that returns a field-by-field comparison of two different ADRs
   - Requesting a comparison of an ADR against itself returns a rejection rather than a comparison
   - _Requirements: 8.1, 8.2, 8.3_
