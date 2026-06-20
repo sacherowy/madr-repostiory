@@ -102,7 +102,7 @@
 
 - [ ] 3. Backend integration: composition root, API routes, and projection rebuild
 
-- [ ] 3.1 Build the composition root wiring adapters into the core services
+- [x] 3.1 Build the composition root wiring adapters into the core services
   - Instantiate the git adapter, search index, embedding store, and embedding provider, and use them to construct every core service exactly once per process
   - Starting the API process successfully constructs every service with no missing dependency errors
   - _Boundary: container.ts_
