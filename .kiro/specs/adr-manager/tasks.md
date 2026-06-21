@@ -234,7 +234,7 @@
   - _Boundary: VersionDiffView, AdrCompareView_
   - _Depends: 4.2_
 
-- [ ] 5.6 (P) Build the keyword search panel
+- [x] 5.6 (P) Build the keyword search panel
   - Build the search box and ranked results list, with selecting a result opening that ADR
   - A query with no matches shows a message that no results were found
   - _Requirements: 9.1, 9.2, 9.3, 9.4_

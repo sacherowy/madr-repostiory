@@ -47,66 +47,12 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
-  it("selecting an ADR from the search placeholder switches the editor panel into edit mode", async () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-002" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-
-    expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
-  });
-
-  it("switching to a non-editor tab with an ADR selected renders that panel with the ADR id", async () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-003" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
-
-    expect(screen.getByTestId("panel-similarity")).toHaveTextContent("adr-003");
-    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
-  });
-
   it("switching to a non-editor tab with no ADR selected renders the empty placeholder", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByTestId("panel-tab-similarity"));
 
     expect(screen.getByTestId("panel-empty")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
-  });
-
-  it("selecting a new ADR while on a non-editor tab switches back to the editor panel", async () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-004" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
-    expect(screen.getByTestId("panel-similarity")).toHaveTextContent("adr-004");
-
-    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-005" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-
-    expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
-    expect(screen.queryByTestId("panel-similarity")).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
-  });
-
-  it("keeps the author name in the input across tab and ADR changes, and stays in edit mode for the selected ADR", async () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByTestId("author-name-input"), { target: { value: "Grace Hopper" } });
-    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-006" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
-    fireEvent.click(screen.getByTestId("panel-tab-editor"));
-
-    expect(screen.getByTestId("author-name-input")).toHaveValue("Grace Hopper");
-    expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
@@ -241,6 +187,157 @@ describe("App", () => {
       // (adr-editor-create), and the active tab must still be "editor".
       expect(screen.getByTestId("adr-editor-create")).toBeInTheDocument();
       expect(screen.getByTestId("panel-tab-editor")).toHaveAttribute("aria-current", "true");
+    });
+
+    // The four tests below replace the pre-task-5.6 versions that used the
+    // now-removed search placeholder (a free-text "type any id, click
+    // select" backdoor with zero backend involvement) purely to drive App's
+    // own tab-switching/author-persistence state machine. Now that SearchPanel
+    // is wired in for real, the same App-level behaviors are exercised via a
+    // genuine search: type a real, uniquely-matchable keyword into the real
+    // search box, submit, wait for the real ranked result, and click it —
+    // exactly like SearchPanel.test.tsx's own fixtures, which require going
+    // through createAdr + updateAdr (the search index is only populated on
+    // save()) before a term becomes findable.
+
+    it("selecting an ADR from a real search result switches the editor panel into edit mode (was: 'selecting an ADR from the search placeholder...')", async () => {
+      const created = await client.createAdr({ title: "Zzsearchkeywordone topic", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+      const saved = await client.updateAdr(created.adr.id, {
+        title: "Zzsearchkeywordone topic",
+        status: created.adr.status,
+        date: created.adr.date,
+        deciders: created.adr.deciders,
+        tags: created.adr.tags,
+        body: "Body mentioning zzsearchkeywordone for indexing.",
+        author: AUTHOR,
+        baseBlobSha: created.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      fireEvent.change(screen.getByTestId("search-query-input"), { target: { value: "zzsearchkeywordone" } });
+      fireEvent.click(screen.getByTestId("search-submit-button"));
+      await waitFor(() => expect(screen.getByTestId(`search-result-${created.adr.id}`)).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId(`search-result-${created.adr.id}`));
+
+      expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
+      expect(screen.getByTestId("title-input")).toHaveValue("Zzsearchkeywordone topic");
+    });
+
+    it("switching to a non-editor tab with a real-search-selected ADR renders that panel with the ADR id (was: 'switching to a non-editor tab with an ADR selected...')", async () => {
+      const created = await client.createAdr({ title: "Zzsearchkeywordtwo topic", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+      const saved = await client.updateAdr(created.adr.id, {
+        title: "Zzsearchkeywordtwo topic",
+        status: created.adr.status,
+        date: created.adr.date,
+        deciders: created.adr.deciders,
+        tags: created.adr.tags,
+        body: "Body mentioning zzsearchkeywordtwo for indexing.",
+        author: AUTHOR,
+        baseBlobSha: created.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      fireEvent.change(screen.getByTestId("search-query-input"), { target: { value: "zzsearchkeywordtwo" } });
+      fireEvent.click(screen.getByTestId("search-submit-button"));
+      await waitFor(() => expect(screen.getByTestId(`search-result-${created.adr.id}`)).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId(`search-result-${created.adr.id}`));
+
+      await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId("panel-tab-similarity"));
+
+      await waitFor(() => expect(screen.getByTestId("panel-similarity")).toHaveTextContent(created.adr.id));
+    });
+
+    it("selecting a second real ADR via search while on a non-editor tab switches back to the editor panel (was: 'selecting a new ADR while on a non-editor tab...')", async () => {
+      const first = await client.createAdr({ title: "Zzsearchkeywordthree topic", folder: "decisions", author: AUTHOR });
+      if (!first.ok) throw new Error("fixture setup: createAdr first unexpectedly failed");
+      const savedFirst = await client.updateAdr(first.adr.id, {
+        title: "Zzsearchkeywordthree topic",
+        status: first.adr.status,
+        date: first.adr.date,
+        deciders: first.adr.deciders,
+        tags: first.adr.tags,
+        body: "Body mentioning zzsearchkeywordthree for indexing.",
+        author: AUTHOR,
+        baseBlobSha: first.adr.blobSha,
+      });
+      if (!savedFirst.ok) throw new Error("fixture setup: updateAdr first unexpectedly failed");
+
+      const second = await client.createAdr({ title: "Zzsearchkeywordfour topic", folder: "decisions", author: AUTHOR });
+      if (!second.ok) throw new Error("fixture setup: createAdr second unexpectedly failed");
+      const savedSecond = await client.updateAdr(second.adr.id, {
+        title: "Zzsearchkeywordfour topic",
+        status: second.adr.status,
+        date: second.adr.date,
+        deciders: second.adr.deciders,
+        tags: second.adr.tags,
+        body: "Body mentioning zzsearchkeywordfour for indexing.",
+        author: AUTHOR,
+        baseBlobSha: second.adr.blobSha,
+      });
+      if (!savedSecond.ok) throw new Error("fixture setup: updateAdr second unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      // Select the first ADR via real search, switch to a non-editor tab.
+      fireEvent.change(screen.getByTestId("search-query-input"), { target: { value: "zzsearchkeywordthree" } });
+      fireEvent.click(screen.getByTestId("search-submit-button"));
+      await waitFor(() => expect(screen.getByTestId(`search-result-${first.adr.id}`)).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId(`search-result-${first.adr.id}`));
+      fireEvent.click(screen.getByTestId("panel-tab-similarity"));
+      expect(screen.getByTestId("panel-similarity")).toHaveTextContent(first.adr.id);
+
+      // Select a second, distinct real ADR via a second real search while
+      // still on the similarity tab.
+      fireEvent.change(screen.getByTestId("search-query-input"), { target: { value: "zzsearchkeywordfour" } });
+      fireEvent.click(screen.getByTestId("search-submit-button"));
+      await waitFor(() => expect(screen.getByTestId(`search-result-${second.adr.id}`)).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId(`search-result-${second.adr.id}`));
+
+      expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
+      expect(screen.queryByTestId("panel-similarity")).not.toBeInTheDocument();
+      await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
+      expect(screen.getByTestId("title-input")).toHaveValue("Zzsearchkeywordfour topic");
+    });
+
+    it("keeps the author name in the input across tab and real-search ADR changes, and stays in edit mode for the selected ADR (was: 'keeps the author name in the input...')", async () => {
+      const first = await client.createAdr({ title: "Zzsearchkeywordfive topic", folder: "decisions", author: AUTHOR });
+      if (!first.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+      const savedFirst = await client.updateAdr(first.adr.id, {
+        title: "Zzsearchkeywordfive topic",
+        status: first.adr.status,
+        date: first.adr.date,
+        deciders: first.adr.deciders,
+        tags: first.adr.tags,
+        body: "Body mentioning zzsearchkeywordfive for indexing.",
+        author: AUTHOR,
+        baseBlobSha: first.adr.blobSha,
+      });
+      if (!savedFirst.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      fireEvent.change(screen.getByTestId("author-name-input"), { target: { value: "Grace Hopper" } });
+
+      fireEvent.change(screen.getByTestId("search-query-input"), { target: { value: "zzsearchkeywordfive" } });
+      fireEvent.click(screen.getByTestId("search-submit-button"));
+      await waitFor(() => expect(screen.getByTestId(`search-result-${first.adr.id}`)).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId(`search-result-${first.adr.id}`));
+
+      fireEvent.click(screen.getByTestId("panel-tab-similarity"));
+      fireEvent.click(screen.getByTestId("panel-tab-editor"));
+
+      expect(screen.getByTestId("author-name-input")).toHaveValue("Grace Hopper");
+      expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
+      expect(screen.getByTestId("title-input")).toHaveValue("Zzsearchkeywordfive topic");
     });
   });
 });

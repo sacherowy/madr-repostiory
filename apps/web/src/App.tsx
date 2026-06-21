@@ -6,6 +6,7 @@ import { AdrEditor } from "./features/adr-editor/AdrEditor.js";
 import { FolderTree } from "./features/folder-tree/FolderTree.js";
 import { RelationsPanel } from "./features/relations-graph/RelationsPanel.js";
 import { HistoryTimeline } from "./features/history-timeline/HistoryTimeline.js";
+import { SearchPanel } from "./features/search/SearchPanel.js";
 
 // Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
 //   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
@@ -31,8 +32,6 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
   const [selectedAdrId, setSelectedAdrId] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<ActivePanel>("editor");
   const [authorName, setAuthorName] = useState("");
-
-  const [searchAdrIdInput, setSearchAdrIdInput] = useState("");
 
   function handleSelectFolder(folderPath: string) {
     setSelectedFolder(folderPath);
@@ -71,22 +70,7 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
         onSelectAdr={handleSelectAdr}
       />
 
-      <div data-testid="search-panel-placeholder">
-        <p>Search (placeholder — replaced by SearchPanel in task 5.6)</p>
-        <input
-          data-testid="search-adr-id-input"
-          type="text"
-          value={searchAdrIdInput}
-          onChange={(event) => setSearchAdrIdInput(event.target.value)}
-        />
-        <button
-          data-testid="select-adr-from-search-button"
-          type="button"
-          onClick={() => handleSelectAdr(searchAdrIdInput)}
-        >
-          Select ADR (search)
-        </button>
-      </div>
+      <SearchPanel apiClient={apiClient} onSelectAdr={handleSelectAdr} />
 
       <div role="tablist">
         {PANEL_TABS.map((panel) => (
