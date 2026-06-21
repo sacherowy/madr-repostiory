@@ -259,7 +259,7 @@
 
 - [ ] 6. Validation: end-to-end flows and regression coverage
 
-- [ ] 6.1 Verify the full create-edit-save flow including conflict recovery
+- [x] 6.1 Verify the full create-edit-save flow including conflict recovery
   - Exercise creating an ADR, editing it, saving it, and recovering from a 409 conflict by reloading and retrying the save, end to end through the running app
   - The conflict path is exercised by forcing a second save against a stale version and confirming the editor reaches a successful saved state after reload
   - _Requirements: 1.2, 1.3, 2.2, 2.3, 2.5_

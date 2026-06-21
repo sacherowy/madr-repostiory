@@ -411,5 +411,100 @@ describe("App", () => {
       await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
       expect(screen.getByTestId("title-input")).toHaveValue("Zzsearchkeywordfive topic");
     });
+
+    it("creates an ADR, edits and saves it, recovers from a real 409 conflict via reload, and successfully saves again", async () => {
+      render(<App apiClient={client} />);
+
+      // The session author name is a separate controlled input on the shell
+      // (not part of AdrEditor itself) and defaults to "", which fails
+      // create's own missing-fields validation — every save in this flow
+      // needs it set first, exactly like every other author-name test in
+      // this file.
+      fireEvent.change(screen.getByTestId("author-name-input"), { target: { value: AUTHOR } });
+
+      // 1. Create a brand-new ADR through the default create-mode editor.
+      expect(screen.getByTestId("adr-editor-create")).toBeInTheDocument();
+      fireEvent.change(screen.getByTestId("title-input"), {
+        target: { value: "End To End Flow ADR" },
+      });
+      fireEvent.click(screen.getByTestId("create-button"));
+
+      // App's real onAdrSaved wiring (setSelectedAdrId) flips the shell into
+      // edit mode for the newly created ADR's id.
+      await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
+      expect(screen.getByTestId("title-input")).toHaveValue("End To End Flow ADR");
+
+      // 2. Edit the body and save — the ordinary, non-conflicting save path
+      // ("editing it, saving it").
+      fireEvent.change(screen.getByTestId("body-textarea"), {
+        target: { value: "First real edit from the UI." },
+      });
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(screen.getByTestId("save-success-message")).toBeInTheDocument());
+
+      // The created ADR's id is only known to the running app (it isn't
+      // rendered as text anywhere in the form). The search index is only
+      // populated on save() (not on create(), which writes an empty body —
+      // see AdrEditingService.create's doc comment), so only after the save
+      // above is the id recoverable from the real backend via a plain
+      // search on its unique title.
+      const found = await client.search("End To End Flow ADR");
+      if (!found.ok) throw new Error("fixture setup: search for the created ADR unexpectedly failed");
+      expect(found.hits).toHaveLength(1);
+      const adrId = found.hits[0].id;
+
+      // Capture the blobSha left behind by that save directly from the real
+      // server, since that's the exact baseBlobSha the editor now holds in
+      // its own state.
+      const afterFirstSave = await client.getAdr(adrId);
+      if (!afterFirstSave.ok) throw new Error("fixture setup: getAdr after first save unexpectedly failed");
+      const blobShaAfterFirstSave = afterFirstSave.adr.blobSha;
+
+      // 3. Force a conflict: behind the editor's back, a concurrent writer
+      // saves using that SAME baseBlobSha, making the editor's own next save
+      // (still holding that same sha) stale.
+      const concurrentWriterSave = await client.updateAdr(adrId, {
+        title: afterFirstSave.adr.title,
+        status: afterFirstSave.adr.status,
+        date: afterFirstSave.adr.date,
+        deciders: afterFirstSave.adr.deciders,
+        tags: afterFirstSave.adr.tags,
+        relations: afterFirstSave.adr.relations,
+        body: "Concurrent writer's content.",
+        author: "Other Author <other@example.com>",
+        baseBlobSha: blobShaAfterFirstSave,
+      });
+      if (!concurrentWriterSave.ok) {
+        throw new Error("fixture setup: concurrent updateAdr unexpectedly failed");
+      }
+
+      // 4. Edit the body again in the UI and save again — this save is now
+      // stale (its baseBlobSha no longer matches HEAD), so it must surface
+      // the real conflict, not a success.
+      fireEvent.change(screen.getByTestId("body-textarea"), {
+        target: { value: "Second local edit, now stale." },
+      });
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(screen.getByTestId("conflict-message")).toBeInTheDocument());
+      expect(screen.queryByTestId("save-success-message")).not.toBeInTheDocument();
+
+      // 5. Reload the latest version on demand — the form must now show the
+      // concurrent writer's real content.
+      fireEvent.click(screen.getByTestId("reload-latest-button"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("body-textarea")).toHaveValue("Concurrent writer's content.")
+      );
+
+      // 6. Save once more now that the form holds the fresh baseBlobSha from
+      // the reload — this is the task's explicit postcondition: the editor
+      // must reach a successful saved state after reloading from a conflict.
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(screen.getByTestId("save-success-message")).toBeInTheDocument());
+      expect(screen.queryByTestId("conflict-message")).not.toBeInTheDocument();
+    });
   });
 });
