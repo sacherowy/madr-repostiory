@@ -4,6 +4,7 @@ import { createApiClient } from "./api/client.js";
 import type { ApiClient } from "./api/client.js";
 import { AdrEditor } from "./features/adr-editor/AdrEditor.js";
 import { FolderTree } from "./features/folder-tree/FolderTree.js";
+import { RelationsPanel } from "./features/relations-graph/RelationsPanel.js";
 
 // Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
 //   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
@@ -112,6 +113,10 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
         </div>
       ) : selectedAdrId === null ? (
         <div data-testid="panel-empty">Select an ADR first to view this panel.</div>
+      ) : activePanel === "relations" ? (
+        <div data-testid="panel-relations">
+          <RelationsPanel apiClient={apiClient} adrId={selectedAdrId} />
+        </div>
       ) : (
         <div data-testid={`panel-${activePanel}`}>
           {activePanel} — adr: {selectedAdrId}

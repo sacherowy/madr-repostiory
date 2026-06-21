@@ -63,9 +63,9 @@ describe("App", () => {
 
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-003" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-relations"));
+    fireEvent.click(screen.getByTestId("panel-tab-history"));
 
-    expect(screen.getByTestId("panel-relations")).toHaveTextContent("adr-003");
+    expect(screen.getByTestId("panel-history")).toHaveTextContent("adr-003");
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
@@ -83,14 +83,14 @@ describe("App", () => {
 
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-004" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-relations"));
-    expect(screen.getByTestId("panel-relations")).toHaveTextContent("adr-004");
+    fireEvent.click(screen.getByTestId("panel-tab-history"));
+    expect(screen.getByTestId("panel-history")).toHaveTextContent("adr-004");
 
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-005" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
 
     expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
-    expect(screen.queryByTestId("panel-relations")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("panel-history")).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
@@ -155,6 +155,42 @@ describe("App", () => {
       // toHaveValue rather than toHaveTextContent on the panel).
       expect(screen.getByTestId("title-input")).toHaveValue("Real Loaded ADR");
       expect(screen.getByTestId("panel-editor")).toContainElement(screen.getByTestId("adr-editor-edit"));
+    });
+
+    it("selecting the target of a real supersedes relation and switching to the relations tab shows the derived superseded-by entry", async () => {
+      const oldAdr = await client.createAdr({ title: "Old decision", folder: "decisions", author: AUTHOR });
+      if (!oldAdr.ok) throw new Error("fixture setup: createAdr oldAdr unexpectedly failed");
+      const newAdr = await client.createAdr({ title: "New decision", folder: "decisions", author: AUTHOR });
+      if (!newAdr.ok) throw new Error("fixture setup: createAdr newAdr unexpectedly failed");
+
+      const saved = await client.updateAdr(newAdr.adr.id, {
+        title: newAdr.adr.title,
+        status: newAdr.adr.status,
+        date: newAdr.adr.date,
+        deciders: newAdr.adr.deciders,
+        tags: newAdr.adr.tags,
+        body: "Replaces the old decision.",
+        relations: [{ type: "supersedes", target: oldAdr.adr.id }],
+        author: AUTHOR,
+        baseBlobSha: newAdr.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr newAdr unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      // Select the OLD adr (the relation's target) via the real FolderTree.
+      await waitFor(() =>
+        expect(screen.getByTestId(`adr-select-${oldAdr.adr.id}`)).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByTestId(`adr-select-${oldAdr.adr.id}`));
+
+      fireEvent.click(screen.getByTestId("panel-tab-relations"));
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId(`relation-item-inbound-superseded-by-${newAdr.adr.id}`)
+        ).toBeInTheDocument()
+      );
     });
 
     it("selecting a folder from the FolderTree does not change the active panel or selected ADR", async () => {

@@ -213,7 +213,7 @@
   - _Boundary: FolderTree_
   - _Depends: 4.2_
 
-- [ ] 5.3 (P) Build the relations panel
+- [x] 5.3 (P) Build the relations panel
   - Build the read-only display of every relationship an ADR participates in — both the relations it declares and the relations other ADRs declare pointing to it — each labeled with its type and direction (relation editing lives in the editor, task 5.1)
   - Viewing an ADR targeted by a "supersedes" declaration made elsewhere shows the derived "superseded-by" entry alongside the relations it declares itself
   - _Requirements: 5.2, 5.3_
