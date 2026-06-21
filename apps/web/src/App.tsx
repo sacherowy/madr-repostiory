@@ -1,11 +1,124 @@
+import { useState } from "react";
+
 // Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
 //   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
+//
+// This shell owns only local view-state (selected folder, selected ADR, active panel, session
+// author name). Each feature component built in task group 5 will own its own ApiClient calls.
+
+type ActivePanel = "editor" | "relations" | "history" | "comparison" | "similarity";
+
+const PANEL_TABS: ActivePanel[] = ["editor", "relations", "history", "comparison", "similarity"];
+
 export function App() {
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedAdrId, setSelectedAdrId] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<ActivePanel>("editor");
+  const [authorName, setAuthorName] = useState("");
+
+  const [folderPathInput, setFolderPathInput] = useState("");
+  const [treeAdrIdInput, setTreeAdrIdInput] = useState("");
+  const [searchAdrIdInput, setSearchAdrIdInput] = useState("");
+
+  function handleSelectFolder(folderPath: string) {
+    setSelectedFolder(folderPath);
+  }
+
+  function handleSelectAdr(adrId: string) {
+    setSelectedAdrId(adrId);
+    setActivePanel("editor");
+  }
+
+  function handleSwitchPanel(panel: ActivePanel) {
+    setActivePanel(panel);
+  }
+
   return (
     <main style={{ fontFamily: "system-ui", padding: "2rem", maxWidth: 720, margin: "0 auto" }}>
       <h1>ADR Manager</h1>
       <p>Nakładka na git do zarządzania Architecture Decision Records.</p>
       <p>Źródłem prawdy jest repozytorium git; SQLite to tylko projekcja do wyszukiwania.</p>
+
+      <div>
+        <label htmlFor="author-name-input">Session author name</label>
+        <input
+          id="author-name-input"
+          data-testid="author-name-input"
+          type="text"
+          value={authorName}
+          onChange={(event) => setAuthorName(event.target.value)}
+        />
+      </div>
+
+      <div data-testid="folder-tree-placeholder">
+        <p>Folder tree (placeholder — replaced by FolderTree in task 5.2). Selected folder: {selectedFolder ?? "(none)"}</p>
+        <input
+          data-testid="folder-path-input"
+          type="text"
+          value={folderPathInput}
+          onChange={(event) => setFolderPathInput(event.target.value)}
+        />
+        <button data-testid="select-folder-button" type="button" onClick={() => handleSelectFolder(folderPathInput)}>
+          Select folder
+        </button>
+
+        <input
+          data-testid="tree-adr-id-input"
+          type="text"
+          value={treeAdrIdInput}
+          onChange={(event) => setTreeAdrIdInput(event.target.value)}
+        />
+        <button
+          data-testid="select-adr-from-tree-button"
+          type="button"
+          onClick={() => handleSelectAdr(treeAdrIdInput)}
+        >
+          Select ADR (tree)
+        </button>
+      </div>
+
+      <div data-testid="search-panel-placeholder">
+        <p>Search (placeholder — replaced by SearchPanel in task 5.6)</p>
+        <input
+          data-testid="search-adr-id-input"
+          type="text"
+          value={searchAdrIdInput}
+          onChange={(event) => setSearchAdrIdInput(event.target.value)}
+        />
+        <button
+          data-testid="select-adr-from-search-button"
+          type="button"
+          onClick={() => handleSelectAdr(searchAdrIdInput)}
+        >
+          Select ADR (search)
+        </button>
+      </div>
+
+      <div role="tablist">
+        {PANEL_TABS.map((panel) => (
+          <button
+            key={panel}
+            type="button"
+            data-testid={`panel-tab-${panel}`}
+            aria-current={activePanel === panel ? "true" : undefined}
+            onClick={() => handleSwitchPanel(panel)}
+          >
+            {panel}
+          </button>
+        ))}
+      </div>
+
+      {activePanel === "editor" ? (
+        <div data-testid="panel-editor">
+          Editor — adr: {selectedAdrId ?? "(new)"} — author: {authorName}
+        </div>
+      ) : selectedAdrId === null ? (
+        <div data-testid="panel-empty">Select an ADR first to view this panel.</div>
+      ) : (
+        <div data-testid={`panel-${activePanel}`}>
+          {activePanel} — adr: {selectedAdrId}
+        </div>
+      )}
     </main>
   );
 }

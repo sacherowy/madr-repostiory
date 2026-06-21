@@ -180,7 +180,7 @@
   - _Boundary: ApiClient_
   - _Depends: 3.9_
 
-- [ ] 4.2 Wire the application shell with cross-panel navigation state
+- [x] 4.2 Wire the application shell with cross-panel navigation state
   - Replace the placeholder shell with one that tracks the selected folder, selected ADR, active panel, and a session author name, and renders the corresponding feature area
   - Add an input where the user enters their name once per session as the author, made available to every write action (ADR create, ADR save, folder create, ADR move) instead of being re-entered each time
   - Add the navigation behavior that selecting an ADR (from the tree or from search results) opens it in the editor panel
