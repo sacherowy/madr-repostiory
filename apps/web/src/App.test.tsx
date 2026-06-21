@@ -56,6 +56,17 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
+  it("switching to the comparison tab with no ADR selected renders CompareLauncher instead of the empty placeholder (deliberate exemption from the gate above)", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByTestId("panel-tab-comparison"));
+
+    expect(screen.getByTestId("panel-comparison")).toBeInTheDocument();
+    expect(screen.getByTestId("compare-version-adr-id-input")).toBeInTheDocument();
+    expect(screen.queryByTestId("panel-empty")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
+  });
+
   describe("with a real backing server", () => {
     let repoPath: string;
     let container: Container;

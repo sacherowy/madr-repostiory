@@ -248,7 +248,7 @@
   - _Boundary: SimilarityPanel_
   - _Depends: 4.2_
 
-- [ ] 5.8 Build the comparison selection flows that drive the diff and compare views
+- [x] 5.8 Build the comparison selection flows that drive the diff and compare views
   - Add a flow to pick two versions of the same ADR from its history and open the version-to-version diff view with that pair
   - Add a flow to pick two different ADRs and open the side-by-side ADR comparison view with that pair
   - Surface the rejection message when the version selection is invalid (only one version, or versions from two different ADRs) and when the same ADR is picked twice, instead of opening a comparison

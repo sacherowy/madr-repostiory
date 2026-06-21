@@ -35,8 +35,20 @@ export class SimpleGitAdapter implements GitPort {
     return { sha: c.hash, author: c.author_name, date: c.date, message: c.message };
   }
 
+  /**
+   * `-M100%` (exact-content-match only) narrows `--follow`'s rename
+   * detection to byte-identical renames. Without it, git's default
+   * similarity threshold (~50%) treats two independently-created ADRs with
+   * near-empty, similarly-shaped frontmatter (a brand-new ADR's `body: ""`
+   * plus a few short metadata lines) as a "rename" of one another, silently
+   * splicing one ADR's creation commit into a completely unrelated ADR's
+   * history. A real move via `move()` below is a pure `git mv` with zero
+   * content change at the rename commit itself, so it's always exactly
+   * 100% similar — `-M100%` still follows that real rename correctly while
+   * rejecting the false-positive cross-ADR match.
+   */
   async log(path: string): Promise<CommitMeta[]> {
-    const log = await this.git.log({ file: path, "--follow": null });
+    const log = await this.git.log({ file: path, "--follow": null, "-M100%": null });
     return log.all.map((c) => ({
       sha: c.hash,
       author: c.author_name,

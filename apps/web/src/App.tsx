@@ -8,6 +8,7 @@ import { RelationsPanel } from "./features/relations-graph/RelationsPanel.js";
 import { HistoryTimeline } from "./features/history-timeline/HistoryTimeline.js";
 import { SearchPanel } from "./features/search/SearchPanel.js";
 import { SimilarityPanel } from "./features/similarity-panel/SimilarityPanel.js";
+import { CompareLauncher } from "./features/diff-viewer/CompareLauncher.js";
 
 // Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
 //   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
@@ -97,6 +98,14 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
             onAdrSaved={(adr) => setSelectedAdrId(adr.id)}
           />
         </div>
+      ) : activePanel === "comparison" ? (
+        // Deliberately reachable without a pre-selected ADR (unlike
+        // relations/history/similarity below, gated on selectedAdrId): both
+        // CompareLauncher sub-flows own their own free-text ADR-id entry, so
+        // there's nothing for the gate below to usefully prevent here.
+        <div data-testid="panel-comparison">
+          <CompareLauncher apiClient={apiClient} />
+        </div>
       ) : selectedAdrId === null ? (
         <div data-testid="panel-empty">Select an ADR first to view this panel.</div>
       ) : activePanel === "relations" ? (
@@ -107,13 +116,9 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
         <div data-testid="panel-history">
           <HistoryTimeline apiClient={apiClient} adrId={selectedAdrId} />
         </div>
-      ) : activePanel === "similarity" ? (
+      ) : (
         <div data-testid="panel-similarity">
           <SimilarityPanel apiClient={apiClient} adrId={selectedAdrId} folder={selectedFolder} />
-        </div>
-      ) : (
-        <div data-testid={`panel-${activePanel}`}>
-          {activePanel} — adr: {selectedAdrId}
         </div>
       )}
     </main>
