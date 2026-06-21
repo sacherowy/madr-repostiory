@@ -270,7 +270,7 @@
   - _Requirements: 4.4, 4.5_
   - _Boundary: FolderTree E2E_
 
-- [ ] 6.3 (P)* Verify empty-state messaging for search and similarity
+- [x] 6.3 (P)* Verify empty-state messaging for search and similarity
   - Exercise a no-match keyword search and a similarity request against a single-ADR folder, confirming each shows its documented empty-state message
   - Both empty-state messages render without an error state appearing instead
   - _Requirements: 9.3, 10.3_

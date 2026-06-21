@@ -119,6 +119,8 @@ describe("SearchPanel", () => {
 
     await waitFor(() => expect(screen.getByTestId("search-no-results")).toBeInTheDocument());
     expect(screen.queryByTestId("search-results")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("search-loading")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("search-error")).not.toBeInTheDocument();
   });
 
   it("clicking a real result calls onSelectAdr with that hit's real id (req 9.4)", async () => {
