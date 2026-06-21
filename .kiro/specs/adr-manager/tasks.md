@@ -276,7 +276,7 @@
   - _Requirements: 9.3, 10.3_
   - _Boundary: SearchPanel E2E, SimilarityPanel E2E_
 
-- [ ] 6.4 Run the full test suite across all workspaces and confirm no regressions
+- [x] 6.4 Run the full test suite across all workspaces and confirm no regressions
   - Run every unit, integration, and component test added across this feature together with the project's pre-existing tests
   - The full suite passes with no failing or skipped-unexpectedly tests
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
