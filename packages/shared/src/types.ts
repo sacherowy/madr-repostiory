@@ -128,3 +128,14 @@ export interface MoveAdrRequest {
   targetFolder: string;
   author: string;
 }
+
+/**
+ * Intentionally duplicated from `@adr/core`'s `SearchIndex` port (same two
+ * fields) rather than imported, because `@adr/shared` must not depend on
+ * `@adr/core` (which itself depends on `@adr/shared`) — same rationale as
+ * `CommitMeta` above. Any future change to one must be mirrored by hand.
+ */
+export interface SearchHit {
+  id: string;
+  score: number;
+}

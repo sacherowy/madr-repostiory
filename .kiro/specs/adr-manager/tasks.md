@@ -174,7 +174,7 @@
 
 - [ ] 4. Frontend foundation: typed API access and application shell
 
-- [ ] 4.1 Implement a typed client for every new API endpoint
+- [x] 4.1 Implement a typed client for every new API endpoint
   - Add one typed function per endpoint added in task group 3, returning the shared response types and surfacing error responses distinctly from success responses
   - Calling each client function against the running API returns a correctly typed result for both success and error responses
   - _Boundary: ApiClient_
