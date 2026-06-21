@@ -192,7 +192,7 @@
 
 - [ ] 5. Frontend feature panels
 
-- [ ] 5.1 (P) Build the ADR editor panel
+- [x] 5.1 (P) Build the ADR editor panel
   - Build the create/edit form covering title, status (one of the four fixed values), date, deciders, tags, and body, showing the currently saved content when editing, and submitting the shell's session author name as the author of the save
   - Provide controls within the form to add a relationship (choosing one of the five fixed types and a target ADR) and to remove an existing one, persisted as part of the save
   - Show which fields are missing when a save is rejected for missing title or body, and show the rejection message identifying the target when a save is rejected because a relationship points to a nonexistent ADR

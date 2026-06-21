@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+import { createApiClient } from "./api/client.js";
+import type { ApiClient } from "./api/client.js";
+import { AdrEditor } from "./features/adr-editor/AdrEditor.js";
 
 // Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
 //   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
@@ -10,7 +14,16 @@ type ActivePanel = "editor" | "relations" | "history" | "comparison" | "similari
 
 const PANEL_TABS: ActivePanel[] = ["editor", "relations", "history", "comparison", "similarity"];
 
-export function App() {
+interface AppProps {
+  /** Optional injection seam mirroring AdrEditor's own DI pattern, used by tests to provide a
+   * real test-server-backed client instead of the default relative-URL client (which can't
+   * resolve in jsdom). Defaults to the production client when omitted. */
+  apiClient?: ApiClient;
+}
+
+export function App({ apiClient: injectedApiClient }: AppProps = {}) {
+  const apiClient = useMemo(() => injectedApiClient ?? createApiClient(), [injectedApiClient]);
+
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedAdrId, setSelectedAdrId] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<ActivePanel>("editor");
@@ -110,7 +123,13 @@ export function App() {
 
       {activePanel === "editor" ? (
         <div data-testid="panel-editor">
-          Editor — adr: {selectedAdrId ?? "(new)"} — author: {authorName}
+          <AdrEditor
+            adrId={selectedAdrId}
+            folder={selectedFolder}
+            authorName={authorName}
+            apiClient={apiClient}
+            onAdrSaved={(adr) => setSelectedAdrId(adr.id)}
+          />
         </div>
       ) : selectedAdrId === null ? (
         <div data-testid="panel-empty">Select an ADR first to view this panel.</div>
