@@ -150,6 +150,44 @@ describe("FolderTree", () => {
     expect(within(emptyNode).queryAllByTestId(/^adr-node-/)).toHaveLength(0);
   });
 
+  it("expand, collapse, and selection interactions on an empty folder still show it as present and empty", async () => {
+    const empty = await client.createFolder({ path: "decisions/empty-folder", author: AUTHOR });
+    if (!empty.ok) throw new Error("fixture setup: createFolder unexpectedly failed");
+
+    const onSelectFolder = vi.fn();
+    render(
+      <FolderTree apiClient={client} authorName={AUTHOR} onSelectFolder={onSelectFolder} onSelectAdr={vi.fn()} />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("folder-node-decisions/empty-folder")).toBeInTheDocument()
+    );
+
+    // Collapse: the node and its controls stay present even though there was
+    // nothing underneath it to hide.
+    fireEvent.click(screen.getByTestId("folder-toggle-decisions/empty-folder"));
+    expect(screen.getByTestId("folder-node-decisions/empty-folder")).toBeInTheDocument();
+    expect(screen.getByTestId("folder-select-decisions/empty-folder")).toBeInTheDocument();
+
+    // Re-expand: still shown as empty, not just present.
+    fireEvent.click(screen.getByTestId("folder-toggle-decisions/empty-folder"));
+    const expandedNode = screen.getByTestId("folder-node-decisions/empty-folder");
+    expect(within(expandedNode).queryAllByTestId(/^adr-node-/)).toHaveLength(0);
+    expect(within(expandedNode).queryAllByTestId(/^folder-node-/)).toHaveLength(0);
+
+    // Select: scopes the tree to the empty folder itself, which remains
+    // present and empty in that scoped view too.
+    fireEvent.click(screen.getByTestId("folder-select-decisions/empty-folder"));
+    expect(onSelectFolder).toHaveBeenCalledWith("decisions/empty-folder");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("folder-node-decisions/empty-folder")).toBeInTheDocument()
+    );
+    const scopedNode = screen.getByTestId("folder-node-decisions/empty-folder");
+    expect(within(scopedNode).queryAllByTestId(/^adr-node-/)).toHaveLength(0);
+    expect(within(scopedNode).queryAllByTestId(/^folder-node-/)).toHaveLength(0);
+  });
+
   it("creating a folder adds it to the rendered tree", async () => {
     render(
       <FolderTree apiClient={client} authorName={AUTHOR} onSelectFolder={vi.fn()} onSelectAdr={vi.fn()} />

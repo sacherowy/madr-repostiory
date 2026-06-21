@@ -264,7 +264,7 @@
   - The conflict path is exercised by forcing a second save against a stale version and confirming the editor reaches a successful saved state after reload
   - _Requirements: 1.2, 1.3, 2.2, 2.3, 2.5_
 
-- [ ] 6.2 (P)* Verify tree browsing against a repository containing an empty folder
+- [x] 6.2 (P)* Verify tree browsing against a repository containing an empty folder
   - Exercise expand, collapse, and selection interactions against a tree that includes one folder with no subfolders or ADRs
   - The empty folder is shown as present and empty throughout expand/collapse/selection interactions
   - _Requirements: 4.4, 4.5_
