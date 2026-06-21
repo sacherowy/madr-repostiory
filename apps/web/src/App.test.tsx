@@ -26,34 +26,25 @@ async function initRepo(): Promise<string> {
 }
 
 describe("App", () => {
-  it("renders the ADR Manager heading", () => {
+  it("renders the ADR Manager heading", async () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "ADR Manager" })).toBeInTheDocument();
+    // No real server is booted in this test, so FolderTree's own mount fetch
+    // hits an unreachable relative /api/tree URL in jsdom and settles into
+    // its error state; waiting for that avoids an unawaited state update
+    // bleeding into the next test.
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
-  it("tracks the author name in its own controlled input", () => {
+  it("tracks the author name in its own controlled input", async () => {
     render(<App />);
 
     const authorInput = screen.getByTestId("author-name-input");
     fireEvent.change(authorInput, { target: { value: "Ada Lovelace" } });
 
     expect(authorInput).toHaveValue("Ada Lovelace");
-  });
-
-  it("selecting an ADR from the tree placeholder switches the editor panel into edit mode", async () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByTestId("tree-adr-id-input"), { target: { value: "adr-001" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-tree-button"));
-
-    // No real server is booted in this test: AdrEditor's load effect for a
-    // fake id hits an unreachable relative /api/... URL in jsdom, catches the
-    // network failure, and renders adr-editor-not-found. Seeing that testid
-    // is a genuine structural proof App switched into edit mode for this id
-    // (create mode would render adr-editor-create instead, never this).
-    expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
   it("selecting an ADR from the search placeholder switches the editor panel into edit mode", async () => {
@@ -64,31 +55,34 @@ describe("App", () => {
 
     expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
-  it("switching to a non-editor tab with an ADR selected renders that panel with the ADR id", () => {
+  it("switching to a non-editor tab with an ADR selected renders that panel with the ADR id", async () => {
     render(<App />);
 
-    fireEvent.change(screen.getByTestId("tree-adr-id-input"), { target: { value: "adr-003" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-tree-button"));
+    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-003" } });
+    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
     fireEvent.click(screen.getByTestId("panel-tab-relations"));
 
     expect(screen.getByTestId("panel-relations")).toHaveTextContent("adr-003");
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
-  it("switching to a non-editor tab with no ADR selected renders the empty placeholder", () => {
+  it("switching to a non-editor tab with no ADR selected renders the empty placeholder", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByTestId("panel-tab-history"));
 
     expect(screen.getByTestId("panel-empty")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
   it("selecting a new ADR while on a non-editor tab switches back to the editor panel", async () => {
     render(<App />);
 
-    fireEvent.change(screen.getByTestId("tree-adr-id-input"), { target: { value: "adr-004" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-tree-button"));
+    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-004" } });
+    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
     fireEvent.click(screen.getByTestId("panel-tab-relations"));
     expect(screen.getByTestId("panel-relations")).toHaveTextContent("adr-004");
 
@@ -98,32 +92,22 @@ describe("App", () => {
     expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
     expect(screen.queryByTestId("panel-relations")).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
   it("keeps the author name in the input across tab and ADR changes, and stays in edit mode for the selected ADR", async () => {
     render(<App />);
 
     fireEvent.change(screen.getByTestId("author-name-input"), { target: { value: "Grace Hopper" } });
-    fireEvent.change(screen.getByTestId("tree-adr-id-input"), { target: { value: "adr-006" } });
-    fireEvent.click(screen.getByTestId("select-adr-from-tree-button"));
+    fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-006" } });
+    fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
     fireEvent.click(screen.getByTestId("panel-tab-history"));
     fireEvent.click(screen.getByTestId("panel-tab-editor"));
 
     expect(screen.getByTestId("author-name-input")).toHaveValue("Grace Hopper");
     expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
-  });
-
-  it("selecting a folder does not change the active panel or selected ADR", () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByTestId("folder-path-input"), { target: { value: "docs/adr" } });
-    fireEvent.click(screen.getByTestId("select-folder-button"));
-
-    // No ADR was ever selected, so the editor must still be in create mode
-    // (adr-editor-create), and the active tab must still be "editor".
-    expect(screen.getByTestId("adr-editor-create")).toBeInTheDocument();
-    expect(screen.getByTestId("panel-tab-editor")).toHaveAttribute("aria-current", "true");
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
   describe("with a real backing server", () => {
@@ -154,14 +138,16 @@ describe("App", () => {
       await rm(repoPath, { recursive: true, force: true });
     });
 
-    it("selecting a real ADR id from the tree placeholder loads and displays its real title in the editor panel", async () => {
+    it("selecting a real ADR from the FolderTree loads and displays its real title in the editor panel", async () => {
       const created = await client.createAdr({ title: "Real Loaded ADR", folder: "decisions", author: AUTHOR });
       if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
 
       render(<App apiClient={client} />);
 
-      fireEvent.change(screen.getByTestId("tree-adr-id-input"), { target: { value: created.adr.id } });
-      fireEvent.click(screen.getByTestId("select-adr-from-tree-button"));
+      await waitFor(() =>
+        expect(screen.getByTestId(`adr-select-${created.adr.id}`)).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByTestId(`adr-select-${created.adr.id}`));
 
       await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
       // The real loaded title surfaces as the title input's value (inputs
@@ -169,6 +155,23 @@ describe("App", () => {
       // toHaveValue rather than toHaveTextContent on the panel).
       expect(screen.getByTestId("title-input")).toHaveValue("Real Loaded ADR");
       expect(screen.getByTestId("panel-editor")).toContainElement(screen.getByTestId("adr-editor-edit"));
+    });
+
+    it("selecting a folder from the FolderTree does not change the active panel or selected ADR", async () => {
+      const folder = await client.createFolder({ path: "decisions/docs-adr", author: AUTHOR });
+      if (!folder.ok) throw new Error("fixture setup: createFolder unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("folder-select-decisions/docs-adr")).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByTestId("folder-select-decisions/docs-adr"));
+
+      // No ADR was ever selected, so the editor must still be in create mode
+      // (adr-editor-create), and the active tab must still be "editor".
+      expect(screen.getByTestId("adr-editor-create")).toBeInTheDocument();
+      expect(screen.getByTestId("panel-tab-editor")).toHaveAttribute("aria-current", "true");
     });
   });
 });

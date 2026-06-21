@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { createApiClient } from "./api/client.js";
 import type { ApiClient } from "./api/client.js";
 import { AdrEditor } from "./features/adr-editor/AdrEditor.js";
+import { FolderTree } from "./features/folder-tree/FolderTree.js";
 
 // Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
 //   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
@@ -29,8 +30,6 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
   const [activePanel, setActivePanel] = useState<ActivePanel>("editor");
   const [authorName, setAuthorName] = useState("");
 
-  const [folderPathInput, setFolderPathInput] = useState("");
-  const [treeAdrIdInput, setTreeAdrIdInput] = useState("");
   const [searchAdrIdInput, setSearchAdrIdInput] = useState("");
 
   function handleSelectFolder(folderPath: string) {
@@ -63,32 +62,12 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
         />
       </div>
 
-      <div data-testid="folder-tree-placeholder">
-        <p>Folder tree (placeholder — replaced by FolderTree in task 5.2). Selected folder: {selectedFolder ?? "(none)"}</p>
-        <input
-          data-testid="folder-path-input"
-          type="text"
-          value={folderPathInput}
-          onChange={(event) => setFolderPathInput(event.target.value)}
-        />
-        <button data-testid="select-folder-button" type="button" onClick={() => handleSelectFolder(folderPathInput)}>
-          Select folder
-        </button>
-
-        <input
-          data-testid="tree-adr-id-input"
-          type="text"
-          value={treeAdrIdInput}
-          onChange={(event) => setTreeAdrIdInput(event.target.value)}
-        />
-        <button
-          data-testid="select-adr-from-tree-button"
-          type="button"
-          onClick={() => handleSelectAdr(treeAdrIdInput)}
-        >
-          Select ADR (tree)
-        </button>
-      </div>
+      <FolderTree
+        apiClient={apiClient}
+        authorName={authorName}
+        onSelectFolder={handleSelectFolder}
+        onSelectAdr={handleSelectAdr}
+      />
 
       <div data-testid="search-panel-placeholder">
         <p>Search (placeholder — replaced by SearchPanel in task 5.6)</p>

@@ -202,7 +202,7 @@
   - _Boundary: AdrEditor_
   - _Depends: 4.2_
 
-- [ ] 5.2 (P) Build the folder/ADR tree panel
+- [x] 5.2 (P) Build the folder/ADR tree panel
   - Build the tree view showing the full repository tree by default, with each ADR entry showing title, id, and status
   - Add expand/collapse behavior that shows or hides a folder's direct children without removing them from the tree, and selection behavior that filters to a folder's subtree or opens a selected ADR
   - Add a control to create a new folder at a chosen location, submitting the shell's session author name as the author of the folder creation and showing the conflict message when a folder already exists there
