@@ -220,7 +220,7 @@
   - _Boundary: RelationsPanel_
   - _Depends: 4.2_
 
-- [ ] 5.4 (P) Build the history timeline panel
+- [x] 5.4 (P) Build the history timeline panel
   - Build the chronological version list (most recent first) showing author, date, and message per version, with selection behavior that shows that version's full content
   - An ADR with a single saved version renders one entry with no implication of prior versions
   - _Requirements: 6.1, 6.2, 6.3, 6.4_

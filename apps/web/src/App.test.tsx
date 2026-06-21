@@ -63,16 +63,16 @@ describe("App", () => {
 
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-003" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-history"));
+    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
 
-    expect(screen.getByTestId("panel-history")).toHaveTextContent("adr-003");
+    expect(screen.getByTestId("panel-similarity")).toHaveTextContent("adr-003");
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
   it("switching to a non-editor tab with no ADR selected renders the empty placeholder", async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByTestId("panel-tab-history"));
+    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
 
     expect(screen.getByTestId("panel-empty")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
@@ -83,14 +83,14 @@ describe("App", () => {
 
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-004" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-history"));
-    expect(screen.getByTestId("panel-history")).toHaveTextContent("adr-004");
+    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
+    expect(screen.getByTestId("panel-similarity")).toHaveTextContent("adr-004");
 
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-005" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
 
     expect(screen.getByTestId("panel-editor")).toBeInTheDocument();
-    expect(screen.queryByTestId("panel-history")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("panel-similarity")).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
@@ -101,7 +101,7 @@ describe("App", () => {
     fireEvent.change(screen.getByTestId("author-name-input"), { target: { value: "Grace Hopper" } });
     fireEvent.change(screen.getByTestId("search-adr-id-input"), { target: { value: "adr-006" } });
     fireEvent.click(screen.getByTestId("select-adr-from-search-button"));
-    fireEvent.click(screen.getByTestId("panel-tab-history"));
+    fireEvent.click(screen.getByTestId("panel-tab-similarity"));
     fireEvent.click(screen.getByTestId("panel-tab-editor"));
 
     expect(screen.getByTestId("author-name-input")).toHaveValue("Grace Hopper");
@@ -191,6 +191,39 @@ describe("App", () => {
           screen.getByTestId(`relation-item-inbound-superseded-by-${newAdr.adr.id}`)
         ).toBeInTheDocument()
       );
+    });
+
+    it("selecting a real ADR via the FolderTree and switching to the history tab shows its real two-entry timeline", async () => {
+      const created = await client.createAdr({ title: "Tracked decision", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+
+      const saved = await client.updateAdr(created.adr.id, {
+        title: "Tracked decision (updated)",
+        status: created.adr.status,
+        date: created.adr.date,
+        deciders: created.adr.deciders,
+        tags: created.adr.tags,
+        body: "Updated body.",
+        author: AUTHOR,
+        baseBlobSha: created.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(<App apiClient={client} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId(`adr-select-${created.adr.id}`)).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByTestId(`adr-select-${created.adr.id}`));
+
+      fireEvent.click(screen.getByTestId("panel-tab-history"));
+
+      await waitFor(() => expect(screen.getByTestId("history-timeline")).toBeInTheDocument());
+
+      const entries = screen.getAllByTestId(/^history-entry-[^-]+$/);
+      expect(entries).toHaveLength(2);
+      expect(entries[0].textContent).toContain(`save ${created.adr.id}`);
+      expect(entries[1].textContent).toContain(`create ${created.adr.id}`);
     });
 
     it("selecting a folder from the FolderTree does not change the active panel or selected ADR", async () => {
