@@ -227,7 +227,7 @@
   - _Boundary: HistoryTimeline_
   - _Depends: 4.2_
 
-- [ ] 5.5 (P) Build the version diff and ADR comparison views
+- [x] 5.5 (P) Build the version diff and ADR comparison views
   - Build the version-to-version view that visually distinguishes added, removed, and unchanged content, and the ADR-to-ADR view that shows both ADRs' fields side by side with differing fields visually distinguished from identical ones
   - Attempting either comparison with an invalid selection (one version only, versions from different ADRs, or the same ADR twice) shows the corresponding rejection message instead of a comparison
   - _Requirements: 7.1, 7.2, 7.3, 8.1, 8.2, 8.3_
