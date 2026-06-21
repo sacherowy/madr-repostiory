@@ -84,6 +84,25 @@ describe("App", () => {
       await rm(repoPath, { recursive: true, force: true });
     });
 
+    /**
+     * `container`'s `GeminiEmbeddingProvider` is wired with fake creds: any
+     * genuine cache miss makes `SimilarityService.vectorFor` attempt a real
+     * network call, which fails with a real 400 from Google's API and
+     * surfaces as a 404 from `GET /api/adrs/:id/similar` (the route's catch
+     * maps every `findSimilar` throw to 404). That 404 is invisible in the
+     * single-ADR-scope tests elsewhere in this file because `findSimilar`
+     * returns `emptyScope` before ever computing a vector when there's only
+     * one ADR in scope — but the moment a second real ADR coexists in the
+     * same scope (as in the test below), `findSimilar` needs real vectors
+     * for both and hits the network. Pre-seeding each fixture's blob sha
+     * here (the exact cache-hit path `vectorFor` checks first) avoids that
+     * network call entirely, mirroring `SimilarityPanel.test.tsx`'s and
+     * `apps/api/src/routes/similarity.test.ts`'s own `seedVector` helper.
+     */
+    function seedVector(blobSha: string, vector: number[]): void {
+      container.embeddingStore.set(blobSha, vector);
+    }
+
     it("selecting a real ADR from the FolderTree loads and displays its real title in the editor panel", async () => {
       const created = await client.createAdr({ title: "Real Loaded ADR", folder: "decisions", author: AUTHOR });
       if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
@@ -252,7 +271,16 @@ describe("App", () => {
       await waitFor(() => expect(screen.getByTestId("adr-editor-edit")).toBeInTheDocument());
       fireEvent.click(screen.getByTestId("panel-tab-similarity"));
 
-      await waitFor(() => expect(screen.getByTestId("panel-similarity")).toHaveTextContent(created.adr.id));
+      // Only one ADR exists, in "decisions", and no folder was ever selected
+      // via FolderTree (selectedFolder stays null), so SimilarityPanel falls
+      // back to that ADR's own containing folder — where it's alone. This
+      // proves the panel mounted, resolved the correct scope via the real
+      // backend, and reached the real emptyScope state (req 10.3), without
+      // asserting literal ADR-id text that no longer appears anywhere in the
+      // new render output.
+      await waitFor(() =>
+        expect(screen.getByTestId("panel-similarity")).toContainElement(screen.getByTestId("similarity-empty"))
+      );
     });
 
     it("selecting a second real ADR via search while on a non-editor tab switches back to the editor panel (was: 'selecting a new ADR while on a non-editor tab...')", async () => {
@@ -269,6 +297,7 @@ describe("App", () => {
         baseBlobSha: first.adr.blobSha,
       });
       if (!savedFirst.ok) throw new Error("fixture setup: updateAdr first unexpectedly failed");
+      seedVector(savedFirst.adr.blobSha, [1, 0, 0]);
 
       const second = await client.createAdr({ title: "Zzsearchkeywordfour topic", folder: "decisions", author: AUTHOR });
       if (!second.ok) throw new Error("fixture setup: createAdr second unexpectedly failed");
@@ -283,6 +312,11 @@ describe("App", () => {
         baseBlobSha: second.adr.blobSha,
       });
       if (!savedSecond.ok) throw new Error("fixture setup: updateAdr second unexpectedly failed");
+      // Both ADRs now coexist in "decisions" by the time the similarity tab
+      // is clicked below, so findSimilar's emptyScope short-circuit no
+      // longer applies and it needs a real vector for both — see the
+      // `seedVector` doc comment above for why this is required here.
+      seedVector(savedSecond.adr.blobSha, [0.9, 0.1, 0]);
 
       render(<App apiClient={client} />);
 
@@ -292,7 +326,20 @@ describe("App", () => {
       await waitFor(() => expect(screen.getByTestId(`search-result-${first.adr.id}`)).toBeInTheDocument());
       fireEvent.click(screen.getByTestId(`search-result-${first.adr.id}`));
       fireEvent.click(screen.getByTestId("panel-tab-similarity"));
-      expect(screen.getByTestId("panel-similarity")).toHaveTextContent(first.adr.id);
+      // This line's job is only a tab-switch checkpoint (confirming the
+      // similarity tab is active for the first-selected ADR), not a content
+      // assertion — the ranked/empty content itself is covered by
+      // SimilarityPanel.test.tsx.
+      expect(screen.getByTestId("panel-similarity")).toBeInTheDocument();
+      // `second` already exists by this point (created in fixture setup
+      // above), so `first` has a real sibling in "decisions" and the real
+      // SimilarityPanel resolves to a ranked list. Waiting for it to settle
+      // before navigating away mirrors every other tab-switch in this file
+      // that exercises a real panel (relations/history both `waitFor`
+      // before moving on) — switching away while a request is still in
+      // flight leaves it unresolved past this test's `afterEach`, which can
+      // make the real server's `app.close()` hang on that still-open socket.
+      await waitFor(() => expect(screen.getByTestId("similarity-results")).toBeInTheDocument());
 
       // Select a second, distinct real ADR via a second real search while
       // still on the similarity tab.
@@ -332,6 +379,20 @@ describe("App", () => {
       fireEvent.click(screen.getByTestId(`search-result-${first.adr.id}`));
 
       fireEvent.click(screen.getByTestId("panel-tab-similarity"));
+      // Unlike the old static placeholder this tab used to render, the real
+      // SimilarityPanel issues a real in-flight request on mount (it falls
+      // back to the ADR's own folder here, since none was ever selected via
+      // FolderTree). Waiting for it to settle before switching away mirrors
+      // every other tab-switch in this file that exercises a real panel
+      // (relations/history both `waitFor` before moving on) — switching away
+      // while a request is still in flight leaves it unresolved past this
+      // test's `afterEach`, which can make the real server's `app.close()`
+      // hang on that still-open socket.
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("similarity-empty") ?? screen.queryByTestId("similarity-results")
+        ).toBeInTheDocument()
+      );
       fireEvent.click(screen.getByTestId("panel-tab-editor"));
 
       expect(screen.getByTestId("author-name-input")).toHaveValue("Grace Hopper");

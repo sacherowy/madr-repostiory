@@ -241,7 +241,7 @@
   - _Boundary: SearchPanel_
   - _Depends: 4.2_
 
-- [ ] 5.7 (P) Build the similarity panel
+- [x] 5.7 (P) Build the similarity panel
   - Build the ranked list of similar ADRs with a visible similarity score or ranking per suggestion, scoped to the currently selected folder in the tree (falling back to the open ADR's own containing folder when no folder is selected)
   - A folder subtree with no other ADRs shows a message that no similar ADRs are available in that scope
   - _Requirements: 10.1, 10.2, 10.3_
