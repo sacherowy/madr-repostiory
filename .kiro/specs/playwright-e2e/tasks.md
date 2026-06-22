@@ -26,7 +26,7 @@
   - _Requirements: 1.2, 1.6, 5.3, 6.4_
   - _Boundary: harness paths_
 
-- [ ] 2.2 Seed the temporary repository and verify prerequisites at global setup
+- [x] 2.2 Seed the temporary repository and verify prerequisites at global setup
   - Before any server or spec runs, create the run directory, initialize a git repository with a committer identity, and commit an initial decisions placeholder so the API serves a valid repository.
   - Pre-check that the browser runtime is installed and fail with a clear, actionable error when it is not, rather than skipping silently or reporting a false pass.
   - Log the active mode (offline vs real-provider) derived from the embedding-key passthrough.
