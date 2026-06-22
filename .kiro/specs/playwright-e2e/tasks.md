@@ -10,7 +10,7 @@
   - Observable: `pnpm --filter @adr/e2e exec playwright --version` succeeds and the root E2E command resolves to the new package (even before any spec exists).
   - _Requirements: 5.3, 6.1, 6.2_
 
-- [ ] 1.2 (P) Make the API select the offline embedding provider when no key is set
+- [x] 1.2 (P) Make the API select the offline embedding provider when no key is set
   - In the API composition root, construct the deterministic fake embedding provider when the embedding API key is empty, and the real provider otherwise, with no change to container/service wiring.
   - Extend the composition-root unit test to assert provider selection for both the empty-key and non-empty-key cases.
   - Observable: with no embedding key configured, similarity requests resolve through the fake provider with no outbound network call; the unit test proves the selection both ways.

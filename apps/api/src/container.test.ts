@@ -13,6 +13,8 @@ import {
   SimilarityService,
 } from "@adr/core";
 import { WriteQueue } from "./infrastructure/concurrency/writeQueue.js";
+import { FakeEmbeddingProvider } from "./infrastructure/embeddings/fake.js";
+import { GeminiEmbeddingProvider } from "./infrastructure/embeddings/gemini.js";
 import { buildContainer } from "./container.js";
 
 const AUTHOR = "Test Author <test@example.com>";
@@ -118,5 +120,48 @@ describe("buildContainer", () => {
     );
 
     await expect(container.relations.targetExists("adr-0001")).resolves.toBe(true);
+  });
+
+  it("selects the offline FakeEmbeddingProvider when the gemini apiKey is empty (Req 3.1, 2.1, 2.4, 3.3)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "" },
+    });
+
+    expect(container.embeddingProvider).toBeInstanceOf(FakeEmbeddingProvider);
+  });
+
+  it("treats a whitespace-only gemini apiKey as empty and selects FakeEmbeddingProvider (Req 3.1)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "   " },
+    });
+
+    expect(container.embeddingProvider).toBeInstanceOf(FakeEmbeddingProvider);
+  });
+
+  it("resolves embeddings offline (no network) via the fake provider when apiKey is empty (Req 2.4, 3.3)", async () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "" },
+    });
+
+    const vectors = await container.embeddingProvider.embed(["x"]);
+    expect(vectors).toHaveLength(1);
+    expect(Array.isArray(vectors[0])).toBe(true);
+    expect(vectors[0].length).toBeGreaterThan(0);
+  });
+
+  it("selects the real GeminiEmbeddingProvider when a gemini apiKey is configured (Req 3.2)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "some-key" },
+    });
+
+    expect(container.embeddingProvider).toBeInstanceOf(GeminiEmbeddingProvider);
   });
 });
