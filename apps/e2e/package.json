@@ -1,0 +1,16 @@
+{
+  "name": "@adr/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.5.0",
+    "simple-git": "^3.25.0",
+    "typescript": "^5.5.4"
+  }
+}

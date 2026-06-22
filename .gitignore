@@ -5,3 +5,7 @@ dist/
 # Projekcja — zawsze odtwarzalna z gita przez `pnpm reindex`
 data/*.sqlite
 data/.embeddings/
+# E2E (Playwright) artifacts and reports
+apps/e2e/artifacts/
+apps/e2e/test-results/
+apps/e2e/playwright-report/

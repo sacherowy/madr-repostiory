@@ -2,7 +2,7 @@
 
 - [ ] 1. Foundation: E2E workspace and offline embedding fallback
 
-- [ ] 1.1 Scaffold the `apps/e2e` Playwright workspace and runtime
+- [x] 1.1 Scaffold the `apps/e2e` Playwright workspace and runtime
   - Add a new `@adr/e2e` workspace package (ESM, Node ≥20) with `@playwright/test` and `simple-git` as dev dependencies, extending the shared base TypeScript config.
   - Install the Chromium browser runtime so the suite can launch a headless browser.
   - Add a root-level command that runs the E2E suite via the new package, kept separate from `pnpm -r test` so the ordinary test run never launches browsers/servers.
@@ -105,3 +105,6 @@
   - Observable: the run output shows the active mode and reports enabled-only specs as skipped without a key and as executed with a key.
   - _Requirements: 2.2, 2.3, 2.5_
   - _Depends: 4.4_
+
+## Implementation Notes
+- 1.1: The `@adr/e2e` Playwright CLI installs fine, but the **Chromium browser binary cannot be downloaded** in this environment — `cdn.playwright.dev` is blocked by the network egress policy (HTTP 403). All browser-independent tasks (1.x, 2.x, 3) can still be implemented and validated via unit tests + config load + `playwright test --list`. Tasks whose *observable* requires a live headless browser run against the launched servers (4.1–4.4 green-run, 5.1/5.2 validation) cannot be executed until the host is allowlisted (`playwright install chromium`) or a Chromium binary is pre-provisioned. The globalSetup browser precheck (Req 6.3) is the in-suite guard for exactly this condition.
