@@ -8,6 +8,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "test:integration": "pnpm -r test:integration",
+    "e2e": "pnpm --filter @adr/e2e test:e2e",
     "reindex": "pnpm --filter @adr/api reindex"
   }
 }

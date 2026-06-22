@@ -10,6 +10,7 @@ import {
 } from "@adr/core";
 import { config } from "./config.js";
 import { WriteQueue } from "./infrastructure/concurrency/writeQueue.js";
+import { FakeEmbeddingProvider } from "./infrastructure/embeddings/fake.js";
 import { GeminiEmbeddingProvider } from "./infrastructure/embeddings/gemini.js";
 import { SimpleGitAdapter } from "./infrastructure/git/simpleGitAdapter.js";
 import { SqliteEmbeddingStore } from "./infrastructure/persistence/sqlite.js";
@@ -56,7 +57,10 @@ export function buildContainer(cfg: ContainerConfig = config): Container {
   const git = new SimpleGitAdapter(cfg.repoPath);
   const searchIndex = new SqliteSearchIndex(cfg.sqlitePath);
   const embeddingStore = new SqliteEmbeddingStore(cfg.sqlitePath);
-  const embeddingProvider = new GeminiEmbeddingProvider(cfg.gemini.model, cfg.gemini.apiKey);
+  const embeddingProvider =
+    cfg.gemini.apiKey.trim() === ""
+      ? new FakeEmbeddingProvider()
+      : new GeminiEmbeddingProvider(cfg.gemini.model, cfg.gemini.apiKey);
 
   const writeQueue = new WriteQueue();
 
