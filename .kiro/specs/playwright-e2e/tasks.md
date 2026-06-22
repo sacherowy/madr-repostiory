@@ -19,7 +19,7 @@
 
 - [ ] 2. Harness orchestration
 
-- [ ] 2.1 Provide run-scoped temporary paths
+- [x] 2.1 Provide run-scoped temporary paths
   - Compute, once per run, an absolute temporary ADR-repository path, a scratch index path inside that same directory, and an artifact output directory, plus the embedding-key passthrough read from the environment.
   - Keep this a pure value module that performs no filesystem mutation, so setup and teardown act on identical locations and never touch a developer's working data.
   - Observable: importing the module yields stable absolute paths under the OS temp directory for the duration of a run.
