@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Foundation: E2E workspace and offline embedding fallback
+- [x] 1. Foundation: E2E workspace and offline embedding fallback
 
 - [x] 1.1 Scaffold the `apps/e2e` Playwright workspace and runtime
   - Add a new `@adr/e2e` workspace package (ESM, Node ≥20) with `@playwright/test` and `simple-git` as dev dependencies, extending the shared base TypeScript config.
@@ -17,7 +17,7 @@
   - _Requirements: 2.1, 2.4, 3.1, 3.2, 3.3, 3.4_
   - _Boundary: container.ts_
 
-- [ ] 2. Harness orchestration
+- [x] 2. Harness orchestration
 
 - [x] 2.1 Provide run-scoped temporary paths
   - Compute, once per run, an absolute temporary ADR-repository path, a scratch index path inside that same directory, and an artifact output directory, plus the embedding-key passthrough read from the environment.
@@ -59,9 +59,9 @@
   - _Boundary: harness helpers_
   - _Depends: 2.1_
 
-- [ ] 4. Core user-journey specs
+- [x] 4. Core user-journey specs
 
-- [ ] 4.1 (P) ADR create, edit, save, and conflict-recovery journey
+- [x] 4.1 (P) ADR create, edit, save, and conflict-recovery journey
   - Drive the real UI to set the author, create a uniquely-titled ADR, reach edit mode, edit the body, save, and confirm the saved success state; screenshot the saved state.
   - Force a save conflict by making a concurrent write behind the editor, attempt another save, confirm the conflict is surfaced (not a silent overwrite), reload the latest version, save again, and confirm recovery to a saved state; screenshot the conflict state and the recovered state.
   - Observable: the spec passes end-to-end against the running app, showing the success state, then the conflict state, then a successful save after reload, with screenshots captured at each.
@@ -69,21 +69,21 @@
   - _Boundary: lifecycle spec_
   - _Depends: 1.2, 2.4, 3_
 
-- [ ] 4.2 (P) Tree browsing and empty-folder journey
+- [x] 4.2 (P) Tree browsing and empty-folder journey
   - Confirm the tree renders the seeded structure, then create a uniquely-named folder through the UI and confirm it appears as a folder containing no ADRs (the empty-folder state); screenshot the tree and the empty folder.
   - Observable: the spec passes showing the seeded tree and a newly created empty folder node with no ADR children, with screenshots captured.
   - _Requirements: 4.3, 5.1_
   - _Boundary: tree spec_
   - _Depends: 1.2, 2.4, 3_
 
-- [ ] 4.3 (P) Keyword search match and no-match journey
+- [x] 4.3 (P) Keyword search match and no-match journey
   - Create, edit, and save an ADR carrying a unique token (so it becomes searchable), search for it, and confirm the matching result appears; then search a guaranteed-absent token and confirm the no-results state; screenshot both results.
   - Observable: the spec passes showing a ranked match for the unique token and the no-results state for the absent token, with screenshots captured.
   - _Requirements: 4.4, 4.5, 5.1_
   - _Boundary: search spec_
   - _Depends: 1.2, 2.4, 3_
 
-- [ ] 4.4 (P) Folder-scoped similarity ranked and empty-scope journey
+- [x] 4.4 (P) Folder-scoped similarity ranked and empty-scope journey
   - Place two ADRs in one unique folder and confirm folder-scoped similarity shows ranked results offline (via the fake provider); place a single ADR alone in another unique folder and confirm the empty-scope state; screenshot both.
   - Add a real-provider variant of the ranked case guarded by the mode gate so it runs only when an embedding key is present and is reported as skipped otherwise.
   - Observable: the spec passes showing ranked similarity offline and the empty-scope state, with the enabled-mode variant running when a key is set and skipping (not failing) when it is absent; screenshots captured.
@@ -91,16 +91,16 @@
   - _Boundary: similarity spec_
   - _Depends: 1.2, 2.4, 3_
 
-- [ ] 5. Validation
+- [x] 5. Validation
 
-- [ ] 5.1 Validate the offline run end-to-end
+- [x] 5.1 Validate the offline run end-to-end
   - Run the full suite with no embedding key configured and confirm all core-journey specs pass, that the run makes no outbound embedding calls, that artifacts (including on-failure screenshots/traces) land in the dedicated directory, and that a repeated run from the same provisioned state is consistent.
   - Confirm that after the run no temporary repository, scratch index, or leftover server process remains.
   - Observable: a single offline command run is green across all journeys, produces artifacts, leaves no residual state, and repeats consistently.
   - _Requirements: 2.1, 2.4, 5.2, 5.3, 6.1, 6.4, 6.5_
   - _Depends: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 5.2 Validate mode gating and reporting
+- [x] 5.2 Validate mode gating and reporting
   - Confirm that with no embedding key the real-provider specs report as skipped rather than failed, that the active mode is reported for the run, and that supplying an embedding key activates the enabled-mode variant.
   - Observable: the run output shows the active mode and reports enabled-only specs as skipped without a key and as executed with a key.
   - _Requirements: 2.2, 2.3, 2.5_

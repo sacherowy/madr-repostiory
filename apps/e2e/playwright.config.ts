@@ -65,6 +65,12 @@ export default defineConfig({
   // A bounded per-test timeout keeps a hung journey from stalling the run.
   timeout: 60_000,
 
+  // The whole run shares ONE API + web + temp git repo. Run serially (a single
+  // worker, no intra-file parallelism) so concurrent specs never race on the
+  // shared git repository, keeping results deterministic and repeatable (Req 6.5).
+  fullyParallel: false,
+  workers: 1,
+
   // Launch BOTH the API and the web app before any spec runs (Req 1.1). Each
   // entry declares a readiness `url` + bounded `timeout` so Playwright waits for
   // readiness and aborts the run on timeout (Req 1.5).
