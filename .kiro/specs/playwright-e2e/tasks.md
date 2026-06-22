@@ -42,7 +42,7 @@
   - _Boundary: harness globalTeardown_
   - _Depends: 2.1_
 
-- [ ] 2.4 Configure process launch, routing, artifacts, and lifecycle wiring
+- [x] 2.4 Configure process launch, routing, artifacts, and lifecycle wiring
   - Launch the API and web dev servers automatically, passing the run-scoped repository path, scratch index path, embedding-key passthrough, and the fixed API port that matches the web proxy target; wait for both to become ready within a bounded timeout and abort the run if they do not.
   - Point the browser at the web server so its relative API calls are proxied to the API, run headless, capture a screenshot and trace automatically on failure, and write all artifacts to the dedicated output directory; do not configure pixel-baseline snapshot comparison as a pass/fail oracle.
   - Wire the global setup and teardown into the run lifecycle.
