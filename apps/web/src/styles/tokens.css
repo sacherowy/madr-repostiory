@@ -1,0 +1,33 @@
+:root{
+  /* marka — teal */
+  --teal-50:#ECF8F5;  --teal-100:#CFEDE7; --teal-200:#A3DCD2; --teal-300:#6AC6B8;
+  --teal-400:#2BAB9A; --teal-500:#0E9E8E; --teal-600:#0B8277; --teal-700:#0A6A61;
+  --teal-800:#08534C; --teal-900:#063C37;
+
+  /* neutralne */
+  --ink-900:#17211F; --ink-700:#36413E; --ink-500:#5E6A66; --ink-300:#9BA5A1;
+  --line:#E7EDEB; --line-strong:#D6DFDC; --surface:#F4FAF8; --bg:#FFFFFF;
+
+  /* statusy ADR */
+  --accepted:#3A9D4A;   --accepted-bg:#E7F5E9;
+  --proposed:#5063CE;   --proposed-bg:#ECEEFB;
+  --deprecated:#C98410; --deprecated-bg:#FBEFD9;
+  --superseded:#74807B; --superseded-bg:#EDF1EF;
+
+  /* destrukcja */
+  --danger:#C81E3A; --danger-600:#A8132C; --danger-bg:#FBE7EA;
+
+  /* diff */
+  --add:#2F8F3E; --add-bg:#EAF5EA; --del:#B23042; --del-bg:#FBEAEC;
+
+  /* typografia */
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --font-body:"Hanken Grotesk",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,monospace;
+
+  /* kształt */
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-full:999px;
+  --sh-sm:0 1px 2px rgba(23,33,31,.06),0 1px 1px rgba(23,33,31,.04);
+  --sh-md:0 14px 34px -18px rgba(6,60,55,.26),0 2px 6px rgba(23,33,31,.05);
+  --glow:0 8px 22px -10px rgba(14,158,142,.5);
+}

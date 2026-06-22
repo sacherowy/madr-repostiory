@@ -13,6 +13,10 @@ export interface AdrFile {
   path: string;
   blobSha: string;
 }
+export interface TreeEntry {
+  path: string;
+  type: "folder" | "adr";
+}
 
 /** Jedyne wejście domeny do repozytorium = źródła prawdy. */
 export interface GitPort {
@@ -27,4 +31,6 @@ export interface GitPort {
   log(path: string): Promise<CommitMeta[]>;
   diff(from: string, to: string, path?: string): Promise<DiffResult>;
   listAdrFiles(branchPath: string): Promise<AdrFile[]>;
+  listTreeEntries(rootPath: string): Promise<TreeEntry[]>;
+  move(fromPath: string, toPath: string, message: string, author: string): Promise<CommitMeta>;
 }

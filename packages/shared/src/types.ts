@@ -36,3 +36,106 @@ export interface SimilarityPair {
   b: AdrId;
   score: number;
 }
+
+/**
+ * Minimal commit-metadata shape used by view types in this package.
+ * Intentionally duplicated from `@adr/core`'s `GitPort` `CommitMeta` (same four
+ * fields) rather than imported, because `@adr/shared` must not depend on
+ * `@adr/core` (which itself depends on `@adr/shared`) — importing it would
+ * create a circular workspace dependency.
+ */
+export interface CommitMeta {
+  sha: string;
+  author: string;
+  date: string;
+  message: string;
+}
+
+export interface AdrSummary {
+  id: string;
+  title: string;
+  status: AdrStatus;
+  path: string;
+}
+
+export interface FolderNode {
+  path: string;
+  name: string;
+  folders: FolderNode[];
+  adrs: AdrSummary[];
+}
+
+export interface RelationView {
+  type: RelationType;
+  target: AdrId;
+  direction: "outbound" | "inbound";
+}
+
+export interface DiffHunk {
+  kind: "added" | "removed" | "unchanged";
+  text: string;
+}
+
+export interface VersionDiffView {
+  from: CommitMeta;
+  to: CommitMeta;
+  hunks: DiffHunk[];
+}
+
+export interface FieldComparison {
+  field: string;
+  a: string;
+  b: string;
+  differs: boolean;
+}
+
+export interface AdrCompareView {
+  a: Adr;
+  b: Adr;
+  fields: FieldComparison[];
+}
+
+export interface SimilarityResult {
+  adr: AdrSummary;
+  score: number;
+}
+
+export interface CreateAdrRequest {
+  title: string;
+  deciders?: string[];
+  tags?: string[];
+  folder: string;
+}
+
+export interface UpdateAdrRequest {
+  title: string;
+  status: AdrStatus;
+  date: string;
+  deciders?: string[];
+  tags?: string[];
+  relations?: AdrRelation[];
+  body: string;
+  author: string;
+  baseBlobSha: string;
+}
+
+export interface CreateFolderRequest {
+  path: string;
+  author: string;
+}
+
+export interface MoveAdrRequest {
+  targetFolder: string;
+  author: string;
+}
+
+/**
+ * Intentionally duplicated from `@adr/core`'s `SearchIndex` port (same two
+ * fields) rather than imported, because `@adr/shared` must not depend on
+ * `@adr/core` (which itself depends on `@adr/shared`) — same rationale as
+ * `CommitMeta` above. Any future change to one must be mirrored by hand.
+ */
+export interface SearchHit {
+  id: string;
+  score: number;
+}
