@@ -51,7 +51,7 @@
   - _Boundary: playwright.config_
   - _Depends: 2.1, 2.2, 2.3_
 
-- [ ] 3. Scenario support helpers
+- [x] 3. Scenario support helpers
   - Provide a screenshot helper that saves a named image of a key state into the artifact directory, a mode gate that skips (never fails) real-provider tests when no embedding key is present, and a uniqueness helper that yields per-test title/folder-safe names for isolation.
   - Keep helpers minimal and free of any import from spec files or shared mutable state.
   - Observable: a spec can call the gate to skip an enabled-only test when no key is set, capture a named screenshot, and generate collision-free names within a run.
