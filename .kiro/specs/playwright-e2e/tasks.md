@@ -35,7 +35,7 @@
   - _Boundary: harness globalSetup_
   - _Depends: 2.1_
 
-- [ ] 2.3 (P) Remove the temporary run directory at global teardown
+- [x] 2.3 (P) Remove the temporary run directory at global teardown
   - After all specs finish, recursively remove the run-scoped directory (repository plus scratch index), tolerating an already-absent directory.
   - Observable: after a run completes, no temporary repository or scratch index remains on disk.
   - _Requirements: 1.4, 6.4_
