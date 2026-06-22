@@ -31,6 +31,35 @@ const ARTIFACTS_DIR = path.resolve(here, "..", "artifacts");
 /** Prefix that makes the run directory obviously this suite's. */
 const RUN_DIR_PREFIX = "adr-e2e-";
 
+/**
+ * Process-global cache key for the run directory. Playwright loads
+ * `playwright.config.ts` and the string-referenced `globalSetup`/`globalTeardown`
+ * modules as SEPARATE module graphs, so this file can be evaluated more than once
+ * within a single run. A `Date.now()`/random token would then differ between
+ * evaluations, making globalSetup seed one directory while the API (whose
+ * `ADR_REPO_PATH` comes from the config's evaluation) points at another. Caching
+ * the resolved run dir in `process.env` — which is shared across all module
+ * graphs in the same process — keeps every importer on the SAME directory for the
+ * whole run. The child API process receives its path explicitly via
+ * `webServer.env`, so it never depends on this cache.
+ */
+const RUN_DIR_ENV = "__ADR_E2E_RUN_DIR";
+
+/**
+ * Resolve the single run directory for this process: reuse the one already
+ * recorded in `process.env` if present, otherwise compute a fresh unique one and
+ * record it. Setting an environment variable is not filesystem mutation — the
+ * directory itself is still created by globalSetup, not here.
+ */
+function resolveRunDir(): string {
+  const cached = process.env[RUN_DIR_ENV];
+  if (cached && cached.length > 0) return cached;
+  const token = `${process.pid}-${Date.now()}-${randomUUID()}`;
+  const runDir = path.join(os.tmpdir(), `${RUN_DIR_PREFIX}${token}`);
+  process.env[RUN_DIR_ENV] = runDir;
+  return runDir;
+}
+
 /** Frozen shape exported by this module. */
 export type Paths = Readonly<{
   /**
@@ -78,10 +107,18 @@ export function computePaths(): Paths {
 }
 
 /**
- * The single, run-scoped paths value. Computed ONCE at module load so every
- * importer in the same process sees identical, stable locations.
+ * The single, run-scoped paths value. The run directory is resolved via
+ * `resolveRunDir()` (env-cached) so that even if this module is evaluated more
+ * than once in the same process, every importer sees identical, stable
+ * locations.
  *
  * Teardown removes `paths.repoPath` (the run dir) — that clears the temp git
  * repo AND `paths.sqlitePath`, which lives inside it.
  */
-export const paths: Paths = computePaths();
+const repoPath = resolveRunDir();
+export const paths: Paths = Object.freeze({
+  repoPath,
+  sqlitePath: path.join(repoPath, "index.sqlite"),
+  artifactsDir: ARTIFACTS_DIR,
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+});

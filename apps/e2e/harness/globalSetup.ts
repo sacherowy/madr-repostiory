@@ -36,12 +36,23 @@ const GIT_USER_EMAIL = "e2e@example.com";
  * the initial commit — mirroring the temp-repo seeding in `apps/web/src/
  * App.test.tsx`. Asserts the initial commit exists before returning so a silent
  * empty-repo state can never propagate to the launched API.
+ *
+ * Idempotent: if the repo already has an initial commit (e.g. it was provisioned
+ * at config load — see playwright.config.ts — and globalSetup re-checks it),
+ * this returns early without re-committing. This matters because Playwright sets
+ * up the `webServer` plugin BEFORE running globalSetup, so the repo is seeded at
+ * config-load time and this function may legitimately be called twice per run.
  */
 export async function seedRepo(repoPath: string): Promise<void> {
   await mkdir(path.join(repoPath, "decisions"), { recursive: true });
 
   const git = simpleGit(repoPath);
   await git.init();
+
+  // Already seeded? (idempotent re-entry) — a repo with ≥1 commit is ready.
+  if ((await git.checkIsRepo()) && (await git.raw(["rev-list", "-n", "1", "--all"])).trim() !== "") {
+    return;
+  }
   await git.addConfig("user.name", GIT_USER_NAME);
   await git.addConfig("user.email", GIT_USER_EMAIL);
 
@@ -94,12 +105,18 @@ export function logMode(geminiApiKey: string): void {
 }
 
 /**
- * Playwright globalSetup entry point. Composes the steps above using the
- * run-scoped `paths`. The browser precheck runs FIRST so a missing runtime
- * aborts the run fast, before any filesystem provisioning.
+ * Playwright globalSetup entry point.
+ *
+ * NOTE on ordering: Playwright sets up the `webServer` plugin BEFORE it runs
+ * globalSetup (see playwright/lib/runner/tasks.js — `createPluginSetupTasks`
+ * precedes `globalSetups`). The launched API opens the repo at boot, so the repo
+ * and mode are provisioned at CONFIG-LOAD time in `playwright.config.ts`, which
+ * is the only hook guaranteed to run before the webServer starts. This
+ * globalSetup therefore acts as defense-in-depth: it re-asserts the browser
+ * runtime and (idempotently) re-confirms the seeded repo. The mode is logged at
+ * config load, not here, to keep it to a single line.
  */
 export default async function globalSetup(): Promise<void> {
   assertBrowserInstalled();
   await seedRepo(paths.repoPath);
-  logMode(paths.geminiApiKey);
 }

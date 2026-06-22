@@ -15,6 +15,23 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 import { paths } from "./harness/paths.js";
+import { assertBrowserInstalled, logMode, seedRepo } from "./harness/globalSetup.js";
+
+// Provision the run BEFORE the webServer launches. Playwright sets up the
+// `webServer` plugin BEFORE it runs `globalSetup` (see
+// playwright/lib/runner/tasks.js: `createPluginSetupTasks` precedes
+// `globalSetups`), and the launched API opens the temp repo at boot — so seeding
+// in globalSetup would be too late and the API would crash on a missing
+// directory. The config module is evaluated before any task (Playwright must
+// load it to discover the webServer), making config load the earliest reliable
+// hook. We fail fast on a missing browser (Req 6.3), log the active mode (Req
+// 2.5), then seed the temp git repo (Req 1.2). Guarded by `!VITEST` so the
+// config-assertion unit test can import this module without side effects.
+if (!process.env.VITEST) {
+  assertBrowserInstalled();
+  logMode(paths.geminiApiKey);
+  await seedRepo(paths.repoPath);
+}
 
 /** Bounded readiness window for each launched dev server (Req 1.5). */
 const SERVER_TIMEOUT_MS = 120_000;

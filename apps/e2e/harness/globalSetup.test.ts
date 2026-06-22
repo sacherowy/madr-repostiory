@@ -3,7 +3,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { simpleGit } from "simple-git";
+import { chromium } from "@playwright/test";
 
 import { seedRepo, assertBrowserInstalled, logMode } from "./globalSetup.js";
 
@@ -47,9 +49,18 @@ describe("harness/globalSetup", () => {
   });
 
   describe("assertBrowserInstalled", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it("throws an actionable error when the chromium runtime is absent", () => {
-      // In this environment Chromium is genuinely not installed, so the
-      // precheck must throw (Req 6.3) rather than silently passing.
+      // Force the "missing browser" case deterministically (env-independent) by
+      // pointing executablePath() at a path that does not exist, so the precheck
+      // must throw (Req 6.3) rather than silently passing.
+      vi.spyOn(chromium, "executablePath").mockReturnValue(
+        path.join(os.tmpdir(), "definitely-not-a-real-chromium", "chrome"),
+      );
+
       let thrown: unknown;
       try {
         assertBrowserInstalled();
@@ -61,6 +72,15 @@ describe("harness/globalSetup", () => {
       // Actionable: names the fix and points at the missing path.
       expect(message).toMatch(/playwright install/);
       expect(message).toMatch(/chromium/i);
+    });
+
+    it("does not throw when the chromium runtime is present", () => {
+      // Point executablePath() at a path that exists (this test file itself) so
+      // the precheck's existsSync passes and it returns without throwing.
+      const presentPath = fileURLToPath(import.meta.url);
+      vi.spyOn(chromium, "executablePath").mockReturnValue(presentPath);
+
+      expect(() => assertBrowserInstalled()).not.toThrow();
     });
   });
 
