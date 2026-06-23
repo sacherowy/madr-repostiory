@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { FolderNode } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
+import { AdrCard } from "../../components/AdrCard.js";
+import { MonoChip } from "../../components/MonoChip.js";
 
 export interface FolderTreeProps {
   apiClient: ApiClient;
@@ -102,23 +104,52 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
   function renderAdr(adrId: string, title: string, status: string) {
     return (
       <li key={adrId} data-testid={`adr-node-${adrId}`}>
-        <span>
-          {title} ({adrId}) — {status}
-        </span>
-        <button data-testid={`adr-select-${adrId}`} type="button" onClick={() => onSelectAdr(adrId)}>
-          Open
-        </button>
-        <input
-          data-testid={`move-target-input-${adrId}`}
-          type="text"
-          value={moveTargets[adrId] ?? ""}
-          onChange={(event) =>
-            setMoveTargets((current) => ({ ...current, [adrId]: event.target.value }))
+        <AdrCard
+          id={adrId}
+          title={title}
+          status={status}
+          meta={
+            <>
+              {/* Raw status key preserved verbatim alongside the status badge so
+                  machine-readable status text stays available (the badge shows a
+                  capitalized human label). */}
+              <MonoChip variant="status" value={status} />
+              <button
+                data-testid={`adr-select-${adrId}`}
+                className="btn btn--secondary"
+                type="button"
+                onClick={() => onSelectAdr(adrId)}
+              >
+                Open
+              </button>
+              <div className="field">
+                <label className="field__label" htmlFor={`move-target-input-${adrId}`}>
+                  Move to folder
+                </label>
+                <div className="card__header">
+                  <input
+                    id={`move-target-input-${adrId}`}
+                    data-testid={`move-target-input-${adrId}`}
+                    className="field__input"
+                    type="text"
+                    value={moveTargets[adrId] ?? ""}
+                    onChange={(event) =>
+                      setMoveTargets((current) => ({ ...current, [adrId]: event.target.value }))
+                    }
+                  />
+                  <button
+                    data-testid={`move-button-${adrId}`}
+                    className="btn btn--secondary"
+                    type="button"
+                    onClick={() => handleMoveAdr(adrId)}
+                  >
+                    Move here
+                  </button>
+                </div>
+              </div>
+            </>
           }
         />
-        <button data-testid={`move-button-${adrId}`} type="button" onClick={() => handleMoveAdr(adrId)}>
-          Move here
-        </button>
       </li>
     );
   }
@@ -127,14 +158,25 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
     const isExpanded = expanded[node.path] ?? true;
     return (
       <li key={node.path} data-testid={`folder-node-${node.path}`}>
-        <button data-testid={`folder-toggle-${node.path}`} type="button" onClick={() => toggleExpanded(node.path)}>
-          {isExpanded ? "-" : "+"}
-        </button>
-        <span data-testid={`folder-select-${node.path}`} onClick={() => handleSelectFolder(node.path)}>
-          {node.name}
-        </span>
+        <div className="card__header">
+          <button
+            data-testid={`folder-toggle-${node.path}`}
+            className="btn btn--ghost"
+            type="button"
+            onClick={() => toggleExpanded(node.path)}
+          >
+            {isExpanded ? "-" : "+"}
+          </button>
+          <span
+            data-testid={`folder-select-${node.path}`}
+            className="folder-tree__folder-name"
+            onClick={() => handleSelectFolder(node.path)}
+          >
+            {node.name}
+          </span>
+        </div>
         {isExpanded ? (
-          <ul>
+          <ul className="folder-tree__children">
             {node.folders.map((child) => renderFolder(child))}
             {node.adrs.map((adr) => renderAdr(adr.id, adr.title, adr.status))}
           </ul>
@@ -144,43 +186,72 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
   }
 
   if (loadState.kind === "loading") {
-    return <div data-testid="folder-tree-loading">Loading…</div>;
+    return (
+      <div data-testid="folder-tree-loading" className="state state--loading">
+        <span className="state__spinner" aria-hidden="true" />
+        <p className="state__message">Loading…</p>
+      </div>
+    );
   }
 
   if (loadState.kind === "error") {
-    return <div data-testid="folder-tree-error">Failed to load the folder tree.</div>;
+    return (
+      <div data-testid="folder-tree-error" className="state state--error">
+        <p className="state__message">Failed to load the folder tree.</p>
+      </div>
+    );
   }
 
+  const folderFieldHasError = folderMissingFields !== null || folderConflict;
+
   return (
-    <div data-testid="folder-tree">
-      <div>
-        <label htmlFor="new-folder-path-input">New folder path</label>
-        <input
-          id="new-folder-path-input"
-          data-testid="new-folder-path-input"
-          type="text"
-          value={newFolderPath}
-          onChange={(event) => setNewFolderPath(event.target.value)}
-        />
-        <button data-testid="create-folder-button" type="button" onClick={handleCreateFolder}>
-          Create folder
-        </button>
+    <div data-testid="folder-tree" className="folder-tree">
+      <div className={`field${folderFieldHasError ? " field--error" : ""}`}>
+        <label className="field__label" htmlFor="new-folder-path-input">
+          New folder path
+        </label>
+        <div className="card__header">
+          <input
+            id="new-folder-path-input"
+            data-testid="new-folder-path-input"
+            className="field__input"
+            type="text"
+            value={newFolderPath}
+            onChange={(event) => setNewFolderPath(event.target.value)}
+          />
+          <button
+            data-testid="create-folder-button"
+            className="btn btn--primary"
+            type="button"
+            onClick={handleCreateFolder}
+          >
+            Create folder
+          </button>
+        </div>
         {folderMissingFields !== null ? (
-          <p data-testid="folder-missing-fields-message">
+          <p data-testid="folder-missing-fields-message" className="state state--error state__message">
             Missing fields: {folderMissingFields.join(", ")}
           </p>
         ) : null}
         {folderConflict ? (
-          <p data-testid="folder-conflict-message">A folder already exists at that path.</p>
+          <p data-testid="folder-conflict-message" className="state state--error state__message">
+            A folder already exists at that path.
+          </p>
         ) : null}
       </div>
 
       {moveMissingFields !== null ? (
-        <p data-testid="move-missing-fields-message">Missing fields: {moveMissingFields.join(", ")}</p>
+        <p data-testid="move-missing-fields-message" className="state state--error state__message">
+          Missing fields: {moveMissingFields.join(", ")}
+        </p>
       ) : null}
-      {moveNotFound ? <p data-testid="move-not-found-message">ADR not found.</p> : null}
+      {moveNotFound ? (
+        <p data-testid="move-not-found-message" className="state state--error state__message">
+          ADR not found.
+        </p>
+      ) : null}
 
-      <ul>{renderFolder(loadState.tree)}</ul>
+      <ul className="folder-tree__root">{renderFolder(loadState.tree)}</ul>
     </div>
   );
 }

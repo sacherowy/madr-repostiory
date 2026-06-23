@@ -89,7 +89,7 @@
   - _Depends: 2.1, 2.2, 2.3_
   - _Boundary: AdrEditor_
 
-- [ ] 4.2 (P) Restyle the folder and ADR tree panel
+- [x] 4.2 (P) Restyle the folder and ADR tree panel
   - Present ADR nodes as ADR cards (id chip, status badge, title) and style the folder rows, the create-folder field/button, and the move controls
   - Style the loading and error states and preserve the folder/ADR/move test hooks and labels
   - Observable: the tree renders ADR nodes as cards with status badges and id chips, and the panel test passes
