@@ -105,7 +105,7 @@
   - _Depends: 2.2_
   - _Boundary: RelationsPanel_
 
-- [ ] 4.4 (P) Restyle the history timeline panel
+- [x] 4.4 (P) Restyle the history timeline panel
   - Style version entries and render blob SHAs as machine-identifier chips, with styled loading and error states for the timeline and version content
   - Preserve the existing history test hooks and labels
   - Observable: history entries render with mono SHA chips and styled states, and the panel test passes
