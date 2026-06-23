@@ -52,7 +52,7 @@
   - _Depends: 1.1_
   - _Boundary: MonoChip_
 
-- [ ] 2.4 (P) Build the similarity meter primitive
+- [x] 2.4 (P) Build the similarity meter primitive
   - Render a similarity score as a teal-gradient bar with fill proportional to the value, alongside a monospace numeric value, clamping out-of-range scores
   - Include a unit test asserting clamping and proportional fill
   - Observable: the primitive and its unit test exist and the test passes
