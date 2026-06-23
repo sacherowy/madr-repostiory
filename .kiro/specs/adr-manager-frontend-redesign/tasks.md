@@ -44,7 +44,7 @@
   - _Depends: 1.1_
   - _Boundary: RelationChip_
 
-- [ ] 2.3 (P) Build the machine-identifier chip primitive
+- [x] 2.3 (P) Build the machine-identifier chip primitive
   - Render machine identifiers as monospace chips in three variants: ADR id (teal treatment), blob SHA (neutral), and raw status key (neutral)
   - Include a unit test asserting each variant renders its intended treatment
   - Observable: the primitive and its unit test exist and the test passes
