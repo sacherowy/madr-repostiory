@@ -68,7 +68,7 @@
   - _Depends: 2.1, 2.2, 2.3_
   - _Boundary: AdrCard_
 
-- [ ] 3. (P) Restructure the application shell
+- [x] 3. (P) Restructure the application shell
   - Lay out the sidebar (folder/ADR tree plus the session author-name field) and the workspace that displays the active panel using the shell stylesheet
   - Present the panel switcher as human-readable labeled controls that show the active panel, while preserving the existing panel-tab test hooks and active-state signaling
   - Keep the existing guidance shown when a panel needs a selected ADR but none is selected, restyled as an empty state, and label tab controls and the author field for assistive technology
