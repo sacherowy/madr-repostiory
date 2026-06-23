@@ -121,7 +121,7 @@
   - _Depends: 1.1_
   - _Boundary: VersionDiffView, AdrCompareView_
 
-- [ ] 4.6 (P) Restyle the comparison selection flows
+- [x] 4.6 (P) Restyle the comparison selection flows
   - Apply field and button styling to the version-compare and ADR-compare selection forms, with styled loading and error states
   - Preserve the compare-launcher test hooks and labels
   - Observable: the comparison launcher forms render in the design system and its test passes
