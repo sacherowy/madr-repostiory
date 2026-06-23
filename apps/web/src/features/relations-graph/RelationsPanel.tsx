@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { RelationView } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
+import { RelationChip } from "../../components/RelationChip.js";
 
 export interface RelationsPanelProps {
   apiClient: ApiClient;
@@ -49,27 +50,47 @@ export function RelationsPanel({ apiClient, adrId }: RelationsPanelProps) {
   }, [apiClient, adrId]);
 
   if (loadState.kind === "loading") {
-    return <div data-testid="relations-panel-loading">Loading…</div>;
+    return (
+      <div data-testid="relations-panel-loading" className="state state--loading">
+        <span className="state__spinner" aria-hidden="true" />
+        <p className="state__message">Loading…</p>
+      </div>
+    );
   }
 
   if (loadState.kind === "error") {
-    return <div data-testid="relations-panel-error">Failed to load relations.</div>;
+    return (
+      <div data-testid="relations-panel-error" className="state state--error">
+        <p className="state__message">Failed to load relations.</p>
+      </div>
+    );
   }
 
   if (loadState.relations.length === 0) {
-    return <div data-testid="relations-panel-empty">This ADR has no relations.</div>;
+    return (
+      <div data-testid="relations-panel-empty" className="state state--empty">
+        <p className="state__title">No relations yet.</p>
+        <p className="state__message">
+          This ADR has no relations. Link it to another decision to map how it
+          relates.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <ul data-testid="relations-panel">
+    <ul data-testid="relations-panel" className="relations-panel">
       {loadState.relations.map((relation) => (
         <li
           key={`${relation.direction}-${relation.type}-${relation.target}`}
           data-testid={`relation-item-${relation.direction}-${relation.type}-${relation.target}`}
+          className="relations-panel__item"
         >
-          <span data-testid="relation-direction">{relation.direction}</span>{" "}
-          <span data-testid="relation-type">{relation.type}</span>{" "}
-          <span data-testid="relation-target">{relation.target}</span>
+          <RelationChip
+            direction={relation.direction}
+            type={relation.type}
+            target={relation.target}
+          />
         </li>
       ))}
     </ul>

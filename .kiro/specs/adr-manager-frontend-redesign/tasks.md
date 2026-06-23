@@ -97,7 +97,7 @@
   - _Depends: 2.5_
   - _Boundary: FolderTree_
 
-- [ ] 4.3 (P) Restyle the relations panel
+- [x] 4.3 (P) Restyle the relations panel
   - Render each relation as a relation chip while preserving the relation-direction, relation-type, and relation-target test hooks
   - Style the loading, empty, and error states with the design system
   - Observable: relations render as chips with correct markers, the empty/loading/error states are styled, and the panel test passes
