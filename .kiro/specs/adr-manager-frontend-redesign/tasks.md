@@ -113,7 +113,7 @@
   - _Depends: 2.3_
   - _Boundary: HistoryTimeline_
 
-- [ ] 4.5 (P) Restyle the version diff and ADR comparison views
+- [x] 4.5 (P) Restyle the version diff and ADR comparison views
   - Apply the diff add/remove treatment with subdued line numbers to the version diff, and visually distinguish differing from identical fields in the ADR-to-ADR comparison
   - Style the loading, error, and rejection states and preserve the diff/compare test hooks
   - Observable: added/removed/unchanged content is visually distinct in a diff, differing fields stand out in a comparison, and the views' tests pass

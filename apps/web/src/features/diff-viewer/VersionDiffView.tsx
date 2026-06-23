@@ -17,6 +17,13 @@ type LoadState =
 
 const INCOMPLETE_SELECTION_REASON = "both a 'from' and a 'to' version are required";
 
+/** Maps a DiffHunk kind to its design-system diff-row modifier (base.css). */
+const HUNK_ROW_CLASS: Record<DiffHunk["kind"], string> = {
+  added: "diff__row--add",
+  removed: "diff__row--del",
+  unchanged: "diff__row--unchanged",
+};
+
 /**
  * Renders the diff between two versions of one ADR (Req 7.1, 7.2). The
  * "only one version selected" rejection (Req 7.3) is a pure client-side
@@ -64,22 +71,45 @@ export function VersionDiffView({ apiClient, adrId, fromSha, toSha }: VersionDif
   }, [apiClient, adrId, fromSha, toSha]);
 
   if (state.kind === "rejected") {
-    return <div data-testid="version-diff-rejection">{state.reason}</div>;
+    // Rejection is incomplete/invalid selection guidance, not a system error —
+    // neutral empty-state treatment, danger red reserved for real errors.
+    return (
+      <div data-testid="version-diff-rejection" className="state state--empty">
+        <p className="state__message">{state.reason}</p>
+      </div>
+    );
   }
 
   if (state.kind === "loading") {
-    return <div data-testid="version-diff-loading">Loading…</div>;
+    return (
+      <div data-testid="version-diff-loading" className="state state--loading">
+        <span className="state__spinner" aria-hidden="true" />
+        <p className="state__message">Loading…</p>
+      </div>
+    );
   }
 
   if (state.kind === "error") {
-    return <div data-testid="version-diff-error">Failed to load that comparison.</div>;
+    return (
+      <div data-testid="version-diff-error" className="state state--error">
+        <p className="state__message">Failed to load that comparison.</p>
+      </div>
+    );
   }
 
   return (
-    <ul data-testid="version-diff">
+    <ul data-testid="version-diff" className="diff">
       {state.hunks.map((hunk, index) => (
-        <li key={index} data-testid={`version-diff-hunk-${index}-${hunk.kind}`} data-kind={hunk.kind}>
-          {hunk.text}
+        <li
+          key={index}
+          data-testid={`version-diff-hunk-${index}-${hunk.kind}`}
+          data-kind={hunk.kind}
+          className={`diff__row ${HUNK_ROW_CLASS[hunk.kind]}`}
+        >
+          <span className="diff__lineno" aria-hidden="true">
+            {index + 1}
+          </span>
+          <span className="diff__content">{hunk.text}</span>
         </li>
       ))}
     </ul>
