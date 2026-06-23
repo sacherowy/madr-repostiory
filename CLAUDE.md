@@ -20,6 +20,11 @@ Kiro-style Spec-Driven Development on an agentic SDLC
 ## Development Guidelines
 - Think in English, generate responses in English. All Markdown content written to project files (e.g., requirements.md, design.md, tasks.md, research.md, validation reports) MUST be written in the target language configured for this specification (see spec.json.language).
 
+## Environment Notes
+- **Playwright browser is pre-provisioned.** A Chromium build ships in the runtime image at `/opt/pw-browsers/` (e.g. `chromium-1194`), and `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` is set. Do NOT conclude the browser is missing by checking `~/.cache/ms-playwright` (the default location, which is empty here) — resolve the real path via `PLAYWRIGHT_BROWSERS_PATH` or `npx playwright install --dry-run`. No `playwright install` (network download) is needed.
+- **The E2E suite runs offline.** `pnpm --filter @adr/e2e test:e2e` launches the API + web dev servers and drives the real browser; it works without network or a real `GEMINI_API_KEY` (offline mode). The only test that skips offline is the real-embedding similarity variant (needs a live Gemini key). Use `pnpm --filter @adr/e2e test:unit` for the harness/config vitest assertions.
+- **Web tests/build:** `pnpm --filter @adr/web test` (vitest, jsdom + real Fastify backend) and `pnpm --filter @adr/web build` (vite).
+
 ## Minimal Workflow
 - Phase 0 (optional): `/kiro-steering`, `/kiro-steering-custom`
 - Discovery: `/kiro-discovery "idea"` — determines action path, writes brief.md + roadmap.md for multi-spec projects
