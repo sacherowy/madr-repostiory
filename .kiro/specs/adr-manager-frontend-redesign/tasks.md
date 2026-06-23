@@ -11,7 +11,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 9.1, 9.2, 9.3, 11.1, 11.2, 11.3_
   - _Boundary: base.css_
 
-- [ ] 1.2 (P) Build the application-shell layout stylesheet
+- [x] 1.2 (P) Build the application-shell layout stylesheet
   - Add a stylesheet that lays out a persistent sidebar region and a workspace region, plus a labeled tab bar
   - Collapse the layout responsively so navigation and workspace stay usable from mobile to desktop without horizontal page scrolling
   - Observable: at a mobile viewport width the sidebar and workspace remain reachable with no horizontal page scroll; at desktop width they sit side by side

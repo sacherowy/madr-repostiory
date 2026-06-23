@@ -1,0 +1,183 @@
+/* =========================================================================
+   app-shell.css — application-shell LAYOUT for the ADR Manager web app.
+
+   Layered on top of the design tokens (./tokens.css) and the component
+   foundation (./base.css). This file references token custom properties by
+   name only — it never redefines or re-values a token. It owns ONLY the
+   shell LAYOUT:
+     - the persistent sidebar + workspace grid (App.tsx task 3),
+     - the labeled tab bar layout, and
+     - responsive collapse so navigation and workspace stay reachable from
+       mobile to desktop with no horizontal page scroll.
+
+   Component classes (buttons, fields, cards, badges, chips, states, focus)
+   live in base.css and are NOT duplicated here. Class naming is BEM-ish to
+   match base.css so App.tsx can consume these classes directly. The actual
+   data-testid / aria-current attributes come from App.tsx (task 3) — this
+   file provides their visual/layout treatment only.
+
+   Requirements: 2.1 (persistent sidebar + workspace), 10.1 (no horizontal
+   page scroll at mobile width), 10.2 (controls reachable mobile → desktop).
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Shell root (Req 2.1, 10.1, 10.2)
+   Desktop: a fixed-width persistent sidebar beside a fluid workspace.
+   Mobile: the two regions stack vertically (sidebar above workspace) so
+   both stay reachable. `min-width: 0` on the grid and 100% max width keep
+   wide child content (diffs, code) from forcing horizontal page scroll.
+   ------------------------------------------------------------------------- */
+
+.app-shell {
+  display: grid;
+  /* Mobile-first: single column, regions stacked. */
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-width: 0;
+  padding: 16px;
+  background: var(--bg);
+}
+
+/* Desktop: persistent sidebar + fluid workspace side by side.
+   `minmax(0, 1fr)` on the workspace track lets it shrink and contain wide
+   content instead of overflowing the page (Req 10.1). */
+@media (min-width: 768px) {
+  .app-shell {
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 24px;
+    padding: 24px;
+    align-items: start;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Sidebar (Req 2.1) — persistent navigation region.
+   Holds the folder/ADR tree + the session author-name field (task 3).
+   Token-derived surface + border. Scrolls INTERNALLY on tall content so it
+   never forces page-wide scroll. On desktop it sticks within the viewport.
+   ------------------------------------------------------------------------- */
+
+.app-shell__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  /* Wide tree labels wrap/scroll inside, not across the page. */
+  overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+  .app-shell__sidebar {
+    position: sticky;
+    top: 24px;
+    /* Keep the sidebar within the viewport and scroll its own overflow. */
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Workspace (Req 2.1, 10.1) — region that displays the active panel.
+   `min-width: 0` is essential in a grid/flex track so wide content (diffs,
+   long mono lines) scrolls WITHIN the workspace rather than stretching the
+   page. `max-width: 100%` reinforces the no-horizontal-page-scroll rule.
+   ------------------------------------------------------------------------- */
+
+.app-shell__workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  /* Contain overflow of wide panel content inside the workspace column. */
+  overflow-x: auto;
+}
+
+/* The mounted panel body fills the workspace and contains its own overflow. */
+.app-shell__panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* -------------------------------------------------------------------------
+   Tab bar (Req 2.2, 2.3 visual support) — labeled panel switcher.
+   Layout/visual only: a row of tab controls that wraps on small screens and
+   scrolls horizontally if they cannot wrap, so every tab stays reachable
+   without scrolling the whole page (Req 10.2). The data-testid / aria-current
+   come from App.tsx; this file only styles the active indicator.
+   ------------------------------------------------------------------------- */
+
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  /* If tabs can neither fit nor wrap usefully, allow horizontal scroll of
+     the bar itself — never the page. */
+  overflow-x: auto;
+  /* Smooth horizontal scroll on touch without forcing page scroll. */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* A single tab control. Layout + neutral resting treatment; base.css owns
+   the focus ring via :focus-visible. */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-500);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--ink-900);
+  background: var(--bg);
+}
+
+/* Active panel indicator (Req 2.3) — teal treatment so the current panel
+   reads clearly. Pairs with aria-current set in App.tsx. */
+.tab--active {
+  color: var(--teal-700);
+  background: var(--bg);
+  border-color: var(--line-strong);
+  box-shadow: var(--sh-sm);
+}
+
+.tab--active:hover {
+  color: var(--teal-700);
+}
+
+/* aria-current-driven styling as well, so the active tab reads correctly
+   even before a modifier class is applied (App.tsx may use either). */
+.tab[aria-current="page"],
+.tab[aria-current="true"] {
+  color: var(--teal-700);
+  background: var(--bg);
+  border-color: var(--line-strong);
+  box-shadow: var(--sh-sm);
+}
