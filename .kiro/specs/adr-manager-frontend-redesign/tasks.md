@@ -27,7 +27,7 @@
 
 - [ ] 2. Shared presentational primitives
 
-- [ ] 2.1 (P) Build the status badge primitive
+- [x] 2.1 (P) Build the status badge primitive
   - Render an ADR status as a colored dot plus a human-readable label using the four-status color/background pairs from the design system
   - Render an unrecognized status value in the neutral badge treatment rather than an undefined color
   - Include a unit test asserting each known status maps to its status class and an unknown value maps to the neutral class
