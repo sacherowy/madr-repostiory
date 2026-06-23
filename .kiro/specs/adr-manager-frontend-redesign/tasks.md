@@ -129,7 +129,7 @@
   - _Depends: 1.1_
   - _Boundary: CompareLauncher_
 
-- [ ] 4.7 (P) Restyle the keyword search panel
+- [x] 4.7 (P) Restyle the keyword search panel
   - Style the search form and present results as ADR cards, with an inviting no-results empty state and styled loading and error states
   - Preserve the search test hooks and labels
   - Observable: search results render as cards, the no-results empty state is styled, and the panel test passes
