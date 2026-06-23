@@ -147,7 +147,7 @@
 
 - [ ] 5. Validation: design verification and regression
 
-- [ ] 5.1 Add DOM-level design-verification end-to-end checks
+- [x] 5.1 Add DOM-level design-verification end-to-end checks
   - Add an end-to-end spec that drives the real UI and asserts, through computed styles, that a status badge color matches its status token, a relation chip uses the monospace family, the ADR card accent is present on a real element, a keyboard-focused control shows a visible focus outline, and panel tabs render human-readable labels
   - Add these assertions within the existing run lifecycle and selectors, introducing no pixel-baseline snapshot oracle and no new dependency
   - Observable: the new end-to-end design spec passes in the offline run alongside the existing journey specs
