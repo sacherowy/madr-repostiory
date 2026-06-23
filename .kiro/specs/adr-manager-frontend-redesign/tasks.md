@@ -137,7 +137,7 @@
   - _Depends: 2.5_
   - _Boundary: SearchPanel_
 
-- [ ] 4.8 (P) Restyle the similarity panel
+- [x] 4.8 (P) Restyle the similarity panel
   - Present each result with the similarity meter and an ADR card, with an inviting empty-scope state and styled loading and error states
   - Preserve the similarity test hooks and labels
   - Observable: similarity results render with proportional meters and cards, the empty-scope state is styled, and the panel test passes

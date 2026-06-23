@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { SimilarityResult } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
+import { AdrCard } from "../../components/AdrCard.js";
+import { SimilarityMeter } from "../../components/SimilarityMeter.js";
 
 export interface SimilarityPanelProps {
   apiClient: ApiClient;
@@ -77,22 +79,48 @@ export function SimilarityPanel({ apiClient, adrId, folder }: SimilarityPanelPro
   }, [apiClient, adrId, folder]);
 
   if (state.kind === "loading") {
-    return <div data-testid="similarity-loading">Loading…</div>;
+    return (
+      <div data-testid="similarity-loading" className="state state--loading">
+        <span className="state__spinner" aria-hidden="true" />
+        <p className="state__message">Loading…</p>
+      </div>
+    );
   }
 
   if (state.kind === "error") {
-    return <div data-testid="similarity-error">Failed to load similar ADRs.</div>;
+    return (
+      <div data-testid="similarity-error" className="state state--error">
+        <p className="state__message">Failed to load similar ADRs.</p>
+      </div>
+    );
   }
 
   if (state.kind === "emptyScope") {
-    return <div data-testid="similarity-empty">No similar ADRs are available in that scope.</div>;
+    return (
+      <div data-testid="similarity-empty" className="state state--empty">
+        <p className="state__title">No similar ADRs in this scope.</p>
+        <p className="state__message">
+          Nothing else is close by yet. Pick a broader folder, or keep writing —
+          related decisions will surface here as your library grows.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <ul data-testid="similarity-results">
+    <ul data-testid="similarity-results" className="similarity-panel">
       {state.results.map((result) => (
-        <li key={result.adr.id} data-testid={`similarity-result-${result.adr.id}`}>
-          {result.adr.title} ({result.adr.id}) — score: {result.score}
+        <li
+          key={result.adr.id}
+          data-testid={`similarity-result-${result.adr.id}`}
+          className="similarity-panel__item"
+        >
+          <AdrCard
+            id={result.adr.id}
+            title={result.adr.title}
+            status={result.adr.status}
+            meta={<SimilarityMeter score={result.score} />}
+          />
         </li>
       ))}
     </ul>
