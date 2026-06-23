@@ -80,7 +80,7 @@
 
 - [ ] 4. Restyle feature panels
 
-- [ ] 4.1 (P) Restyle the ADR editor panel
+- [x] 4.1 (P) Restyle the ADR editor panel
   - Apply field, button, and card styling to the create and edit forms, render the status with the status badge, the ADR id and blob SHA as machine-identifier chips, and the relation add/remove controls with relation chips
   - Style the loading, not-found, missing-fields, invalid-relations, save-success, and stale-write conflict states with the design system, keeping the destructive treatment for errors and preserving the existing conflict message text verbatim
   - Preserve every existing test hook and label; update the panel's test only where wrapper markup changes a structural query
