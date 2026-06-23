@@ -205,6 +205,7 @@ interface StatusBadgeProps extends BasePrimitiveProps {
 **Responsibilities & Constraints**
 - Maps `RelationType` → marker class per the Relations table: solid teal for `supersedes`/`superseded-by`, solid indigo for `depends-on`, dashed slate for `relates-to`, solid danger for `conflicts-with`.
 - Monospace chip; optional target text rendered via `MonoChip`/inline mono.
+- **Test-hook preservation**: where `RelationsPanel` already emits `relation-direction`, `relation-type`, and `relation-target` spans (and `AdrEditor`'s relations-editor list items), the chip must continue to render those exact testid'd spans and their text. `RelationChip` therefore accepts an optional `direction` and forwards all three inner test hooks rather than collapsing them into a single opaque element (12.2).
 
 **Contracts**: State [x]
 
@@ -213,8 +214,12 @@ interface RelationChipProps extends BasePrimitiveProps {
   type: import("@adr/shared").RelationType;
   /** Optional related ADR id to display alongside the marker. */
   target?: string;
+  /** Optional relation direction (e.g. RelationsPanel's incoming/outgoing); when
+   * provided, rendered as the existing `relation-direction` testid span. */
+  direction?: string;
 }
 ```
+- Inner test hooks: when `direction`/`type`/`target` are shown, they are wrapped in `data-testid="relation-direction" | "relation-type" | "relation-target"` spans to preserve the existing `RelationsPanel` contract.
 
 #### MonoChip
 
@@ -271,6 +276,7 @@ interface AdrCardProps extends BasePrimitiveProps {
   meta?: React.ReactNode;
 }
 ```
+- **Assertable accent treatment**: the card's top accent is rendered as a directly computable style on an actual element — a `border-top` (or `box-shadow`) on the card root, or a dedicated `<span class="card__accent">` child — **not** a `::before` pseudo-element. This lets the E2E design check read it with `toHaveCSS` on a real element rather than `getComputedStyle(el, '::before')` (3.1, 13.1).
 
 **Implementation Notes** (primitives)
 - Integration: primitives accept typed `@adr/shared` values from feature panels; they hold no state and make no `ApiClient` calls.
@@ -288,7 +294,7 @@ interface AdrCardProps extends BasePrimitiveProps {
 
 **Responsibilities & Constraints**
 - Drives the launched real UI (same `baseURL`/lifecycle as existing specs); asserts computed styles via `toHaveCSS`/`getComputedStyle`.
-- Checks: (a) a status badge's color matches the status token; (b) a relation chip's `font-family` is the monospace stack; (c) the ADR card exposes its accent treatment; (d) a keyboard-focused control shows a visible focus outline (non-`none`); (e) panel tabs render human-readable labels, not raw state keys.
+- Checks: (a) a status badge's color matches the status token; (b) a relation chip's `font-family` is the monospace stack; (c) the ADR card's accent treatment is read directly via `toHaveCSS` on the real card element / `card__accent` child (not a pseudo-element, per AdrCard); (d) a keyboard-focused control shows a visible focus outline (non-`none`); (e) panel tabs render human-readable labels, not raw state keys.
 - Adds assertions within the existing run lifecycle and `testDir`; introduces no `toHaveScreenshot` and no new dependency (13.2, 13.3).
 
 **Contracts**: none (test artifact).
