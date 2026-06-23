@@ -18,7 +18,7 @@
   - _Requirements: 2.1, 10.1, 10.2_
   - _Boundary: app-shell.css_
 
-- [ ] 1.3 Load the new stylesheets at app startup
+- [x] 1.3 Load the new stylesheets at app startup
   - Import the base and application-shell stylesheets once at startup, after the existing tokens
   - Observable: the rendered app shows the applied typography and token colors with no unstyled fallback remaining
   - _Requirements: 1.1, 1.2_
