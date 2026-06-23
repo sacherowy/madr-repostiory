@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Foundation: design-system stylesheets and startup wiring
+- [x] 1. Foundation: design-system stylesheets and startup wiring
 
 - [x] 1.1 Build the reusable design-system base stylesheet
   - Add a global stylesheet layered on the existing design tokens that applies the body/display/mono typefaces, token-derived colors, spacing, radii, and shadows, with no surface left on the browser default sans-serif
@@ -25,7 +25,7 @@
   - _Depends: 1.1, 1.2_
   - _Boundary: main.tsx_
 
-- [ ] 2. Shared presentational primitives
+- [x] 2. Shared presentational primitives
 
 - [x] 2.1 (P) Build the status badge primitive
   - Render an ADR status as a colored dot plus a human-readable label using the four-status color/background pairs from the design system
@@ -78,7 +78,7 @@
   - _Depends: 1.2, 1.3_
   - _Boundary: App shell_
 
-- [ ] 4. Restyle feature panels
+- [x] 4. Restyle feature panels
 
 - [x] 4.1 (P) Restyle the ADR editor panel
   - Apply field, button, and card styling to the create and edit forms, render the status with the status badge, the ADR id and blob SHA as machine-identifier chips, and the relation add/remove controls with relation chips
