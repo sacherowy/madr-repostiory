@@ -36,7 +36,7 @@
   - _Depends: 1.1_
   - _Boundary: StatusBadge_
 
-- [ ] 2.2 (P) Build the relation chip primitive
+- [x] 2.2 (P) Build the relation chip primitive
   - Render a relation as a monospace chip with the colored marker for its type per the Relations table (solid teal, solid indigo, dashed slate, solid danger)
   - Accept an optional relation direction and preserve the existing relation-direction, relation-type, and relation-target test hooks and their text so the relations panel contract is unbroken
   - Observable: rendering a relation shows the correct marker and still exposes the three relation test hooks with their values
