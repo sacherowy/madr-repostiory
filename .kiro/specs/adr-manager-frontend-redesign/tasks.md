@@ -60,7 +60,7 @@
   - _Depends: 1.1_
   - _Boundary: SimilarityMeter_
 
-- [ ] 2.5 Build the ADR card primitive
+- [x] 2.5 Build the ADR card primitive
   - Compose an ADR summary card with a top accent, an id chip, a status badge, the title, optional relation chips, and an optional metadata footer
   - Render the accent as a directly computable style on a real element (not a pseudo-element) so it can be asserted later
   - Observable: rendering a sample ADR shows accent, id chip, status badge, title, and any relation chips together as one card
