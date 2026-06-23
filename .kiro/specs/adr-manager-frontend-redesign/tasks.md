@@ -155,7 +155,7 @@
   - _Depends: 3, 4.1, 4.3, 2.5_
   - _Boundary: design-system.spec_
 
-- [ ] 5.2 Run the full web and end-to-end suites and confirm no regressions
+- [x] 5.2 Run the full web and end-to-end suites and confirm no regressions
   - Run the web component tests and the offline end-to-end suite across the workspace and confirm all existing behavior, test hooks, and API contracts still pass with no new dependency added
   - Observable: the web test command and the offline end-to-end run both pass with no regressions
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
