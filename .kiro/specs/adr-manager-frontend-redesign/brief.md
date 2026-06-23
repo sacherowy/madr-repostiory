@@ -61,11 +61,19 @@ so no separate viability check is required.
   chips, monospace ID/SHA chips, diff coloring, similarity meter, empty/loading/
   error states, and the accessibility bar — all driven by `docs/design.md` tokens
   and component specs. Updating component tests to remain green under the new
-  markup (preserving existing `data-testid` and roles/contracts).
+  markup (preserving existing `data-testid` and roles/contracts). Adding
+  **semantic/DOM-level design-verification E2E assertions** in `apps/e2e` that
+  check the design contract through the DOM/computed styles (status-badge colors,
+  monospace relation chips + markers, ADR card accent bar, visible keyboard focus
+  ring, labeled tabs) — extending the existing journey specs, not replacing them.
 - **Out**: Any backend/API/domain change (`apps/api`, `packages/*`); new product
   features or routes; changing API contracts or `data-testid` hooks relied on by
   tests/E2E; editing `docs/design.md` itself; introducing a CSS framework,
-  component library, or client-side router.
+  component library, or client-side router. **Pixel-baseline visual-regression
+  diffing (`toHaveScreenshot`)** and an **automated accessibility suite
+  (`axe-core`)** are explicitly out — accessibility remains a manual quality gate
+  (see Constraints), and design verification stays at the semantic/DOM level to
+  avoid font/OS/CI flake and respect playwright-e2e's stated Non-Goal.
 
 ## Boundary Candidates
 - Global/foundation layer: base stylesheet + shared component classes (buttons,
@@ -76,6 +84,9 @@ so no separate viability check is required.
   system (editor, tree, relations, history, diff/compare ×3, search, similarity).
 - States & accessibility: empty/loading/error patterns, focus visibility,
   reduced-motion, WCAG AA contrast — applied across the above.
+- Design verification (E2E): semantic/DOM-level assertions in `apps/e2e` that
+  prove the rendered UI honors the design contract, added to the existing
+  Playwright journey specs.
 
 ## Out of Boundary
 - ADR domain logic, persistence, embeddings, git access, and all backend routes.
@@ -95,8 +106,12 @@ so no separate viability check is required.
 - **Extends**: `adr-manager` — realizes the visual design its `## UI Design System`
   section specified but left unapplied. This spec must not contradict adr-manager's
   requirements/contracts; it only changes presentation.
-- **Adjacent**: `playwright-e2e` — keep its selectors/roles and screenshot-worthy
-  states intact; do not absorb or redefine its scope.
+- **Extends**: `playwright-e2e` — adds semantic/DOM design-verification assertions
+  to the `apps/e2e` journey specs. Must preserve that spec's selectors, roles, run
+  lifecycle, and offline-by-default behavior, and must NOT introduce the
+  `toHaveScreenshot` visual-regression that playwright-e2e lists as a Non-Goal.
+- **Adjacent**: none beyond the two specs above; do not absorb or redefine the
+  scope of either.
 
 ## Constraints
 - No new runtime dependency; no CSS framework, component library, or router
