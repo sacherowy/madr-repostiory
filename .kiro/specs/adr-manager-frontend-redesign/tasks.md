@@ -2,7 +2,7 @@
 
 - [ ] 1. Foundation: design-system stylesheets and startup wiring
 
-- [ ] 1.1 Build the reusable design-system base stylesheet
+- [x] 1.1 Build the reusable design-system base stylesheet
   - Add a global stylesheet layered on the existing design tokens that applies the body/display/mono typefaces, token-derived colors, spacing, radii, and shadows, with no surface left on the browser default sans-serif
   - Provide reusable classes for the recurring components named in the design system: buttons, fields, cards, badges, chips, similarity meter, and diff rows
   - Provide loading, empty, and error state classes, with the destructive red reserved strictly for error/conflict states and never for branding or navigation
