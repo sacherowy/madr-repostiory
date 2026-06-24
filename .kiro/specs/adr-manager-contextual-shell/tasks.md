@@ -7,7 +7,7 @@
   - Confirm both packages resolve and appear in the lockfile, and that the existing web build still succeeds
   - _Requirements: 10.3_
 
-- [ ] 1.2 (P) Establish the server-state client, provider, and test wrapper
+- [x] 1.2 (P) Establish the server-state client, provider, and test wrapper
   - Create a shared server-state client instance and wrap the application root with its provider
   - Provide a reusable test wrapper so components and hooks that consume server-state can be rendered in isolation
   - Observable: the app mounts inside the provider, a trivial query hook resolves through the test wrapper, and the existing web test suite passes
