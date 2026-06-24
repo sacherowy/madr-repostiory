@@ -1,16 +1,16 @@
 {
   "feature_name": "adr-manager-contextual-shell",
   "created_at": "2026-06-24T00:52:11Z",
-  "updated_at": "2026-06-24T01:04:11Z",
+  "updated_at": "2026-06-24T01:59:59Z",
   "language": "en",
-  "phase": "requirements-generated",
+  "phase": "design-generated",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "tasks": {
