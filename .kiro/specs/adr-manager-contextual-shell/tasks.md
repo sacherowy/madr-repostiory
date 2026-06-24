@@ -31,7 +31,7 @@
   - _Depends: 1.2_
   - _Boundary: design tokens, soft-ui stylesheet, app entry point_
 
-- [ ] 1.5 (P) Lay out the responsive four-zone shell grid
+- [x] 1.5 (P) Lay out the responsive four-zone shell grid
   - Define the shell layout for a top command-bar region, a left explorer rail, a center object region, and a right inspector rail, with the rails collapsing on narrow viewports and a way to reveal each on demand
   - Observable: at desktop width all four zones are visible; at mobile width the rails collapse and content remains reachable without horizontal page scroll
   - _Requirements: 1.1, 8.1, 8.2, 8.3, 10.2_
