@@ -46,7 +46,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 9.3_
   - _Boundary: ContextHeader_
 
-- [ ] 2.2 (P) Build the contextual aspect switcher
+- [x] 2.2 (P) Build the contextual aspect switcher
   - Render Edit / Relations / History / Similar controls only when an ADR is selected, marking the active aspect and displaying a count beside Relations/History/Similar only when a count is supplied; render nothing with no selection and include no Comparison control
   - Migrate the existing aspect tab hooks onto these controls (editor, relations, history, similarity) and keep their tab roles/active-state semantics; make the controls keyboard operable and labeled
   - Observable: with no selection the switcher renders nothing; with a selection it renders four controls carrying the migrated hooks, shows counts only for provided keys, and marks the active aspect
