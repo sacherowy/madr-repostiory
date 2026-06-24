@@ -39,7 +39,7 @@
 
 ## 2. Core: center object region components
 
-- [ ] 2.1 (P) Build the ADR context header
+- [x] 2.1 (P) Build the ADR context header
   - Present the selected ADR as an object: identifier chip, status badge, title, and supporting metadata using the existing primitives, plus inline Edit and Compare actions exposed as callbacks
   - Label the header controls for assistive technology
   - Observable: given an ADR summary the header renders id/status/title/meta and firing the Edit and Compare controls invokes their callbacks (verified by component test)
