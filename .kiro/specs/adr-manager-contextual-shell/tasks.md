@@ -15,7 +15,7 @@
   - _Depends: 1.1_
   - _Boundary: queryClient, app entry point_
 
-- [ ] 1.3 (P) Build the workspace view-state store
+- [x] 1.3 (P) Build the workspace view-state store
   - Implement the UI-state store holding selection, active aspect, and the palette/comparison/inspector visibility flags with intent-named actions
   - Enforce legal transitions inside actions (selecting an ADR forces the Edit aspect and closes the palette; dismissing the palette or comparison never clears the selection) and provide a reset action for tests
   - Observable: store unit tests pass covering select/clear, dismiss-preserves-selection, and reset
@@ -146,3 +146,6 @@
   - Observable: both suites pass offline, responsive/reduced-motion checks hold, and the dependency manifest shows only the two new packages added
   - _Requirements: 7.4, 8.2, 8.3, 9.1, 9.4, 10.1, 10.2, 10.5, 12.4_
   - _Depends: 7.3, 8.1_
+
+## Implementation Notes
+- FolderTree.test.tsx (real Fastify backend) can hit a 10s hook timeout under concurrent vitest load; it is unrelated to view-state/store work and passes in isolation / on re-run. If it flakes during a task, re-run the affected file in isolation before treating it as a regression.
