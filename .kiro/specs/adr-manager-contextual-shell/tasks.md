@@ -55,7 +55,7 @@
 
 ## 3. Core: server-state hooks
 
-- [ ] 3.1 (P) Implement the aspect-counts hook
+- [x] 3.1 (P) Implement the aspect-counts hook
   - Provide relations/history/similar counts for the selected ADR via the server-state client, disabled when no ADR is selected, resolving similarity scope from the selected folder or the ADR's own folder
   - Populate a count only when its query resolves; omit it on failure or offline-empty similarity, never throwing to the UI
   - Observable: hook test shows empty result for no selection, populated counts on resolution, and omitted keys on error/offline-empty
