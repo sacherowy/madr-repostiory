@@ -73,7 +73,7 @@
 
 ## 4. Core: Tree View 2.0 explorer
 
-- [ ] 4.1 (P) Extend the folder/ADR tree with presentation affordances
+- [x] 4.1 (P) Extend the folder/ADR tree with presentation affordances
   - Add optional filtering that narrows visible nodes, a status indicator per ADR node, a raised treatment for the selected row, and move affordances revealed on hover/focus while keeping the move controls in the DOM
   - Keep all new inputs optional so default behavior, existing tree/folder/move flows, and existing hooks are preserved
   - Observable: with a filter set only matching nodes show, the selected row carries the raised treatment, status dots render per ADR, and existing tree hooks/tests remain green

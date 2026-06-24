@@ -245,4 +245,159 @@ describe("FolderTree", () => {
       expect(within(destinationNode).getByTestId(`adr-node-${created.adr.id}`)).toBeInTheDocument();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Tree View 2.0 presentation affordances (Req 5.2, 5.4, 5.5, 5.6, 10.5).
+  // All driven via NEW OPTIONAL props; defaults must leave behavior unchanged.
+  // ---------------------------------------------------------------------------
+  describe("Tree View 2.0 presentation affordances", () => {
+    it("filter narrows the visible tree to matching ADR/folder nodes while keeping ancestors of matches visible (Req 5.2)", async () => {
+      const alpha = await client.createFolder({ path: "decisions/alpha", author: AUTHOR });
+      if (!alpha.ok) throw new Error("fixture setup: createFolder alpha unexpectedly failed");
+      const beta = await client.createFolder({ path: "decisions/beta", author: AUTHOR });
+      if (!beta.ok) throw new Error("fixture setup: createFolder beta unexpectedly failed");
+
+      const apple = await client.createAdr({ title: "Apple decision", folder: "decisions/alpha", author: AUTHOR });
+      if (!apple.ok) throw new Error("fixture setup: createAdr apple unexpectedly failed");
+      const banana = await client.createAdr({ title: "Banana decision", folder: "decisions/beta", author: AUTHOR });
+      if (!banana.ok) throw new Error("fixture setup: createAdr banana unexpectedly failed");
+
+      const { rerender } = render(
+        <FolderTree apiClient={client} authorName={AUTHOR} onSelectFolder={vi.fn()} onSelectAdr={vi.fn()} />
+      );
+
+      // With no filter, both ADRs and both folders are visible.
+      await waitFor(() => expect(screen.getByTestId(`adr-node-${apple.adr.id}`)).toBeInTheDocument());
+      expect(screen.getByTestId(`adr-node-${banana.adr.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId("folder-node-decisions/alpha")).toBeInTheDocument();
+      expect(screen.getByTestId("folder-node-decisions/beta")).toBeInTheDocument();
+
+      // Filtering on the matching ADR title narrows to just that ADR. Its
+      // ancestor folder stays visible so the match remains reachable; the
+      // non-matching ADR and its folder disappear.
+      rerender(
+        <FolderTree
+          apiClient={client}
+          authorName={AUTHOR}
+          onSelectFolder={vi.fn()}
+          onSelectAdr={vi.fn()}
+          filter="apple"
+        />
+      );
+
+      expect(screen.getByTestId(`adr-node-${apple.adr.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId("folder-node-decisions/alpha")).toBeInTheDocument();
+      expect(screen.queryByTestId(`adr-node-${banana.adr.id}`)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("folder-node-decisions/beta")).not.toBeInTheDocument();
+    });
+
+    it("filter matches on folder name and keeps that folder visible (Req 5.2)", async () => {
+      const alpha = await client.createFolder({ path: "decisions/alpha", author: AUTHOR });
+      if (!alpha.ok) throw new Error("fixture setup: createFolder alpha unexpectedly failed");
+      const beta = await client.createFolder({ path: "decisions/beta", author: AUTHOR });
+      if (!beta.ok) throw new Error("fixture setup: createFolder beta unexpectedly failed");
+
+      render(
+        <FolderTree
+          apiClient={client}
+          authorName={AUTHOR}
+          onSelectFolder={vi.fn()}
+          onSelectAdr={vi.fn()}
+          filter="alpha"
+        />
+      );
+
+      await waitFor(() => expect(screen.getByTestId("folder-node-decisions/alpha")).toBeInTheDocument());
+      expect(screen.queryByTestId("folder-node-decisions/beta")).not.toBeInTheDocument();
+    });
+
+    it("an empty filter renders the full tree exactly as the default (Req 5.2)", async () => {
+      const created = await client.createAdr({ title: "Unfiltered ADR", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+
+      render(
+        <FolderTree
+          apiClient={client}
+          authorName={AUTHOR}
+          onSelectFolder={vi.fn()}
+          onSelectAdr={vi.fn()}
+          filter=""
+        />
+      );
+
+      await waitFor(() => expect(screen.getByTestId(`adr-node-${created.adr.id}`)).toBeInTheDocument());
+      expect(screen.getByTestId("folder-node-decisions")).toBeInTheDocument();
+    });
+
+    it("the ADR node matching selectedAdrId carries adr-node--selected and others do not (Req 5.5)", async () => {
+      const first = await client.createAdr({ title: "First ADR", folder: "decisions", author: AUTHOR });
+      if (!first.ok) throw new Error("fixture setup: createAdr first unexpectedly failed");
+      const second = await client.createAdr({ title: "Second ADR", folder: "decisions", author: AUTHOR });
+      if (!second.ok) throw new Error("fixture setup: createAdr second unexpectedly failed");
+
+      render(
+        <FolderTree
+          apiClient={client}
+          authorName={AUTHOR}
+          onSelectFolder={vi.fn()}
+          onSelectAdr={vi.fn()}
+          selectedAdrId={first.adr.id}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByTestId(`adr-node-${first.adr.id}`)).toBeInTheDocument());
+      expect(screen.getByTestId(`adr-node-${first.adr.id}`).className).toContain("adr-node--selected");
+      expect(screen.getByTestId(`adr-node-${second.adr.id}`).className).not.toContain("adr-node--selected");
+    });
+
+    it("renders no adr-node--selected when selectedAdrId is null/undefined (Req 5.5)", async () => {
+      const created = await client.createAdr({ title: "Unselected ADR", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+
+      render(
+        <FolderTree apiClient={client} authorName={AUTHOR} onSelectFolder={vi.fn()} onSelectAdr={vi.fn()} />
+      );
+
+      await waitFor(() => expect(screen.getByTestId(`adr-node-${created.adr.id}`)).toBeInTheDocument());
+      expect(screen.getByTestId(`adr-node-${created.adr.id}`).className).not.toContain("adr-node--selected");
+    });
+
+    it("renders a status dot per ADR node reflecting its status (Req 5.4)", async () => {
+      const created = await client.createAdr({ title: "Dotted ADR", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+
+      render(
+        <FolderTree apiClient={client} authorName={AUTHOR} onSelectFolder={vi.fn()} onSelectAdr={vi.fn()} />
+      );
+
+      await waitFor(() => expect(screen.getByTestId(`adr-node-${created.adr.id}`)).toBeInTheDocument());
+      const adrNode = screen.getByTestId(`adr-node-${created.adr.id}`);
+      // A status dot reusing the existing badge structure, carrying the
+      // per-status modifier so its color derives from existing tokens.
+      const dot = adrNode.querySelector(".badge__dot");
+      expect(dot).not.toBeNull();
+      expect(adrNode.querySelector(".badge--proposed")).not.toBeNull();
+    });
+
+    it("keeps the move controls present in the DOM and wrapped for hover/focus reveal (Req 5.6, 10.5)", async () => {
+      const created = await client.createAdr({ title: "Movable ADR", folder: "decisions", author: AUTHOR });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+
+      render(
+        <FolderTree apiClient={client} authorName={AUTHOR} onSelectFolder={vi.fn()} onSelectAdr={vi.fn()} />
+      );
+
+      await waitFor(() => expect(screen.getByTestId(`adr-node-${created.adr.id}`)).toBeInTheDocument());
+
+      // Move hooks remain queryable (existing behavior preserved).
+      const input = screen.getByTestId(`move-target-input-${created.adr.id}`);
+      const button = screen.getByTestId(`move-button-${created.adr.id}`);
+      expect(input).toBeInTheDocument();
+      expect(button).toBeInTheDocument();
+
+      // They live inside the hover-reveal wrapper (visual-only hiding, not
+      // removed from the DOM), so keyboard focus can still reveal them.
+      expect(button.closest(".folder-tree__move")).not.toBeNull();
+    });
+  });
 });

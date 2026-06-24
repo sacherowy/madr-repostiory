@@ -10,11 +10,54 @@ export interface FolderTreeProps {
   authorName: string;
   onSelectFolder: (path: string) => void;
   onSelectAdr: (id: string) => void;
+  /**
+   * Optional live filter (Req 5.2). When non-empty, the visible tree is
+   * narrowed to nodes matching the filter (case-insensitive on ADR id/title and
+   * folder name); a folder stays visible if it or any descendant matches so
+   * matches remain reachable. Empty/undefined renders the full tree unchanged.
+   */
+  filter?: string;
+  /**
+   * Optional id of the currently-selected ADR (Req 5.5). The matching tree row
+   * gets the raised `adr-node--selected` treatment; all others stay unselected.
+   * Defaults to no selection, preserving existing behavior.
+   */
+  selectedAdrId?: string | null;
 }
 
 type LoadState = { kind: "loading" } | { kind: "error" } | { kind: "loaded"; tree: FolderNode };
 
-export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr }: FolderTreeProps) {
+/**
+ * Returns whether a folder node should remain visible under the given
+ * lowercased filter (Req 5.2): visible if the folder's own name matches, any of
+ * its ADRs match (by id or title), or any descendant folder is itself visible.
+ * An empty needle keeps everything visible.
+ */
+function folderMatchesFilter(node: FolderNode, needle: string): boolean {
+  if (needle === "") return true;
+  if (node.name.toLowerCase().includes(needle)) return true;
+  if (node.adrs.some((adr) => adrMatchesFilter(adr, needle))) return true;
+  return node.folders.some((child) => folderMatchesFilter(child, needle));
+}
+
+function adrMatchesFilter(
+  adr: { id: string; title: string },
+  needle: string
+): boolean {
+  if (needle === "") return true;
+  return (
+    adr.id.toLowerCase().includes(needle) || adr.title.toLowerCase().includes(needle)
+  );
+}
+
+export function FolderTree({
+  apiClient,
+  authorName,
+  onSelectFolder,
+  onSelectAdr,
+  filter,
+  selectedAdrId,
+}: FolderTreeProps) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
   const [currentRoot, setCurrentRoot] = useState<string | undefined>(undefined);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -102,8 +145,17 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
   }
 
   function renderAdr(adrId: string, title: string, status: string) {
+    const isSelected = selectedAdrId != null && adrId === selectedAdrId;
+    // Raised selected treatment (Req 5.5); class is additive so unselected rows
+    // keep their existing markup. The status dot reflecting this ADR's status
+    // (Req 5.4) comes from AdrCard's StatusBadge (a `.badge--<status>` whose dot
+    // color derives from existing tokens — never hardcoded here).
     return (
-      <li key={adrId} data-testid={`adr-node-${adrId}`}>
+      <li
+        key={adrId}
+        data-testid={`adr-node-${adrId}`}
+        className={`adr-node${isSelected ? " adr-node--selected" : ""}`}
+      >
         <AdrCard
           id={adrId}
           title={title}
@@ -122,7 +174,11 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
               >
                 Open
               </button>
-              <div className="field">
+              {/* Hover/focus-revealed move affordance (Req 5.6): kept in the DOM
+                  (move-* hooks preserved, Req 10.5) but visually hidden by
+                  folder-tree.css until the node is hovered or keyboard-focused
+                  (via :focus-within, so it stays keyboard-reachable). */}
+              <div className="folder-tree__move field">
                 <label className="field__label" htmlFor={`move-target-input-${adrId}`}>
                   Move to folder
                 </label>
@@ -154,8 +210,25 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
     );
   }
 
+  // Lowercased active filter needle (Req 5.2); empty when no filtering is in
+  // effect, in which case every node is kept and the tree renders as today.
+  const filterNeedle = (filter ?? "").trim().toLowerCase();
+  const folderSelfMatches = (node: FolderNode) =>
+    filterNeedle === "" || node.name.toLowerCase().includes(filterNeedle);
+
   function renderFolder(node: FolderNode): React.ReactNode {
     const isExpanded = expanded[node.path] ?? true;
+    // When filtering, a folder that matches by name shows ALL its contents
+    // (the match is the folder itself); otherwise only descendants that match
+    // (or contain a match) survive so matches stay reachable via their
+    // ancestors. With no filter, everything passes through unchanged.
+    const keepAll = folderSelfMatches(node);
+    const visibleFolders = keepAll
+      ? node.folders
+      : node.folders.filter((child) => folderMatchesFilter(child, filterNeedle));
+    const visibleAdrs = keepAll
+      ? node.adrs
+      : node.adrs.filter((adr) => adrMatchesFilter(adr, filterNeedle));
     return (
       <li key={node.path} data-testid={`folder-node-${node.path}`}>
         <div className="card__header">
@@ -177,8 +250,8 @@ export function FolderTree({ apiClient, authorName, onSelectFolder, onSelectAdr 
         </div>
         {isExpanded ? (
           <ul className="folder-tree__children">
-            {node.folders.map((child) => renderFolder(child))}
-            {node.adrs.map((adr) => renderAdr(adr.id, adr.title, adr.status))}
+            {visibleFolders.map((child) => renderFolder(child))}
+            {visibleAdrs.map((adr) => renderAdr(adr.id, adr.title, adr.status))}
           </ul>
         ) : null}
       </li>
