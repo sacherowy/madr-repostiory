@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ADR Manager — Skeuomorphism 2.0 proposal</title>
+<style>
+:root{
+  /* === existing morski/teal tokens (unchanged) === */
+  --teal-50:#ECF8F5;--teal-100:#CFEDE7;--teal-200:#A3DCD2;--teal-300:#6AC6B8;
+  --teal-400:#2BAB9A;--teal-500:#0E9E8E;--teal-600:#0B8277;--teal-700:#0A6A61;
+  --ink-900:#17211F;--ink-700:#36413E;--ink-500:#5E6A66;--ink-300:#9BA5A1;
+  --line:#E7EDEB;--line-strong:#D6DFDC;--surface:#F4FAF8;--bg:#FFFFFF;
+  --proposed:#5063CE;--proposed-bg:#ECEEFB;--accepted:#3A9D4A;--accepted-bg:#E7F5E9;
+  --danger:#C81E3A;--danger-bg:#FBE7EA;
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --font-body:"Hanken Grotesk",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,monospace;
+  --r-sm:6px;--r-md:10px;--r-lg:16px;
+
+  /* === NEW depth tokens proposed for Skeuomorphism 2.0 === */
+  --sh-inset:inset 0 1px 2px rgba(6,60,55,.12), inset 0 1px 1px rgba(6,60,55,.06);
+  --sh-press:inset 0 2px 5px rgba(6,60,55,.18);
+  --sh-raise:0 1px 1px rgba(23,33,31,.05), 0 3px 6px rgba(23,33,31,.06), 0 12px 24px -12px rgba(6,60,55,.22);
+  --sh-card:0 1px 2px rgba(23,33,31,.05), 0 22px 48px -26px rgba(6,60,55,.30);
+  --hl-top:inset 0 1px 0 rgba(255,255,255,.75);
+  --glass:rgba(244,250,248,.66);
+  --grad-surface:linear-gradient(180deg,#FFFFFF 0%,var(--surface) 100%);
+  --grad-field:linear-gradient(180deg,#F7FCFA 0%,#FFFFFF 60%);
+  --grad-primary:linear-gradient(180deg,var(--teal-400) 0%,var(--teal-600) 100%);
+  --grad-active-tab:linear-gradient(180deg,#FFFFFF 0%,var(--teal-50) 100%);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;font-family:var(--font-body);color:var(--ink-900);
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #EAF6F3 0%, rgba(234,246,243,0) 60%),
+    radial-gradient(1000px 500px at 110% 10%, #E6F4F0 0%, rgba(230,244,240,0) 55%),
+    #F0F7F5;
+  padding:40px;
+}
+h1{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;margin:0 0 4px;font-size:1.9rem;}
+.sub{color:var(--ink-500);margin:0 0 28px;}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;max-width:1180px;}
+.col-head{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-weight:700;}
+.tag{font-family:var(--font-mono);font-size:.72rem;padding:3px 9px;border-radius:999px;}
+.tag--old{background:#EEF1F0;color:var(--ink-500);border:1px solid var(--line-strong);}
+.tag--new{background:var(--teal-50);color:var(--teal-700);border:1px solid var(--teal-200);}
+
+/* ---------- shared panel chrome ---------- */
+.panel{border-radius:var(--r-lg);padding:22px;}
+
+/* ===========================================================
+   LEFT — CURRENT (flat, "90s")
+   =========================================================== */
+.old .panel{background:#fff;border:1px solid var(--line-strong);}
+.old .label{display:block;font-size:.9rem;font-weight:600;color:var(--ink-700);margin:0 0 6px;}
+.old input,.old select,.old textarea{
+  width:100%;padding:8px 12px;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  background:#fff;color:var(--ink-900);font:inherit;margin-bottom:16px;
+}
+.old textarea{min-height:74px;resize:vertical;}
+.old .btn{padding:8px 16px;border:1px solid transparent;border-radius:var(--r-md);font-weight:600;cursor:pointer;}
+.old .btn--primary{background:var(--teal-500);color:#fff;}
+.old .btn--secondary{background:#fff;border-color:var(--line-strong);color:var(--ink-900);}
+.old .adrcard{border:1px solid var(--line-strong);border-top:4px solid var(--teal-500);border-radius:var(--r-md);padding:12px;margin-top:14px;}
+
+/* ===========================================================
+   RIGHT — PROPOSED (Skeuomorphism 2.0 / Soft UI)
+   =========================================================== */
+.new .panel{
+  background:var(--grad-surface);
+  border:1px solid var(--line);
+  box-shadow:var(--hl-top),var(--sh-card);
+}
+.new .label{display:block;font-size:.86rem;font-weight:600;color:var(--ink-700);margin:0 0 7px;letter-spacing:.01em;}
+.new .ctl{position:relative;margin-bottom:18px;}
+.new input,.new select,.new textarea{
+  width:100%;padding:11px 13px;border:1px solid var(--line-strong);border-radius:12px;
+  background:var(--grad-field);color:var(--ink-900);font:inherit;
+  box-shadow:var(--sh-inset);
+  transition:box-shadow .18s ease,border-color .18s ease;
+}
+.new textarea{min-height:74px;resize:vertical;}
+.new input:focus,.new select:focus,.new textarea:focus{
+  outline:none;border-color:var(--teal-400);
+  box-shadow:var(--sh-inset),0 0 0 4px var(--teal-100);
+}
+.new .ctl--focus input{border-color:var(--teal-400);box-shadow:var(--sh-inset),0 0 0 4px var(--teal-100);}
+.new .row{display:flex;gap:12px;flex-wrap:wrap;}
+.new .btn{
+  padding:11px 18px;border:1px solid transparent;border-radius:12px;font-weight:600;cursor:pointer;
+  font-family:var(--font-body);transition:transform .06s ease,box-shadow .18s ease;
+}
+.new .btn--primary{
+  background:var(--grad-primary);color:#fff;border-color:var(--teal-700);
+  box-shadow:var(--hl-top),var(--sh-raise),0 8px 22px -10px rgba(14,158,142,.55);
+  text-shadow:0 1px 0 rgba(6,60,55,.25);
+}
+.new .btn--primary.is-pressed{transform:translateY(1px);box-shadow:var(--sh-press);}
+.new .btn--secondary{
+  background:linear-gradient(180deg,#fff,#F3F9F7);color:var(--ink-900);border-color:var(--line-strong);
+  box-shadow:var(--hl-top),var(--sh-raise);
+}
+.new .adrcard{
+  border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin-top:16px;
+  background:var(--grad-surface);box-shadow:var(--hl-top),var(--sh-raise);
+  position:relative;overflow:hidden;
+}
+.new .adrcard::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg,var(--teal-400),var(--teal-600));}
+
+/* chips / badge (shared look, refined on the right) */
+.chip{font-family:var(--font-mono);font-size:.8rem;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;}
+.idchip{color:var(--teal-700);background:var(--teal-50);border:1px solid var(--teal-200);}
+.new .idchip{box-shadow:var(--hl-top),inset 0 0 0 1px rgba(255,255,255,.4);}
+.badge{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:.82rem;padding:4px 11px;border-radius:999px;}
+.badge--proposed{color:#3a40a0;background:var(--proposed-bg);}
+.new .badge--proposed{box-shadow:var(--hl-top);border:1px solid #d9ddf6;}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--proposed);}
+.cardhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cardtitle{font-weight:700;}
+.meterwrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.meter{flex:1;height:9px;border-radius:999px;background:#E3EFEC;overflow:hidden;box-shadow:var(--sh-inset);}
+.meter > i{display:block;height:100%;width:72%;border-radius:999px;background:linear-gradient(90deg,var(--teal-300),var(--teal-500));}
+.new .meter > i{box-shadow:0 0 8px rgba(14,158,142,.5);}
+.mono{font-family:var(--font-mono);font-size:.8rem;color:var(--ink-700);}
+
+/* frosted tab bar demo (proposed only) */
+.tabbar{display:flex;gap:6px;padding:6px;border-radius:14px;margin-bottom:18px;}
+.new .tabbar{background:var(--glass);backdrop-filter:blur(12px) saturate(1.3);-webkit-backdrop-filter:blur(12px) saturate(1.3);border:1px solid rgba(255,255,255,.6);box-shadow:var(--hl-top),0 6px 18px -10px rgba(6,60,55,.25);}
+.old .tabbar{background:#fff;border:1px solid var(--line-strong);}
+.tab{padding:7px 14px;border-radius:10px;font-weight:600;font-size:.92rem;color:var(--ink-500);cursor:pointer;border:1px solid transparent;}
+.old .tab.active{background:var(--teal-500);color:#fff;}
+.new .tab.active{background:var(--grad-active-tab);color:var(--teal-700);border-color:var(--teal-200);box-shadow:var(--hl-top),var(--sh-raise);}
+</style>
+</head>
+<body>
+  <h1>ADR Manager — form &amp; surface redesign</h1>
+  <p class="sub">Same morski/teal palette &amp; type. New: depth, recessed inputs, raised tactile controls, layered materials, frosted shell — “Skeuomorphism 2.0 / Soft UI”.</p>
+  <div class="cols">
+
+    <!-- CURRENT -->
+    <section class="old">
+      <div class="col-head"><span class="tag tag--old">CURRENT</span> flat, hairline borders</div>
+      <div class="tabbar"><span class="tab active">Editor</span><span class="tab">Relations</span><span class="tab">History</span></div>
+      <div class="panel">
+        <label class="label">Title</label>
+        <input value="Adopt event-sourced projections" />
+        <label class="label">Status</label>
+        <select><option>proposed</option></select>
+        <label class="label">Body</label>
+        <textarea>Replaces the synchronous read path…</textarea>
+        <button class="btn btn--primary">Save changes</button>
+        <button class="btn btn--secondary">Add relation</button>
+        <div class="adrcard">
+          <div class="cardhead"><span class="chip idchip">ADR-0007</span><span class="badge badge--proposed"><span class="dot"></span>Proposed</span></div>
+          <div class="cardtitle">Adopt event-sourced projections</div>
+          <div class="meterwrap"><span class="meter"><i></i></span><span class="mono">0.72</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROPOSED -->
+    <section class="new">
+      <div class="col-head"><span class="tag tag--new">PROPOSED</span> depth + tactility (Soft UI)</div>
+      <div class="tabbar"><span class="tab active">Editor</span><span class="tab">Relations</span><span class="tab">History</span></div>
+      <div class="panel">
+        <label class="label">Title</label>
+        <div class="ctl ctl--focus"><input value="Adopt event-sourced projections" /></div>
+        <label class="label">Status</label>
+        <div class="ctl"><select><option>proposed</option></select></div>
+        <label class="label">Body</label>
+        <div class="ctl"><textarea>Replaces the synchronous read path…</textarea></div>
+        <div class="row">
+          <button class="btn btn--primary is-pressed">Save changes</button>
+          <button class="btn btn--secondary">Add relation</button>
+        </div>
+        <div class="adrcard">
+          <div class="cardhead"><span class="chip idchip">ADR-0007</span><span class="badge badge--proposed"><span class="dot"></span>Proposed</span></div>
+          <div class="cardtitle">Adopt event-sourced projections</div>
+          <div class="meterwrap"><span class="meter"><i></i></span><span class="mono">0.72</span></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

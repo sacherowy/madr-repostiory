@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ADR Manager — full-page contextual redesign</title>
+<style>
+:root{
+  --teal-50:#ECF8F5;--teal-100:#CFEDE7;--teal-200:#A3DCD2;--teal-300:#6AC6B8;
+  --teal-400:#2BAB9A;--teal-500:#0E9E8E;--teal-600:#0B8277;--teal-700:#0A6A61;--teal-800:#08534C;
+  --ink-900:#17211F;--ink-700:#36413E;--ink-500:#5E6A66;--ink-300:#9BA5A1;
+  --line:#E7EDEB;--line-strong:#D6DFDC;--surface:#F4FAF8;--bg:#FFFFFF;
+  --proposed:#5063CE;--proposed-bg:#ECEEFB;--accepted:#3A9D4A;--accepted-bg:#E7F5E9;
+  --deprecated:#C98410;--deprecated-bg:#FBEFD9;--superseded:#74807B;--superseded-bg:#EDF1EF;
+  --danger:#C81E3A;
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;--font-body:"Hanken Grotesk",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;
+  --sh-inset:inset 0 1px 2px rgba(6,60,55,.12),inset 0 1px 1px rgba(6,60,55,.06);
+  --sh-press:inset 0 2px 5px rgba(6,60,55,.18);
+  --sh-raise:0 1px 1px rgba(23,33,31,.05),0 3px 6px rgba(23,33,31,.06),0 12px 24px -12px rgba(6,60,55,.22);
+  --sh-card:0 1px 2px rgba(23,33,31,.05),0 22px 48px -26px rgba(6,60,55,.30);
+  --hl-top:inset 0 1px 0 rgba(255,255,255,.75);--glass:rgba(244,250,248,.66);
+  --grad-surface:linear-gradient(180deg,#FFFFFF,var(--surface));
+  --grad-field:linear-gradient(180deg,#F7FCFA,#FFFFFF 60%);
+  --grad-primary:linear-gradient(180deg,var(--teal-400),var(--teal-600));
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:var(--font-body);color:var(--ink-900);
+  background:radial-gradient(1400px 700px at 12% -10%,#E8F5F2,rgba(0,0,0,0) 55%),radial-gradient(1200px 600px at 115% 0%,#E4F3EF,rgba(0,0,0,0) 55%),#EFF6F4;
+  height:840px;overflow:hidden;}
+.chip{font-family:var(--font-mono);font-size:.76rem;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;}
+.idchip{color:var(--teal-700);background:var(--teal-50);border:1px solid var(--teal-200);box-shadow:var(--hl-top);}
+.badge{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:.78rem;padding:4px 11px;border-radius:999px;box-shadow:var(--hl-top);}
+.badge .dot{width:8px;height:8px;border-radius:999px;}
+.b-prop{color:#3a40a0;background:var(--proposed-bg);border:1px solid #d9ddf6;}.b-prop .dot{background:var(--proposed);}
+.b-acc{color:#1d6b2a;background:var(--accepted-bg);border:1px solid #cde9d2;}.b-acc .dot{background:var(--accepted);}
+.b-dep{color:#8a5a09;background:var(--deprecated-bg);border:1px solid #f0dcae;}.b-dep .dot{background:var(--deprecated);}
+
+/* ===== top command bar ===== */
+.topbar{height:60px;display:flex;align-items:center;gap:18px;padding:0 20px;
+  background:var(--glass);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+  border-bottom:1px solid rgba(255,255,255,.6);box-shadow:0 6px 20px -14px rgba(6,60,55,.4);}
+.brand{font-family:var(--font-display);font-weight:800;letter-spacing:-.02em;font-size:1.15rem;}
+.brand small{color:var(--teal-600);}
+.cmdk{flex:1;max-width:560px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px;
+  background:var(--grad-field);border:1px solid var(--line-strong);box-shadow:var(--sh-inset);color:var(--ink-500);cursor:text;}
+.cmdk .kbd{margin-left:auto;font-family:var(--font-mono);font-size:.72rem;color:var(--ink-500);background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:2px 7px;box-shadow:0 1px 0 var(--line-strong);}
+.who{display:flex;align-items:center;gap:9px;font-size:.86rem;color:var(--ink-700);}
+.ava{width:30px;height:30px;border-radius:999px;background:var(--grad-primary);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.8rem;box-shadow:var(--hl-top),var(--sh-raise);}
+
+/* ===== 3-zone layout ===== */
+.app{display:grid;grid-template-columns:312px 1fr 300px;gap:18px;padding:18px;height:calc(840px - 60px);}
+.rail{border-radius:18px;background:var(--grad-surface);border:1px solid var(--line);box-shadow:var(--hl-top),var(--sh-card);display:flex;flex-direction:column;overflow:hidden;}
+.rail h3{font-family:var(--font-display);font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);margin:0;padding:16px 16px 8px;}
+
+/* ----- Tree View 2.0 ----- */
+.filter{margin:0 14px 10px;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:11px;background:var(--grad-field);border:1px solid var(--line-strong);box-shadow:var(--sh-inset);color:var(--ink-500);font-size:.85rem;}
+.crumb{padding:0 16px 8px;font-family:var(--font-mono);font-size:.74rem;color:var(--ink-300);}
+.crumb b{color:var(--teal-700);}
+.tree{padding:2px 10px 10px;overflow:auto;flex:1;}
+.tnode{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:10px;cursor:pointer;}
+.tnode:hover{background:var(--teal-50);}
+.tnode .tw{width:14px;color:var(--ink-300);font-size:.8rem;text-align:center;}
+.tfolder{font-weight:600;color:var(--ink-700);}
+.tfolder .fi{color:var(--teal-500);}
+.tchild{margin-left:14px;border-left:1px dashed var(--line-strong);padding-left:6px;}
+.adrrow{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:11px;cursor:pointer;border:1px solid transparent;}
+.adrrow:hover{background:var(--teal-50);}
+.adrrow.sel{background:linear-gradient(180deg,#fff,var(--teal-50));border-color:var(--teal-200);box-shadow:var(--hl-top),var(--sh-raise);}
+.adrrow .sdot{width:9px;height:9px;border-radius:999px;flex:0 0 auto;box-shadow:0 0 0 3px rgba(0,0,0,.03);}
+.adrrow .tt{font-size:.9rem;font-weight:600;color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adrrow .ii{font-family:var(--font-mono);font-size:.7rem;color:var(--ink-300);margin-left:auto;}
+.newbtn{margin:10px 14px 14px;padding:10px;border-radius:12px;border:1px solid var(--teal-200);background:linear-gradient(180deg,#fff,#F3F9F7);color:var(--teal-700);font-weight:700;text-align:center;box-shadow:var(--hl-top),var(--sh-raise);cursor:pointer;}
+
+/* ----- center: context object ----- */
+.center{display:flex;flex-direction:column;gap:16px;overflow:auto;}
+.ctxhead{border-radius:18px;background:var(--grad-surface);border:1px solid var(--line);box-shadow:var(--hl-top),var(--sh-card);padding:20px 22px;position:relative;overflow:hidden;}
+.ctxhead::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:linear-gradient(90deg,var(--teal-400),var(--teal-600));}
+.ctxtop{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ctxtitle{font-family:var(--font-display);font-weight:800;font-size:1.55rem;letter-spacing:-.02em;margin:4px 0 8px;}
+.meta{display:flex;gap:18px;color:var(--ink-500);font-size:.85rem;flex-wrap:wrap;}
+.meta b{color:var(--ink-700);font-weight:600;}
+.actions{margin-left:auto;display:flex;gap:10px;}
+.btn{padding:10px 16px;border-radius:12px;font-weight:600;border:1px solid transparent;cursor:pointer;font-family:var(--font-body);}
+.btn-pri{background:var(--grad-primary);color:#fff;border-color:var(--teal-700);box-shadow:var(--hl-top),var(--sh-raise),0 8px 22px -10px rgba(14,158,142,.55);text-shadow:0 1px 0 rgba(6,60,55,.25);}
+.btn-sec{background:linear-gradient(180deg,#fff,#F3F9F7);color:var(--ink-900);border-color:var(--line-strong);box-shadow:var(--hl-top),var(--sh-raise);}
+
+/* contextual aspect switcher (replaces global tabs) */
+.aspects{display:inline-flex;gap:4px;padding:5px;border-radius:14px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--hl-top),var(--sh-raise);align-self:flex-start;}
+.asp{padding:8px 15px;border-radius:10px;font-weight:600;font-size:.9rem;color:var(--ink-500);cursor:pointer;display:flex;align-items:center;gap:7px;}
+.asp .n{font-family:var(--font-mono);font-size:.68rem;background:#fff;border:1px solid var(--line-strong);border-radius:999px;padding:0 6px;color:var(--ink-500);}
+.asp.on{background:linear-gradient(180deg,#fff,var(--teal-50));color:var(--teal-700);box-shadow:var(--hl-top),var(--sh-raise);}
+
+.panel{border-radius:18px;background:var(--grad-surface);border:1px solid var(--line);box-shadow:var(--hl-top),var(--sh-card);padding:20px 22px;flex:1;}
+.panel h4{margin:0 0 14px;font-family:var(--font-display);font-weight:700;font-size:1.05rem;}
+.relrow{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;background:var(--grad-field);border:1px solid var(--line);box-shadow:var(--sh-inset);margin-bottom:10px;}
+.relmark{width:18px;height:0;border-top:3px solid var(--teal-500);border-radius:2px;}
+.relmark.dep{border-top-color:var(--proposed);}.relmark.rel{border-top:3px dashed var(--superseded);}.relmark.conf{border-top-color:var(--danger);}
+.reltype{font-family:var(--font-mono);font-size:.82rem;color:var(--ink-700);}
+.reltarget{font-family:var(--font-mono);font-size:.78rem;color:var(--teal-700);background:var(--teal-50);border:1px solid var(--teal-200);border-radius:999px;padding:2px 8px;margin-left:auto;}
+
+/* ----- right: contextual inspector ----- */
+.insp{padding:0 14px 14px;overflow:auto;}
+.isec{margin:6px 0 16px;}
+.isec .t{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500);margin:0 2px 9px;display:flex;align-items:center;gap:7px;}
+.isec .t .c{font-family:var(--font-mono);font-weight:600;color:var(--teal-700);background:var(--teal-50);border:1px solid var(--teal-200);border-radius:999px;padding:0 7px;font-size:.68rem;}
+.simrow{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;background:var(--grad-field);border:1px solid var(--line);box-shadow:var(--sh-inset);margin-bottom:9px;}
+.simrow .tt{font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.simrow .sc{font-family:var(--font-mono);font-size:.74rem;color:var(--ink-700);margin-left:auto;}
+.meter{height:7px;border-radius:999px;background:#E3EFEC;overflow:hidden;box-shadow:var(--sh-inset);margin-top:6px;}
+.meter>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--teal-300),var(--teal-500));box-shadow:0 0 7px rgba(14,158,142,.5);}
+.hrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;margin-bottom:6px;}
+.hrow:hover{background:var(--teal-50);}
+.hsha{font-family:var(--font-mono);font-size:.72rem;color:var(--ink-500);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 6px;}
+.hmsg{font-size:.82rem;color:var(--ink-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+</style></head>
+<body>
+  <div class="topbar">
+    <div class="brand">ADR <small>Manager</small></div>
+    <div class="cmdk">⌘K&nbsp; Search ADRs, jump to a decision, or run an action… <span class="kbd">⌘K</span></div>
+    <div class="who"><span>Ada Lovelace</span><span class="ava">AL</span></div>
+  </div>
+
+  <div class="app">
+    <!-- LEFT: Tree View 2.0 -->
+    <aside class="rail">
+      <h3>Explorer</h3>
+      <div class="filter">⌕&nbsp; Filter the tree…</div>
+      <div class="crumb">decisions / <b>platform</b></div>
+      <div class="tree">
+        <div class="tnode tfolder"><span class="tw">▾</span><span class="fi">▣</span> decisions</div>
+        <div class="tchild">
+          <div class="tnode tfolder"><span class="tw">▾</span><span class="fi">▣</span> platform</div>
+          <div class="tchild">
+            <div class="adrrow sel"><span class="sdot" style="background:var(--proposed)"></span><span class="tt">Adopt event-sourced projections</span><span class="ii">0007</span></div>
+            <div class="adrrow"><span class="sdot" style="background:var(--accepted)"></span><span class="tt">Use SQLite as search projection</span><span class="ii">0004</span></div>
+            <div class="adrrow"><span class="sdot" style="background:var(--deprecated)"></span><span class="tt">Polling sync loop</span><span class="ii">0002</span></div>
+          </div>
+          <div class="tnode tfolder"><span class="tw">▸</span><span class="fi">▣</span> api</div>
+          <div class="tnode tfolder"><span class="tw">▸</span><span class="fi">▣</span> frontend</div>
+        </div>
+      </div>
+      <div class="newbtn">＋ New ADR · New folder</div>
+    </aside>
+
+    <!-- CENTER: contextual object -->
+    <main class="center">
+      <section class="ctxhead">
+        <div class="ctxtop">
+          <span class="chip idchip">ADR-0007</span>
+          <span class="badge b-prop"><span class="dot"></span>Proposed</span>
+          <div class="actions"><button class="btn btn-sec">Compare…</button><button class="btn btn-pri">Edit</button></div>
+        </div>
+        <div class="ctxtitle">Adopt event-sourced projections</div>
+        <div class="meta"><span><b>Decided</b> 2026-06-18</span><span><b>Deciders</b> Ada L., Grace H.</span><span><b>Blob</b> <span style="font-family:var(--font-mono)">a1b2c3d</span></span></div>
+      </section>
+
+      <div class="aspects">
+        <span class="asp">Edit</span>
+        <span class="asp on">Relations <span class="n">3</span></span>
+        <span class="asp">History <span class="n">2</span></span>
+        <span class="asp">Similar <span class="n">5</span></span>
+      </div>
+
+      <section class="panel">
+        <h4>Relations</h4>
+        <div class="relrow"><span class="relmark"></span><span class="reltype">supersedes</span><span class="reltarget">ADR-0002</span></div>
+        <div class="relrow"><span class="relmark dep"></span><span class="reltype">depends-on</span><span class="reltarget">ADR-0004</span></div>
+        <div class="relrow"><span class="relmark rel"></span><span class="reltype">relates-to</span><span class="reltarget">ADR-0011</span></div>
+      </section>
+    </main>
+
+    <!-- RIGHT: contextual inspector -->
+    <aside class="rail">
+      <h3>Context</h3>
+      <div class="insp">
+        <div class="isec">
+          <div class="t">Similar decisions <span class="c">5</span></div>
+          <div class="simrow"><div style="flex:1;min-width:0"><div class="tt">Use SQLite as search projection</div><div class="meter"><i style="width:86%"></i></div></div><span class="sc">0.86</span></div>
+          <div class="simrow"><div style="flex:1;min-width:0"><div class="tt">CQRS read models</div><div class="meter"><i style="width:71%"></i></div></div><span class="sc">0.71</span></div>
+          <div class="simrow"><div style="flex:1;min-width:0"><div class="tt">Async projection rebuilds</div><div class="meter"><i style="width:64%"></i></div></div><span class="sc">0.64</span></div>
+        </div>
+        <div class="isec">
+          <div class="t">Recent history <span class="c">2</span></div>
+          <div class="hrow"><span class="hsha">a1b2c3d</span><span class="hmsg">save ADR-0007</span></div>
+          <div class="hrow"><span class="hsha">9f8e7d6</span><span class="hmsg">create ADR-0007</span></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body></html>
