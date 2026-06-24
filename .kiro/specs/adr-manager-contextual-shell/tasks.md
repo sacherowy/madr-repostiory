@@ -63,7 +63,7 @@
   - _Depends: 1.2_
   - _Boundary: useAspectCounts_
 
-- [ ] 3.2 (P) Implement the inspector-previews hook
+- [x] 3.2 (P) Implement the inspector-previews hook
   - Provide a top-Similar preview and a recent-history preview for the selected ADR via the server-state client, enabled only while the inspector is open and an ADR is selected, sharing query keys with the full Similar/History aspects so the cache is reused
   - Expose loading/empty/error status for each preview so the rail can degrade gracefully offline
   - Observable: hook test shows no fetch when disabled or unselected, populated previews when enabled, and clean empty/error status without throwing
