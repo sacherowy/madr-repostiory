@@ -52,19 +52,34 @@ export function AdrCompareView({ apiClient, idA, idB }: AdrCompareViewProps) {
   }, [apiClient, idA, idB]);
 
   if (state.kind === "loading") {
-    return <div data-testid="adr-compare-loading">Loading…</div>;
+    return (
+      <div data-testid="adr-compare-loading" className="state state--loading">
+        <span className="state__spinner" aria-hidden="true" />
+        <p className="state__message">Loading…</p>
+      </div>
+    );
   }
 
   if (state.kind === "rejected") {
-    return <div data-testid="adr-compare-rejection">{state.reason}</div>;
+    // Rejection is "selection invalid" guidance (e.g. self-compare), not a
+    // system error — neutral empty-state treatment, danger reserved for errors.
+    return (
+      <div data-testid="adr-compare-rejection" className="state state--empty">
+        <p className="state__message">{state.reason}</p>
+      </div>
+    );
   }
 
   if (state.kind === "error") {
-    return <div data-testid="adr-compare-error">Failed to load that comparison.</div>;
+    return (
+      <div data-testid="adr-compare-error" className="state state--error">
+        <p className="state__message">Failed to load that comparison.</p>
+      </div>
+    );
   }
 
   return (
-    <table data-testid="adr-compare">
+    <table data-testid="adr-compare" className="diff compare">
       <tbody>
         {state.fields.map((field) => (
           <tr
@@ -72,10 +87,27 @@ export function AdrCompareView({ apiClient, idA, idB }: AdrCompareViewProps) {
             data-testid={`adr-compare-field-${field.field}`}
             data-field={field.field}
             data-differs={field.differs ? "true" : "false"}
+            // Differing fields stand out via the BACKGROUND-only add modifier
+            // (var(--add-bg)); identical fields stay on the default table
+            // background. We deliberately omit the base `.diff__row` (it is
+            // `display:flex`, which would destroy this real <table> layout) and
+            // carry the visible distinction with `diff__row--add` alone. The
+            // `compare__row*` hooks are forward-looking semantic anchors only.
+            className={
+              field.differs
+                ? "diff__row--add compare__row compare__row--differs"
+                : "compare__row compare__row--same"
+            }
           >
-            <th scope="row">{field.field}</th>
-            <td data-testid={`adr-compare-field-${field.field}-a`}>{field.a}</td>
-            <td data-testid={`adr-compare-field-${field.field}-b`}>{field.b}</td>
+            <th scope="row" className="compare__field">
+              {field.field}
+            </th>
+            <td data-testid={`adr-compare-field-${field.field}-a`} className="compare__value">
+              {field.a}
+            </td>
+            <td data-testid={`adr-compare-field-${field.field}-b`} className="compare__value">
+              {field.b}
+            </td>
           </tr>
         ))}
       </tbody>

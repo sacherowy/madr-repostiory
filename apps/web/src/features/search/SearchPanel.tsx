@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SearchHit } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
+import { MonoChip } from "../../components/MonoChip.js";
 
 export interface SearchPanelProps {
   apiClient: ApiClient;
@@ -49,39 +50,77 @@ export function SearchPanel({ apiClient, onSelectAdr }: SearchPanelProps) {
   }
 
   return (
-    <div data-testid="search-panel">
-      <form data-testid="search-form" onSubmit={handleSubmit}>
-        <label htmlFor="search-query-input">Search</label>
-        <input
-          id="search-query-input"
-          data-testid="search-query-input"
-          type="text"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <button data-testid="search-submit-button" type="submit">
+    <div data-testid="search-panel" className="search">
+      <form data-testid="search-form" onSubmit={handleSubmit} className="search__form">
+        <div className="field">
+          <label htmlFor="search-query-input" className="field__label">
+            Search
+          </label>
+          <input
+            id="search-query-input"
+            data-testid="search-query-input"
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="field__input"
+            placeholder="Search ADRs by keyword…"
+          />
+        </div>
+        <button data-testid="search-submit-button" type="submit" className="btn btn--primary">
           Search
         </button>
       </form>
 
-      {state.kind === "loading" ? <div data-testid="search-loading">Searching…</div> : null}
+      {state.kind === "loading" ? (
+        <div data-testid="search-loading" className="state state--loading">
+          <span className="state__spinner" aria-hidden="true" />
+          <p className="state__message">Searching…</p>
+        </div>
+      ) : null}
 
-      {state.kind === "error" ? <div data-testid="search-error">Search failed.</div> : null}
+      {state.kind === "error" ? (
+        <div data-testid="search-error" className="state state--error">
+          <p className="state__message">Search failed.</p>
+        </div>
+      ) : null}
 
       {state.kind === "loaded" && state.hits.length === 0 ? (
-        <div data-testid="search-no-results">No results found.</div>
+        <div data-testid="search-no-results" className="state state--empty">
+          <p className="state__title">No results found.</p>
+          <p className="state__message">
+            Try a different keyword to find the decisions you’re looking for.
+          </p>
+        </div>
       ) : null}
 
       {state.kind === "loaded" && state.hits.length > 0 ? (
-        <ul data-testid="search-results">
+        <ul data-testid="search-results" className="search__results">
           {state.hits.map((hit) => (
-            <li key={hit.id}>
+            <li key={hit.id} className="search__result-item">
+              {/*
+               * Card treatment, not the full AdrCard primitive: a `SearchHit`
+               * carries only `id` and `score` (no title/status — see this
+               * component's own doc-comment and @adr/shared), and AdrCard
+               * requires id+title+status. Fetching the missing fields is out
+               * of scope (behavior/API preserved), so each result is rendered
+               * truthfully from the real data only — the ADR id as a MonoChip
+               * and the raw relevance score in the footer.
+               */}
               <button
                 data-testid={`search-result-${hit.id}`}
                 type="button"
                 onClick={() => onSelectAdr(hit.id)}
+                className="card search__result-card"
               >
-                {hit.id} (score: {hit.score})
+                <span className="card__accent" aria-hidden="true" />
+                <span className="card__body search__result-body">
+                  <span className="card__header">
+                    <MonoChip variant="id" value={hit.id} />
+                  </span>
+                </span>
+                <span className="card__footer search__result-footer">
+                  <span className="search__result-score mono">score: {hit.score}</span>
+                </span>
               </button>
             </li>
           ))}

@@ -1,0 +1,734 @@
+/* =========================================================================
+   base.css — reusable design-system foundation for the ADR Manager web app.
+
+   Layered on top of the existing design tokens (./tokens.css). This file
+   ONLY references token custom properties by name — it never redefines or
+   re-values a token. It applies the design typefaces, token-derived colors,
+   spacing, radii and shadows, and provides the recurring component classes
+   named in docs/design.md:
+     buttons, fields, cards, badges, chips, mono-chips, similarity meter,
+     diff rows, and loading/empty/error states.
+
+   Color discipline (docs/design.md): the destructive red (--danger*) is
+   reserved STRICTLY for error/conflict states and irreversible actions.
+   It never appears in branding, navigation, or non-error emphasis.
+
+   Class naming is BEM-ish so the later UI primitives
+   (StatusBadge / RelationChip / MonoChip / SimilarityMeter / AdrCard)
+   can consume these classes directly.
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Reset / base layer (Req 1.1, 1.2)
+   Every surface inherits a design typeface and token colors so nothing
+   falls back to the browser default sans-serif.
+   ------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  /* Body/UI typeface applied at the root so it cascades to every surface. */
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--ink-900);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Form controls do not inherit font by default — force the body typeface so
+   no input/button/select falls back to the browser default sans-serif. */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+/* Display typeface for headings (docs/design.md typography roles). */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink-900);
+  margin: 0 0 12px 0;
+}
+
+.display {
+  font-size: clamp(2.5rem, 6.2vw, 4.3rem);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+}
+
+h2 {
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+}
+
+h3 {
+  font-size: 1.3rem;
+}
+
+p {
+  margin: 0 0 1rem 0;
+}
+
+a {
+  color: var(--teal-700);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--teal-600);
+  text-decoration: underline;
+}
+
+/* Machine/monospace utility (docs/design.md: monospace for all git-derived
+   data — ADR IDs, SHAs, status keys, diff). */
+code,
+kbd,
+samp,
+pre,
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 24px 0;
+}
+
+/* -------------------------------------------------------------------------
+   Buttons (Req 1.3)
+   Four variants from docs/design.md:
+     primary   — solid teal + glow
+     secondary — outline
+     ghost     — teal text, no border
+     danger    — crimson outline, fill on hover (irreversible actions only)
+   ------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-900);
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--teal-500);
+  border-color: var(--teal-500);
+  color: var(--bg);
+  box-shadow: var(--glow);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--teal-600);
+  border-color: var(--teal-600);
+}
+
+.btn--secondary {
+  background: var(--bg);
+  border-color: var(--line-strong);
+  color: var(--ink-900);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--teal-500);
+  color: var(--teal-700);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--teal-700);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--teal-50);
+}
+
+/* Destructive red used here ONLY — irreversible actions (Req 1.4, 9.3). */
+.btn--danger {
+  background: var(--bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger-600);
+  color: var(--bg);
+}
+
+/* -------------------------------------------------------------------------
+   Fields (Req 1.3, 1.4)
+   label + input + help text; focus ring teal; error state danger.
+   ------------------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.field__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.field__input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field__input::placeholder {
+  color: var(--ink-300);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px var(--teal-100);
+}
+
+.field__help {
+  font-size: 0.85rem;
+  color: var(--ink-500);
+}
+
+/* Error state — danger tokens (Req 1.4): reserved for error/conflict. */
+.field--error .field__input {
+  border-color: var(--danger);
+}
+
+.field--error .field__input:focus {
+  box-shadow: 0 0 0 3px var(--danger-bg);
+}
+
+.field--error .field__help {
+  color: var(--danger-600);
+}
+
+/* -------------------------------------------------------------------------
+   Card (Req 1.3) — "Karta ADR" with a top accent bar.
+   The accent is a real element class (.card__accent) so a later E2E check
+   can assert it directly with toHaveCSS on a real element (not ::before).
+   ------------------------------------------------------------------------- */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--sh-md);
+}
+
+/* Top accent bar ("pasek akcentu u góry"). Real, directly-assertable
+   element with a teal background and a teal top border. */
+.card__accent {
+  display: block;
+  height: 4px;
+  width: 100%;
+  background: var(--teal-500);
+  border-top: 4px solid var(--teal-500);
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card__title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--ink-500);
+}
+
+.card__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* -------------------------------------------------------------------------
+   Badges (Req 1.3) — status badge = colored dot + label.
+   Neutral base + four status modifiers using the status tokens.
+   No danger tokens here: status is non-error (Req 1.4).
+   ------------------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  /* Neutral fallback treatment for unknown statuses (Req 4.3). */
+  background: var(--surface);
+  color: var(--ink-700);
+}
+
+.badge__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+.badge--proposed {
+  background: var(--proposed-bg);
+  color: #3a40a0;
+}
+
+.badge--proposed .badge__dot {
+  background: var(--proposed);
+}
+
+.badge--accepted {
+  background: var(--accepted-bg);
+  color: #1d6b2a;
+}
+
+.badge--accepted .badge__dot {
+  background: var(--accepted);
+}
+
+.badge--deprecated {
+  background: var(--deprecated-bg);
+  color: #8a5a09;
+}
+
+.badge--deprecated .badge__dot {
+  background: var(--deprecated);
+}
+
+.badge--superseded {
+  background: var(--superseded-bg);
+  color: #535d58;
+}
+
+.badge--superseded .badge__dot {
+  background: var(--superseded);
+}
+
+/* -------------------------------------------------------------------------
+   Chips (Req 1.3) — monospace chips.
+   Base relation chip + per-relation colored marker (a leading rule before
+   the label), and machine-identifier mono-chips (id / sha / status).
+   ------------------------------------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.4;
+  background: var(--surface);
+  color: var(--ink-700);
+  border: 1px solid var(--line);
+}
+
+/* Leading colored marker for relation chips. */
+.chip__marker {
+  display: inline-block;
+  width: 14px;
+  border-top: 2px solid currentColor;
+  flex: 0 0 auto;
+}
+
+/* Relation variants per the Relations table (docs/design.md). */
+.chip--supersedes,
+.chip--superseded-by {
+  color: var(--teal-700);
+}
+
+.chip--supersedes .chip__marker,
+.chip--superseded-by .chip__marker {
+  border-top-style: solid;
+  border-color: var(--teal-500);
+}
+
+.chip--depends-on {
+  color: #3a40a0;
+}
+
+.chip--depends-on .chip__marker {
+  border-top-style: solid;
+  border-color: var(--proposed);
+}
+
+.chip--relates-to {
+  color: var(--ink-500);
+}
+
+.chip--relates-to .chip__marker {
+  border-top-style: dashed;
+  border-color: var(--superseded);
+}
+
+/* conflicts-with: this is a conflict signal, so the reserved danger color
+   is appropriate here (Req 1.4 — conflict state). */
+.chip--conflicts-with {
+  color: var(--danger);
+}
+
+.chip--conflicts-with .chip__marker {
+  border-top-style: solid;
+  border-color: var(--danger);
+}
+
+/* Machine-identifier mono-chips (Sygnatura section). */
+.mono-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.4;
+  /* Default neutral treatment for sha/status keys. */
+  color: var(--ink-500);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* ADR id — teal treatment: text teal-700, bg teal-50, border teal-200. */
+.mono-chip--id {
+  color: var(--teal-700);
+  background: var(--teal-50);
+  border-color: var(--teal-200);
+}
+
+/* SHA — neutral: text ink-500, bg surface. */
+.mono-chip--sha {
+  color: var(--ink-500);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+/* Status key (machine data) — neutral mono chip. */
+.mono-chip--status {
+  color: var(--ink-500);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+/* -------------------------------------------------------------------------
+   Similarity meter (Req 1.3, 8.1, 8.2)
+   teal-gradient fill bar + monospace value. Fill width is set inline by the
+   primitive (proportional to the score); the track/fill styling lives here.
+   ------------------------------------------------------------------------- */
+
+.meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.meter__track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 8px;
+  min-width: 64px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.meter__fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: var(--r-full);
+  background: linear-gradient(
+    90deg,
+    var(--teal-300),
+    var(--teal-400) 55%,
+    var(--teal-500)
+  );
+}
+
+.meter__value {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-700);
+}
+
+/* -------------------------------------------------------------------------
+   Diff rows (Req 1.3, 7.1, 7.3)
+   add/del on subdued backgrounds; line numbers on --surface.
+   ------------------------------------------------------------------------- */
+
+.diff {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.diff__row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.diff__lineno {
+  flex: 0 0 auto;
+  width: 3.5ch;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--ink-300);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  user-select: none;
+}
+
+.diff__content {
+  flex: 1 1 auto;
+  padding: 0 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink-900);
+}
+
+.diff__row--add {
+  background: var(--add-bg);
+}
+
+.diff__row--add .diff__content {
+  color: var(--add);
+}
+
+.diff__row--del {
+  background: var(--del-bg);
+}
+
+.diff__row--del .diff__content {
+  color: var(--del);
+}
+
+.diff__row--unchanged .diff__content {
+  color: var(--ink-700);
+}
+
+/* -------------------------------------------------------------------------
+   State classes (Req 9.1, 9.2, 9.3, 1.4)
+   loading / empty / error. The reserved destructive red (--danger*) appears
+   ONLY in the .state--error treatment below — never in loading/empty.
+   ------------------------------------------------------------------------- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  border-radius: var(--r-lg);
+}
+
+.state__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.state__message {
+  font-size: 1rem;
+  color: var(--ink-500);
+  margin: 0;
+}
+
+/* Loading — neutral surface, subtle spinner. No danger color. */
+.state--loading {
+  color: var(--ink-500);
+  background: var(--surface);
+}
+
+.state__spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-full);
+  border: 3px solid var(--teal-100);
+  border-top-color: var(--teal-500);
+  animation: adr-spin 0.8s linear infinite;
+}
+
+@keyframes adr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty — inviting, neutral. An empty screen is an invitation to act. */
+.state--empty {
+  color: var(--ink-500);
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+}
+
+.state--empty .state__title {
+  color: var(--ink-700);
+}
+
+/* Error / conflict — the ONLY place destructive red is used in states. */
+.state--error {
+  color: var(--danger-600);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+}
+
+.state--error .state__title {
+  color: var(--danger-600);
+}
+
+.state--error .state__message {
+  color: var(--danger-600);
+}
+
+/* -------------------------------------------------------------------------
+   Accessibility (Req 11.1, 11.2, 11.3)
+   ------------------------------------------------------------------------- */
+
+/* Visible keyboard focus treatment (Req 11.1) — the design's focus ring:
+   teal-500 outline over a teal-100 halo. Pointer interaction is unaffected
+   because we key off :focus-visible. */
+:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Keep a focus ring for fields too (their border already shifts on :focus). */
+.field__input:focus-visible {
+  outline: none;
+  border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px var(--teal-100);
+}
+
+/* Reduced motion (Req 11.2): suppress non-essential motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

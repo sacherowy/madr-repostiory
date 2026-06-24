@@ -107,6 +107,17 @@ describe("HistoryTimeline", () => {
     expect(entries[0].textContent).toContain("Test Author");
     expect(entries[1].textContent).toContain(`create ${created.adr.id}`);
     expect(entries[1].textContent).toContain("Test Author");
+
+    // Each entry renders its blob SHA as a machine-identifier mono chip
+    // (Req 6.2). The full sha stays available via the entry's data-sha, while
+    // the chip surfaces it as visible monospace text.
+    for (const entry of entries) {
+      const sha = entry.getAttribute("data-sha");
+      expect(sha).toBeTruthy();
+      const chip = entry.querySelector(".mono-chip--sha");
+      expect(chip).not.toBeNull();
+      expect(chip?.textContent).toBe(sha);
+    }
   });
 
   it("selecting the oldest (create) entry on a multi-version ADR shows that version's original title/body, not the updated content", async () => {

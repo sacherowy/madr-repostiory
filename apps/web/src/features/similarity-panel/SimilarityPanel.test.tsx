@@ -114,7 +114,13 @@ describe("SimilarityPanel", () => {
 
     const direct = await client.getSimilar(target.id, "decisions");
     if (!direct.ok || direct.kind !== "ranked") throw new Error("fixture setup: direct getSimilar unexpectedly failed");
-    expect(result).toHaveTextContent(String(direct.results[0].score));
+    // The score now renders through the SimilarityMeter primitive, which
+    // formats the value to two decimals (`.meter__value`, e.g. `0.99`) rather
+    // than the raw full-precision number the old plain-text render emitted.
+    // The behavioral intent — that the rendered result carries the score the
+    // backend returned for this sibling — is preserved by asserting on that
+    // same two-decimal formatting derived from the direct backend call.
+    expect(result).toHaveTextContent(direct.results[0].score.toFixed(2));
   });
 
   it("falls back to the open ADR's own containing folder when folder prop is null, still finding a sibling in that subfolder but excluding a parent-folder decoy (req 10.1)", async () => {

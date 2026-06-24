@@ -47,6 +47,25 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
   });
 
+  it("renders human-readable tab labels and marks the active tab via aria-current", async () => {
+    render(<App />);
+
+    // The tab buttons must show readable labels, not raw internal state keys
+    // (Req 2.2). The editor tab is active by default, so it is the one marked
+    // via aria-current (Req 2.3).
+    const editorTab = screen.getByTestId("panel-tab-editor");
+    expect(editorTab).toHaveTextContent("Editor");
+    expect(editorTab).not.toHaveTextContent("editor");
+    expect(editorTab).toHaveAttribute("aria-current", "true");
+
+    expect(screen.getByTestId("panel-tab-relations")).toHaveTextContent("Relations");
+    expect(screen.getByTestId("panel-tab-history")).toHaveTextContent("History");
+    expect(screen.getByTestId("panel-tab-comparison")).toHaveTextContent("Comparison");
+    expect(screen.getByTestId("panel-tab-similarity")).toHaveTextContent("Similarity");
+
+    await waitFor(() => expect(screen.getByTestId("folder-tree-error")).toBeInTheDocument());
+  });
+
   it("switching to a non-editor tab with no ADR selected renders the empty placeholder", async () => {
     render(<App />);
 

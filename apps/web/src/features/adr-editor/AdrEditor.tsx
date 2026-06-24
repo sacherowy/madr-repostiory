@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Adr, AdrRelation, AdrStatus, RelationType } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
+import { StatusBadge } from "../../components/StatusBadge.js";
+import { MonoChip } from "../../components/MonoChip.js";
+import { RelationChip } from "../../components/RelationChip.js";
 
 const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded"];
 const RELATION_TYPES: RelationType[] = [
@@ -69,23 +72,39 @@ function CreateAdrForm({ folder, authorName, apiClient, onAdrSaved }: CreateAdrF
   }
 
   return (
-    <div data-testid="adr-editor-create">
-      <div>
-        <label htmlFor="adr-editor-title-input">Title</label>
-        <input
-          id="adr-editor-title-input"
-          data-testid="title-input"
-          type="text"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
+    <div data-testid="adr-editor-create" className="card">
+      <span className="card__accent" aria-hidden="true" />
+      <div className="card__body">
+        <h2 className="card__title">New ADR</h2>
+        <div className={`field${missingFields !== null ? " field--error" : ""}`}>
+          <label className="field__label" htmlFor="adr-editor-title-input">
+            Title
+          </label>
+          <input
+            id="adr-editor-title-input"
+            data-testid="title-input"
+            className="field__input"
+            type="text"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </div>
+        <div className="card__footer">
+          <button
+            data-testid="create-button"
+            className="btn btn--primary"
+            type="button"
+            onClick={handleCreate}
+          >
+            Create
+          </button>
+        </div>
+        {missingFields !== null ? (
+          <p data-testid="missing-fields-message" className="state state--error state__message">
+            Missing fields: {missingFields.join(", ")}
+          </p>
+        ) : null}
       </div>
-      <button data-testid="create-button" type="button" onClick={handleCreate}>
-        Create
-      </button>
-      {missingFields !== null ? (
-        <p data-testid="missing-fields-message">Missing fields: {missingFields.join(", ")}</p>
-      ) : null}
     </div>
   );
 }
@@ -230,147 +249,217 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   }
 
   if (loadState.kind === "loading") {
-    return <div data-testid="adr-editor-loading">Loading…</div>;
+    return (
+      <div data-testid="adr-editor-loading" className="state state--loading">
+        <span className="state__spinner" aria-hidden="true" />
+        <p className="state__message">Loading…</p>
+      </div>
+    );
   }
 
   if (loadState.kind === "notFound") {
-    return <div data-testid="adr-editor-not-found">ADR not found.</div>;
+    return (
+      <div data-testid="adr-editor-not-found" className="state state--error">
+        <p className="state__title">ADR not found.</p>
+      </div>
+    );
   }
 
   return (
-    <div data-testid="adr-editor-edit">
-      <div>
-        <label htmlFor="adr-editor-title-input">Title</label>
-        <input
-          id="adr-editor-title-input"
-          data-testid="title-input"
-          type="text"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
+    <div data-testid="adr-editor-edit" className="card">
+      <span className="card__accent" aria-hidden="true" />
+      <div className="card__body">
+        <div className="card__header">
+          <h2 className="card__title">Edit ADR</h2>
+          <div className="card__meta">
+            <MonoChip variant="id" value={adrId} data-testid="adr-id-chip" />
+            <MonoChip variant="sha" value={baseBlobSha} data-testid="adr-sha-chip" />
+          </div>
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-title-input">
+            Title
+          </label>
+          <input
+            id="adr-editor-title-input"
+            data-testid="title-input"
+            className="field__input"
+            type="text"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-status-select">
+            Status <StatusBadge status={status} />
+          </label>
+          <select
+            id="adr-editor-status-select"
+            data-testid="status-select"
+            className="field__input"
+            value={status}
+            onChange={(event) => setStatus(event.target.value as AdrStatus)}
+          >
+            {ADR_STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-date-input">
+            Date
+          </label>
+          <input
+            id="adr-editor-date-input"
+            data-testid="date-input"
+            className="field__input"
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-deciders-input">
+            Deciders
+          </label>
+          <input
+            id="adr-editor-deciders-input"
+            data-testid="deciders-input"
+            className="field__input"
+            type="text"
+            value={deciders}
+            onChange={(event) => setDeciders(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-tags-input">
+            Tags
+          </label>
+          <input
+            id="adr-editor-tags-input"
+            data-testid="tags-input"
+            className="field__input"
+            type="text"
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-body-textarea">
+            Body
+          </label>
+          <textarea
+            id="adr-editor-body-textarea"
+            data-testid="body-textarea"
+            className="field__input"
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+          />
+        </div>
+
+        <div data-testid="relations-editor" className="field">
+          <span className="field__label">Relations</span>
+          <div className="card__header">
+            <select
+              data-testid="relation-type-select"
+              className="field__input"
+              value={relationType}
+              onChange={(event) => setRelationType(event.target.value as RelationType)}
+            >
+              {RELATION_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+            <input
+              data-testid="relation-target-input"
+              className="field__input"
+              type="text"
+              value={relationTarget}
+              onChange={(event) => setRelationTarget(event.target.value)}
+            />
+            <button
+              data-testid="add-relation-button"
+              className="btn btn--secondary"
+              type="button"
+              onClick={handleAddRelation}
+            >
+              Add relation
+            </button>
+          </div>
+
+          <ul className="card__meta">
+            {relations.map((relation, index) => (
+              <li
+                key={`${relation.type}-${relation.target}-${index}`}
+                className="card__header"
+              >
+                <RelationChip type={relation.type} target={relation.target} />
+                <button
+                  data-testid="remove-relation-button"
+                  className="btn btn--danger"
+                  type="button"
+                  onClick={() => handleRemoveRelation(index)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      <div>
-        <label htmlFor="adr-editor-status-select">Status</label>
-        <select
-          id="adr-editor-status-select"
-          data-testid="status-select"
-          value={status}
-          onChange={(event) => setStatus(event.target.value as AdrStatus)}
+      <div className="card__footer">
+        <button
+          data-testid="save-button"
+          className="btn btn--primary"
+          type="button"
+          onClick={handleSave}
         >
-          {ADR_STATUSES.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="adr-editor-date-input">Date</label>
-        <input
-          id="adr-editor-date-input"
-          data-testid="date-input"
-          type="date"
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="adr-editor-deciders-input">Deciders</label>
-        <input
-          id="adr-editor-deciders-input"
-          data-testid="deciders-input"
-          type="text"
-          value={deciders}
-          onChange={(event) => setDeciders(event.target.value)}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="adr-editor-tags-input">Tags</label>
-        <input
-          id="adr-editor-tags-input"
-          data-testid="tags-input"
-          type="text"
-          value={tags}
-          onChange={(event) => setTags(event.target.value)}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="adr-editor-body-textarea">Body</label>
-        <textarea
-          id="adr-editor-body-textarea"
-          data-testid="body-textarea"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-        />
-      </div>
-
-      <div data-testid="relations-editor">
-        <select
-          data-testid="relation-type-select"
-          value={relationType}
-          onChange={(event) => setRelationType(event.target.value as RelationType)}
-        >
-          {RELATION_TYPES.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-        <input
-          data-testid="relation-target-input"
-          type="text"
-          value={relationTarget}
-          onChange={(event) => setRelationTarget(event.target.value)}
-        />
-        <button data-testid="add-relation-button" type="button" onClick={handleAddRelation}>
-          Add relation
+          Save
         </button>
 
-        <ul>
-          {relations.map((relation, index) => (
-            <li key={`${relation.type}-${relation.target}-${index}`}>
-              {relation.type} → {relation.target}
-              <button
-                data-testid="remove-relation-button"
-                type="button"
-                onClick={() => handleRemoveRelation(index)}
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
+        {saveSuccess ? (
+          <p data-testid="save-success-message" className="badge badge--accepted">
+            Saved.
+          </p>
+        ) : null}
+
+        {missingFields !== null ? (
+          <p data-testid="missing-fields-message" className="state state--error state__message">
+            Missing fields: {missingFields.join(", ")}
+          </p>
+        ) : null}
+
+        {missingTargets !== null ? (
+          <p data-testid="invalid-relations-message" className="state state--error state__message">
+            Relation targets not found: {missingTargets.join(", ")}
+          </p>
+        ) : null}
+
+        {conflictLatest !== null ? (
+          <div data-testid="conflict-message" className="state state--error">
+            <p className="state__message">{CONFLICT_COPY}</p>
+            <button
+              data-testid="reload-latest-button"
+              className="btn btn--secondary"
+              type="button"
+              onClick={handleReloadLatest}
+            >
+              Reload latest version
+            </button>
+          </div>
+        ) : null}
       </div>
-
-      <button data-testid="save-button" type="button" onClick={handleSave}>
-        Save
-      </button>
-
-      {saveSuccess ? <p data-testid="save-success-message">Saved.</p> : null}
-
-      {missingFields !== null ? (
-        <p data-testid="missing-fields-message">Missing fields: {missingFields.join(", ")}</p>
-      ) : null}
-
-      {missingTargets !== null ? (
-        <p data-testid="invalid-relations-message">
-          Relation targets not found: {missingTargets.join(", ")}
-        </p>
-      ) : null}
-
-      {conflictLatest !== null ? (
-        <div data-testid="conflict-message">
-          <p>{CONFLICT_COPY}</p>
-          <button data-testid="reload-latest-button" type="button" onClick={handleReloadLatest}>
-            Reload latest version
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
