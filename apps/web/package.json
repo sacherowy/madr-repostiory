@@ -6,8 +6,10 @@
   "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview", "test": "vitest run" },
   "dependencies": {
     "@adr/shared": "workspace:*",
+    "@tanstack/react-query": "^5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zustand": "^5"
   },
   "devDependencies": {
     "@adr/api": "workspace:*",

@@ -2,7 +2,7 @@
 
 ## 1. Foundation: dependencies, state infrastructure, and surface layers
 
-- [ ] 1.1 Add the state-management dependencies to the web app
+- [x] 1.1 Add the state-management dependencies to the web app
   - Add the server-state library (TanStack Query) and the UI-state store (Zustand) to the web app's dependencies and install them under the workspace package manager
   - Confirm both packages resolve and appear in the lockfile, and that the existing web build still succeeds
   - _Requirements: 10.3_
