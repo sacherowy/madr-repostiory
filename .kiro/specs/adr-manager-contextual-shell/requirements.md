@@ -53,7 +53,10 @@ suite**.
   additive depth tokens are introduced); new product capabilities or navigation
   destinations beyond rearranging existing ones; a client-side router, CSS framework,
   or component library; changes to the `apps/e2e` harness/config design (reused
-  unchanged; only spec files are added); and pixel-baseline snapshot regression.
+  unchanged; only spec files are added); and pixel-baseline snapshot regression. State
+  management is the one deliberate exception to the no-new-dependency rule: this feature
+  adopts a server-state library (TanStack Query) and a UI-state store (Zustand); no
+  other new runtime or dev dependency is permitted.
 - **Adjacent expectations**: This feature conceptually continues
   `adr-manager-frontend-redesign` by realizing the next IA/navigation and surface-
   depth layer on top of its primitives and restyled panels, which it reuses unchanged;
@@ -158,8 +161,9 @@ suite**.
 #### Acceptance Criteria
 1. The ADR Manager web app shall preserve all existing user-facing functionality and flows (ADR create/edit/save with conflict recovery, tree browsing, folder creation, ADR move, relations, history, comparison, search, and similarity) unchanged in behavior.
 2. The ADR Manager web app shall not alter the API request/response contracts it exchanges with the backend, nor the behavior, validation, or data fetching of the reused feature panels.
-3. The ADR Manager web app shall introduce no new runtime dependency, no new development dependency, no CSS framework, no component library, and no client-side router.
-4. The ADR Manager web app shall preserve the existing `data-testid` attributes and ARIA roles that the component and end-to-end tests depend on, except for the panel-tab hooks, which shall be deliberately migrated onto the corresponding aspect-switcher controls.
+3. The ADR Manager web app shall introduce no new CSS framework, no component library, and no client-side router, and shall add no new runtime or development dependency other than the adopted state-management libraries (a server-state library, TanStack Query, and a UI-state store, Zustand).
+4. The ADR Manager web app shall manage the server-derived state this feature introduces (aspect counts and inspector previews) through the adopted server-state library, and shall manage cross-zone UI/view state (selection, active aspect, and palette/comparison/inspector visibility) through the adopted UI-state store; keyword search remains owned by the reused search panel and is not re-implemented.
+5. The ADR Manager web app shall preserve the existing `data-testid` attributes and ARIA roles that the component and end-to-end tests depend on, except for the panel-tab hooks, which shall be deliberately migrated onto the corresponding aspect-switcher controls.
 
 ### Requirement 11: Aspect-Hook Migration
 **Objective:** As a maintainer, I want the existing panel-tab test hooks deliberately moved onto the new aspect controls, so that the navigation tests continue to target stable, intentional selectors after the tab bar is replaced.

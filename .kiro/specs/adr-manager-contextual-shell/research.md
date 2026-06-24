@@ -24,6 +24,9 @@
     contract via computed styles against the literal `tokens.css` values, with no
     pixel-baseline snapshot. The same technique extends to the new navigation and
     depth assertions and stays offline.
+  - Per explicit user direction, the no-new-dependency rule is relaxed for state
+    management only: **Zustand** (UI/view state) + **TanStack Query** (server state) are
+    adopted; Req 10.3 and the brief are amended accordingly. No other dependency is added.
 
 ## Research Log
 
@@ -92,11 +95,36 @@
 
 | Option | Description | Strengths | Risks / Limitations | Notes |
 |--------|-------------|-----------|---------------------|-------|
-| Container-owned view-state (chosen) | `App.tsx` remains the single source of view-state; new shell components are prop-driven children | Mirrors the existing, tested pattern; no new state library; parallel-safe component seams | `App.tsx` grows; mitigated by extracting `ContextHeader`, `AspectSwitcher`, rails into their own files | Matches how the redesign was delivered |
-| Client-side router | Encode aspect/selection in the URL | Deep-linkable | Adds a dependency and rewrites navigation; explicitly out of scope | Rejected (Req 10.3) |
-| Global state store | Context/store for selection + aspect | Decouples deep trees | New dependency/abstraction not warranted at this size | Rejected (simplification) |
+| Zustand store + TanStack Query (chosen) | UI/view state in a Zustand store; server-derived state (counts, previews) via TanStack Query | Removes the multi-flag `useState` smell; decouples deep zones from prop-drilling; caching/dedupe retires the counts-vs-panel double-fetch | Adds two dependencies (deliberately permitted via amended Req 10.3); small learning surface | Chosen after explicit user direction to adopt a state library |
+| Container-owned view-state (initial) | `App.tsx` keeps all view-state in `useState`; prop-driven children | No new dependency; mirrors the existing tested pattern | Multi-flag state smell; prop-drilling to palette/inspector; manual fetch/cache | Superseded by the decision below |
+| Redux Toolkit / XState | Global store + middleware / explicit FSM | Powerful for large or highly stateful apps | Boilerplate (Redux) or concept cost (XState) disproportionate to a 3-state, ~7-field machine | Rejected (over-engineering) |
+| Client-side router | Encode aspect/selection in the URL | Deep-linkable | Rewrites navigation; explicitly out of scope | Rejected (no router) |
 
 ## Design Decisions
+
+### Decision: Adopt Zustand (UI state) + TanStack Query (server state)
+- **Context**: The initial design kept all state in `App.tsx` `useState` under a strict
+  no-new-dependency rule (original Req 10.3). On review, the user directed the design to
+  adopt a state-management library; after a full comparison (Zustand, TanStack Query,
+  XState, Redux Toolkit, Jotai), the recommended pairing was selected.
+- **Alternatives Considered**:
+  1. Keep zero-dependency `useState`/`useReducer` — defensible at this size but leaves the
+     multi-flag smell, prop-drilling, and manual server-state handling.
+  2. Single UI store only (Zustand) — addresses view-state but not the dominant problem
+     (the `ApiClient` fetches).
+  3. XState / Redux Toolkit — over-engineering for a 3-state, ~7-field machine.
+- **Selected Approach**: **Zustand** holds cross-zone view-state (`workspaceStore`);
+  **TanStack Query** owns the server-derived state this feature introduces (aspect counts
+  via `useAspectCounts`, inspector previews via `useInspectorPreviews`) behind a root
+  `QueryClientProvider`. Keyword search stays on the reused, out-of-boundary `SearchPanel`.
+- **Rationale**: Most of the feature's "state" is fetched data; TanStack Query is the
+  high-value half (caching/dedupe retires the counts-vs-panel double-fetch risk). Zustand
+  is a ~1kb, provider-free store that removes prop-drilling into the palette/inspector.
+- **Trade-offs**: Two new dependencies (requires amending Req 10.3 + the brief, done);
+  query-consuming tests need a `QueryClientProvider` wrapper and the store needs a `reset`
+  test hook.
+- **Follow-up**: Confirm `@tanstack/react-query`/`zustand` v5 install cleanly under pnpm 9
+  with React 18.3 during the foundation task; verify offline E2E remains green.
 
 ### Decision: Comparison as a command-bar/header action, not an aspect
 - **Context**: Req 2.5, 3.4, 11.2 — Comparison must leave the per-ADR aspect set but
@@ -144,6 +172,9 @@
   `!important`.
 
 ## Risks & Mitigations
+- **New-dependency footprint** — Limit additions to exactly `@tanstack/react-query` and
+  `zustand` in `apps/web`; verify install under pnpm 9 / React 18.3 and that the offline
+  E2E + web vitest suites stay green in the foundation task.
 - **Test churn from hook migration** — Confine changes to the deliberately relocated
   hooks (`panel-tab-*` → aspect controls; `panel-tab-comparison` → Compare action) and
   update only the affected queries; leave all other hooks intact (Req 11.3).

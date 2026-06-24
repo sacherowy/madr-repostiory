@@ -31,15 +31,23 @@ arrangement, navigation, and surface depth only.
 
 ### Non-Goals
 - No backend/API, `packages/*`, or `docs/design.md` token-value changes.
-- No new runtime/dev dependency, CSS framework, component library, or client-side router.
+- No CSS framework, component library, or client-side router; and no new runtime/dev
+  dependency **other than** the two adopted state-management libraries (TanStack Query +
+  Zustand).
+- No re-implementation of keyword search: the command palette reuses `SearchPanel`
+  verbatim, so search stays on the panel's existing fetch (not migrated to TanStack Query).
 - No new product capabilities or navigation destinations beyond rearranging existing ones.
 - No changes to the `apps/e2e` harness/config or pixel-baseline snapshot oracle.
 
 ## Boundary Commitments
 
 ### This Spec Owns
-- The four-zone application shell and view-state machine in `App.tsx` (selection,
-  active aspect, comparison-overlay open, palette open, inspector open).
+- The four-zone application shell and the **view-state machine**, relocated from
+  `App.tsx`'s local `useState` into a dedicated **Zustand store** (selection, active
+  aspect, comparison-overlay open, palette open, inspector open).
+- The **server-state layer**: a TanStack Query `QueryClient` provider at the app root,
+  and the query hooks for the server-derived state this feature introduces (aspect
+  counts and inspector Similar/History previews).
 - The contextual **aspect switcher** (Edit / Relations / History / Similar with live
   counts) that replaces the global tab bar and renders only when an ADR is selected.
 - The **ADR context header** (id chip, status badge, title, metadata, inline
@@ -69,6 +77,9 @@ arrangement, navigation, and surface depth only.
 - The `apps/e2e` harness/config; only spec files are added/edited.
 
 ### Allowed Dependencies
+- **New (the only permitted additions)**: `@tanstack/react-query` (^5, server-state
+  caching/dedupe/lifecycle for counts + inspector previews) and `zustand` (^5, UI/view
+  store). Both target React 18.3 and are added to `apps/web` only.
 - `ApiClient` methods as-is: `search`, `getSimilar`, `getHistory`, `getRelations`,
   `getTree`, `getAdr`, `createFolder`, `moveAdr`, and the comparison methods consumed by
   `CompareLauncher`.
@@ -76,11 +87,15 @@ arrangement, navigation, and surface depth only.
   `AdrCard`) and `@adr/shared` types.
 - The existing CSS token files (referenced by name only; never re-valued).
 - Dependency direction (enforced): `tokens.css` → `base.css` → `app-shell.css` →
-  `soft-ui.css` for styles; for modules: `@adr/shared` types → `ApiClient` → primitives →
-  feature panels → shell components (`ExplorerRail`, `CommandPalette`, `InspectorRail`,
-  `AspectSwitcher`, `ContextHeader`) + hooks → `App`. Imports never point upward.
+  `soft-ui.css` for styles; for modules: `@adr/shared` types → `ApiClient` → `store`
+  (Zustand) / query hooks (TanStack Query) → primitives → feature panels → shell
+  components (`ExplorerRail`, `CommandPalette`, `InspectorRail`, `AspectSwitcher`,
+  `ContextHeader`) → `App`. The store holds no React imports; query hooks depend only on
+  `ApiClient`. Imports never point upward.
 
 ### Revalidation Triggers
+- A change to the adopted state libraries' major versions (TanStack Query / Zustand) or
+  the shape of the view-state store contract consumed by shell components.
 - A change to any `ApiClient` method shape or a feature-panel prop contract.
 - Any change to `docs/design.md` token values or the primitives' specs.
 - Removal/rename of a non-migrated `data-testid`/ARIA hook the test suites depend on.
@@ -124,11 +139,14 @@ graph TB
         Tree[FolderTree]
     end
     subgraph Foundation
-        Hooks[useAspectCounts]
+        Store[Zustand view-state store]
+        Query[TanStack Query client]
+        Hooks[useAspectCounts query hook]
         Api[ApiClient]
         Primitives[Design primitives]
     end
 
+    App --> Store
     App --> CommandBar
     App --> Explorer
     App --> Header
@@ -144,7 +162,13 @@ graph TB
     Switcher --> Similarity
     CompareOverlay --> Compare
     Switcher --> Hooks
-    Inspector --> Api
+    Header --> Store
+    Explorer --> Store
+    Inspector --> Store
+    Palette --> Store
+    Hooks --> Query
+    Inspector --> Query
+    Query --> Api
     Hooks --> Api
     Search --> Api
     Tree --> Api
@@ -153,34 +177,49 @@ graph TB
 ```
 
 **Architecture Integration**:
-- Selected pattern: **container-owned view-state** (unchanged from today) with new
-  prop-driven shell components — mirrors the existing tested pattern, adds no state library.
-- Domain/feature boundaries: shell components own layout/navigation; feature panels own
-  behavior/data; the hook owns read-only counts; the cascade owns depth.
+- Selected pattern: **Zustand store for UI/view state + TanStack Query for server state**,
+  with prop-light shell components that read selection/aspect/visibility from the store and
+  derived data from query hooks. This replaces the previous container-owned `useState`
+  approach (see research.md decision) to remove the multi-flag state smell and the
+  counts-vs-panel double-fetch.
+- Domain/feature boundaries: the Zustand store owns cross-zone view-state; TanStack Query
+  owns server-derived state (counts, previews); shell components own layout/navigation;
+  feature panels own their own behavior/data; the cascade owns depth.
 - Existing patterns preserved: one-panel-at-a-time mounting (now per aspect), explicit-
   action controls, token cascade, offline computed-style E2E oracle.
 - New components rationale: `CommandPalette` and `InspectorRail` are genuinely new
   surfaces; `ExplorerRail`, `AspectSwitcher`, `ContextHeader` extract cohesive shell
-  responsibilities out of `App.tsx` to keep seams parallel-safe.
+  responsibilities out of `App.tsx`; the Zustand store decouples them from prop-drilling so
+  the seams stay parallel-safe.
 - Steering compliance: no steering directory exists; the project's `CLAUDE.md`
-  offline/Chromium and no-new-dependency constraints are honored.
+  offline/Chromium constraints are honored. The no-new-dependency rule is relaxed only for
+  the two state libraries, per the amended Req 10.3.
 
 ### Technology Stack
 
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
-| Frontend | React 18 + TypeScript + Vite (existing) | Shell components, hooks, state machine | No new dependency |
+| Frontend | React 18.3 + TypeScript + Vite (existing) | Shell components, hooks, view-state machine | — |
+| UI state | `zustand` ^5 (**new**) | Single typed store for cross-zone view-state (selection, active aspect, palette/comparison/inspector flags) | ~1kb, no provider; added to `apps/web` only |
+| Server state | `@tanstack/react-query` ^5 (**new**) | Caching/dedupe/lifecycle for aspect counts + inspector previews | `QueryClientProvider` at root; React 18-compatible |
 | Styling | Plain CSS token cascade (existing) | Additive depth tokens + `soft-ui.css` + zone layout | No CSS framework |
-| Test (component) | Vitest + jsdom + real Fastify backend (existing) | Shell/hook/component tests | `pnpm --filter @adr/web test` |
+| Test (component) | Vitest + jsdom + real Fastify backend (existing) | Shell/hook/component tests; wrap query-consuming components in a `QueryClientProvider` test helper | `pnpm --filter @adr/web test` |
 | Test (E2E) | Playwright + pre-provisioned Chromium, offline (existing) | Contextual-nav + depth design assertions | `pnpm --filter @adr/e2e test:e2e` |
+
+> The two libraries are the deliberate exception to the no-new-dependency rule (Req 10.3);
+> no other dependency is added. Both ship to `apps/web` only and run fully offline.
 
 ## File Structure Plan
 
 ### Directory Structure
 ```
 apps/web/src/
-├── App.tsx                              # MODIFIED: four-zone shell + view-state machine
-├── main.tsx                             # MODIFIED: import soft-ui.css after app-shell.css
+├── App.tsx                              # MODIFIED: four-zone shell; reads/writes the Zustand store
+├── main.tsx                             # MODIFIED: import soft-ui.css; wrap App in QueryClientProvider
+├── state/
+│   ├── workspaceStore.ts               # NEW: Zustand store for cross-zone view-state + actions
+│   ├── workspaceStore.test.ts          # NEW
+│   └── queryClient.ts                  # NEW: shared TanStack Query QueryClient instance
 ├── components/
 │   ├── ContextHeader.tsx               # NEW: ADR-as-object header (id/status/title/meta + Edit/Compare)
 │   ├── ContextHeader.test.tsx          # NEW
@@ -199,8 +238,10 @@ apps/web/src/
 │   └── folder-tree/FolderTree.tsx      # MODIFIED: optional filter/selectedAdrId props, status dot,
 │                                       #           raised-selection + hover-reveal CSS hooks (defaults preserve behavior)
 ├── hooks/
-│   ├── useAspectCounts.ts              # NEW: read-only relations/history/similar counts for selected ADR
-│   └── useAspectCounts.test.ts         # NEW
+│   ├── useAspectCounts.ts              # NEW: TanStack Query hook — relations/history/similar counts
+│   ├── useAspectCounts.test.ts         # NEW
+│   ├── useInspectorPreviews.ts         # NEW: TanStack Query hooks — top-Similar + recent-history previews
+│   └── useInspectorPreviews.test.ts    # NEW
 └── styles/
     ├── tokens.css                      # MODIFIED: additive depth/glass token block (no existing token re-valued)
     ├── app-shell.css                   # MODIFIED: four-zone grid, command bar, rails, responsive collapse
@@ -211,12 +252,13 @@ apps/e2e/tests/
 ```
 
 ### Modified Files
-- `apps/web/src/App.tsx` — Replace the global tab bar with the four-zone shell; rename
-  `activePanel`→`activeAspect` over `editor|relations|history|similar`; add
-  `comparisonOpen`, `paletteOpen`, `inspectorOpen` (default `false`) state; Cmd-K key
-  handler; render `ContextHeader`/`AspectSwitcher` only when an ADR is selected, else the
-  browse/create state; move `SearchPanel` out of the sidebar into `CommandPalette`.
-- `apps/web/src/main.tsx` — Add `import "./styles/soft-ui.css";` after `app-shell.css`.
+- `apps/web/src/App.tsx` — Replace the global tab bar with the four-zone shell; read/write
+  view-state (selection, `activeAspect`, `comparisonOpen`, `paletteOpen`, `inspectorOpen`)
+  from the Zustand `workspaceStore` instead of local `useState`; Cmd-K key handler dispatches
+  a store action; render `ContextHeader`/`AspectSwitcher` only when an ADR is selected, else
+  the browse/create state; move `SearchPanel` out of the sidebar into `CommandPalette`.
+- `apps/web/src/main.tsx` — Add `import "./styles/soft-ui.css";` after `app-shell.css`, and
+  wrap `<App/>` in `<QueryClientProvider client={queryClient}>` (from `state/queryClient.ts`).
 - `apps/web/src/features/folder-tree/FolderTree.tsx` — Add optional `filter?: string` and
   `selectedAdrId?: string | null` props; render a status dot per ADR node; apply
   `adr-node--selected` and hover-reveal classes to move controls. Defaults reproduce
@@ -224,8 +266,10 @@ apps/e2e/tests/
 - `apps/web/src/styles/tokens.css` — Append additive depth/glass custom properties.
 - `apps/web/src/styles/app-shell.css` — Add four-zone grid, command-bar, explorer/inspector
   rail layout, and responsive rail collapse.
-- `apps/web/src/App.test.tsx` — Update only the queries affected by the tab→aspect/action
-  migration (tabs now appear after selection; Compare via command bar).
+- `apps/web/src/App.test.tsx` — Update the queries affected by the tab→aspect/action
+  migration (tabs now appear after selection; Compare via command bar); render `App` inside
+  a `QueryClientProvider` test wrapper and reset the Zustand store between tests.
+- `apps/web/src/package.json` — Add `@tanstack/react-query` and `zustand` to dependencies.
 - `apps/e2e/tests/design-system.spec.ts` — Add contextual-nav + depth assertions; move the
   pre-selection tab-label assertion to after ADR creation.
 
@@ -281,7 +325,8 @@ the legacy behavior; the overlay renders `CompareLauncher` unchanged.
 | 7.1–7.4 | Soft UI depth, additive, AA-safe | tokens.css, soft-ui.css | CSS tokens/classes | — |
 | 8.1–8.3 | Responsive three-zone layout | app-shell.css, App | CSS grid/media | — |
 | 9.1–9.4 | Accessibility (focus, keyboard, labels, reduced motion) | CommandPalette, AspectSwitcher, ExplorerRail, InspectorRail, soft-ui.css | ARIA attrs | — |
-| 10.1–10.4 | Behavior/contract preservation; deps; hooks | App, all reused panels | unchanged contracts | — |
+| 10.1–10.3, 10.5 | Behavior/contract preservation; scoped deps; hooks | App, all reused panels | unchanged contracts | — |
+| 10.4 | Server state via TanStack Query; view-state via Zustand | workspaceStore, queryClient, useAspectCounts, useInspectorPreviews | `WorkspaceStore`, query hooks | Selecting an ADR |
 | 11.1–11.3 | Deliberate hook migration | AspectSwitcher, command bar, App.test | `data-testid` mapping | Comparison as an action |
 | 12.1–12.4 | Offline E2E design + nav verification | design-system.spec.ts | computed-style assertions | — |
 
@@ -289,47 +334,116 @@ the legacy behavior; the overlay renders `CompareLauncher` unchanged.
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies (P0/P1) | Contracts |
 |-----------|--------------|--------|--------------|--------------------------|-----------|
-| App | Shell container | Owns view-state; composes the four zones | 1, 2, 10, 11 | ContextHeader (P0), AspectSwitcher (P0), CommandPalette (P0), ExplorerRail (P0), InspectorRail (P1) | State |
+| workspaceStore | State (Zustand) | Single source of cross-zone view-state + actions | 1, 2, 10 | none (framework-free) | State |
+| queryClient | State (TanStack Query) | Shared QueryClient for server-state hooks | 10 | ApiClient (P1) | State |
+| App | Shell container | Composes the four zones; binds store + shortcuts | 1, 2, 10, 11 | workspaceStore (P0), ContextHeader (P0), AspectSwitcher (P0), CommandPalette (P0), ExplorerRail (P0), InspectorRail (P1) | State |
 | ContextHeader | Shell/UI | ADR-as-object header + inline actions | 3 | primitives (P0) | State |
 | AspectSwitcher | Shell/UI | Contextual aspect tabs + counts; migrated hooks | 2, 11 | useAspectCounts (P1) | State |
-| CommandPalette | Feature/UI | Cmd-K dialog: search/jump/actions | 4, 9 | SearchPanel (P0), ApiClient (P1) | State |
+| CommandPalette | Feature/UI | Cmd-K dialog: search/jump/actions | 4, 9 | SearchPanel (P0), workspaceStore (P1) | State |
 | ExplorerRail | Feature/UI | Filter + breadcrumb wrapper over FolderTree | 5 | FolderTree (P0) | State |
-| InspectorRail | Feature/UI | Collapsed Similar + Recent previews | 6, 9 | ApiClient (P0), SimilarityMeter (P1) | State |
-| useAspectCounts | Hook | Read-only counts for selected ADR | 2 | ApiClient (P0) | Service |
+| InspectorRail | Feature/UI | Collapsed Similar + Recent previews | 6, 9 | useInspectorPreviews (P0), SimilarityMeter (P1) | State |
+| useAspectCounts | Hook (Query) | relations/history/similar counts for selected ADR | 2 | queryClient (P0), ApiClient (P0) | Service |
+| useInspectorPreviews | Hook (Query) | top-Similar + recent-history previews | 6 | queryClient (P0), ApiClient (P0) | Service |
 | FolderTree (extended) | Feature/UI | Tree View 2.0 presentation additions | 5 | ApiClient (P0) | State |
 
 Reused panels (`AdrEditor`, `RelationsPanel`, `HistoryTimeline`, `SimilarityPanel`,
 `CompareLauncher`, `SearchPanel`) are consumed via their existing props with no contract
 change and need no detail block here.
 
+### State (foundation)
+
+#### workspaceStore (Zustand)
+| Field | Detail |
+|-------|--------|
+| Intent | Single typed source of cross-zone view-state with explicit actions |
+| Requirements | 1.2, 1.3, 1.4, 2.2, 2.5, 10.4 |
+
+**Responsibilities & Constraints**
+- Holds `selectedFolder`, `selectedAdrId`, `authorName`, `activeAspect`, and the
+  `comparisonOpen` / `paletteOpen` / `inspectorOpen` flags (all default `false`).
+- Exposes intent-named actions so transitions are explicit and testable; illegal
+  combinations are prevented inside actions (e.g. selecting an ADR forces
+  `activeAspect="editor"`). Framework-free — no React imports — so it is unit-testable in
+  isolation and importable by any zone without prop-drilling.
+
+**Contracts**: State [x]
+```typescript
+type Aspect = "editor" | "relations" | "history" | "similar";
+
+interface WorkspaceState {
+  selectedFolder: string | null;
+  selectedAdrId: string | null;
+  authorName: string;
+  activeAspect: Aspect;
+  comparisonOpen: boolean;
+  paletteOpen: boolean;
+  inspectorOpen: boolean;
+}
+
+interface WorkspaceActions {
+  selectFolder(path: string): void;
+  selectAdr(id: string): void;          // sets selectedAdrId, activeAspect="editor", paletteOpen=false
+  clearSelection(): void;
+  setAuthorName(name: string): void;
+  setAspect(aspect: Aspect): void;
+  openCompare(): void;                   // comparisonOpen=true (reachable with no selection)
+  closeCompare(): void;
+  setPaletteOpen(open: boolean): void;
+  toggleInspector(): void;
+  reset(): void;                         // test hook
+}
+
+type WorkspaceStore = WorkspaceState & WorkspaceActions;
+```
+- Invariants: exactly one `activeAspect`; dismissing the palette/overlay never mutates
+  `selectedAdrId`. `reset()` restores initial state for test isolation.
+
+**Implementation Notes**
+- Integration: `App` and all zones subscribe via selectors to minimize re-renders.
+- Risks: store-wide subscriptions — mitigated by per-slice selectors.
+
+#### queryClient (TanStack Query)
+| Field | Detail |
+|-------|--------|
+| Intent | Shared `QueryClient` instance + provider for server-state hooks |
+| Requirements | 10.4 |
+
+**Responsibilities & Constraints**
+- Exports a single `QueryClient` (sensible defaults: no refetch-on-focus needed for this
+  offline-capable tool; queries keyed by ADR id + concern). `main.tsx` wraps `<App/>` in
+  `QueryClientProvider`; tests use a fresh client per render.
+
+**Implementation Notes**
+- Integration: only `useAspectCounts` and `useInspectorPreviews` consume it; reused panels
+  keep their own fetch logic (out of boundary).
+
 ### Shell / UI
 
 #### App (container)
 | Field | Detail |
 |-------|--------|
-| Intent | Single owner of view-state; composes the four zones and overlay |
+| Intent | Composes the four zones + overlay; binds the store and keyboard shortcut |
 | Requirements | 1.1, 1.2, 1.3, 1.4, 2.2, 2.5, 10.1, 11.1 |
 
 **Responsibilities & Constraints**
-- Owns `selectedFolder`, `selectedAdrId`, `authorName` (unchanged) plus
-  `activeAspect: "editor" | "relations" | "history" | "similar"`, `comparisonOpen`,
-  `paletteOpen`, `inspectorOpen` (default `false`).
+- Reads view-state from `workspaceStore` (no local `useState` for view-state) and renders
+  the four zones; keeps the `apiClient` injection seam for tests.
 - Renders `ContextHeader` + `AspectSwitcher` + the active aspect panel **only** while
   `selectedAdrId !== null`; otherwise renders the browse/create state. Never renders a
   "select an ADR first" placeholder.
-- Binds Cmd/Ctrl-K to toggle the palette; selecting a result sets `selectedAdrId`,
-  `activeAspect="editor"`, and `paletteOpen=false`.
+- Binds Cmd/Ctrl-K to `setPaletteOpen`; selecting a result calls `store.selectAdr`.
 - Renders `SearchPanel` only inside `CommandPalette` (removed from the sidebar).
 
 **State Management**
-- State model: discriminated by `selectedAdrId === null` (browse) vs selected (object).
-- Concurrency: single-writer React state; no shared ownership with child components.
+- State model: derived from the store — discriminated by `selectedAdrId === null` (browse)
+  vs selected (object).
+- Concurrency: the store is the single writer; zones dispatch actions, never co-own state.
 
 **Implementation Notes**
-- Integration: `handleSelectAdr` retains its current contract; `handleOpenCompare`
-  sets `comparisonOpen=true`; aspect changes go through `setActiveAspect`.
+- Integration: store actions replace the former local handlers (`selectAdr`, `openCompare`,
+  `setAspect`); the `apiClient` prop is still threaded to panels and query hooks.
 - Validation: aspect panels remain gated on a non-null `selectedAdrId` by construction.
-- Risks: file growth — mitigated by extracting the child components below.
+- Risks: file growth — mitigated by the extracted zones and the store.
 
 #### ContextHeader
 | Field | Detail |
@@ -471,16 +585,16 @@ interface ExplorerRailProps {
 **Responsibilities & Constraints**
 - Collapsed by default; expands only on user action (Req 6.2) via an
   `inspector-toggle` control.
-- While open with an ADR selected, loads a top-Similar preview (`getSimilar`, rendered
-  with `SimilarityMeter`) and a recent-history preview (`getHistory`); renders graceful
-  loading/empty/error states (offline-safe).
+- While open with an ADR selected, renders a top-Similar preview (with `SimilarityMeter`)
+  and a recent-history preview sourced from `useInspectorPreviews`; renders graceful
+  loading/empty/error states (offline-safe) from the query state.
 - Each preview item links into the corresponding full aspect (`onOpenAspect("similar" |
   "history")`) — Req 6.4. With no ADR selected, shows no ADR previews (Req 6.5).
 
 **Contracts**: State [x], Service [x]
 ```typescript
 interface InspectorRailProps {
-  apiClient: ApiClient;
+  apiClient: ApiClient;     // threaded to useInspectorPreviews
   adrId: string | null;
   folder: string | null;
   open: boolean;
@@ -488,8 +602,9 @@ interface InspectorRailProps {
   onOpenAspect: (aspect: "similar" | "history") => void;
 }
 ```
-- Preconditions: fetches only while `open && adrId !== null`.
-- Postconditions: previews read from the same `ApiClient` methods the full aspects use.
+- Preconditions: the underlying queries are enabled only while `open && adrId !== null`.
+- Postconditions: previews read from the same `ApiClient` methods the full aspects use,
+  via the shared `queryClient` (so a later full-aspect view can reuse the warm cache).
 
 **Implementation Notes**
 - Integration: limits preview length (top-N similar, recent history) for compactness;
@@ -499,11 +614,15 @@ interface InspectorRailProps {
 
 ### Hooks
 
+Both hooks are thin TanStack Query wrappers over `ApiClient`; they consume the shared
+`queryClient` and are `enabled` only when an ADR is selected. They never throw to the UI —
+the consuming components read `data`/`isPending`/`isError` and degrade gracefully.
+
 #### useAspectCounts
 | Field | Detail |
 |-------|--------|
-| Intent | Read-only relations/history/similar counts for the selected ADR |
-| Requirements | 2.4 |
+| Intent | relations/history/similar counts for the selected ADR (TanStack Query) |
+| Requirements | 2.4, 10.4 |
 
 **Contracts**: Service [x]
 ```typescript
@@ -518,16 +637,41 @@ function useAspectCounts(
   folder: string | null,
 ): AspectCounts;
 ```
-- Preconditions: returns `{}` when `adrId === null`.
-- Postconditions: a key is populated only when its fetch resolves successfully; failures
-  and offline-empty similarity leave the key absent (never throws to the UI).
-- Invariants: read-only; never mutates and never blocks panel rendering.
+- Preconditions: queries disabled (returns `{}`) when `adrId === null`.
+- Postconditions: a key is populated only when its query resolves successfully; failures
+  and offline-empty similarity leave the key absent ("where available", Req 2.4).
+- Invariants: read-only; query keys are `["counts", concern, adrId, scope]` so results
+  are cached/deduped and shared with the panels' own data where keys align.
 
 **Implementation Notes**
-- Integration: counts come from `getRelations(id).relations.length`,
+- Integration: counts derive from `getRelations(id).relations.length`,
   `getHistory(id).history.length`, `getSimilar(id, scope).results.length`; scope resolves
   like `SimilarityPanel` (selected folder, else the ADR's own folder).
-- Risks: extra reads — acceptable and additive; cancel on `adrId` change.
+- Risks: extra reads are deduped/cached by TanStack Query and cancelled on `adrId` change.
+
+#### useInspectorPreviews
+| Field | Detail |
+|-------|--------|
+| Intent | top-Similar + recent-history previews for the inspector (TanStack Query) |
+| Requirements | 6.1, 6.3, 10.4 |
+
+**Contracts**: Service [x]
+```typescript
+interface InspectorPreviews {
+  similar: { data?: SimilarityResult[]; isPending: boolean; isError: boolean };
+  history: { data?: CommitMeta[]; isPending: boolean; isError: boolean };
+}
+function useInspectorPreviews(
+  apiClient: ApiClient,
+  adrId: string | null,
+  folder: string | null,
+  enabled: boolean,         // bound to the rail's open state
+): InspectorPreviews;
+```
+- Preconditions: queries run only while `enabled && adrId !== null`.
+- Postconditions: previews share query keys with the Similar/History aspects so opening a
+  full aspect reuses the warm cache (no duplicate fetch).
+- Invariants: read-only; offline-empty similarity yields an empty (not error) preview.
 
 ### FolderTree (extended) — Implementation Note
 Add optional `filter?: string` and `selectedAdrId?: string | null` props. When `filter`
@@ -576,7 +720,14 @@ component test suite.
 
 ## Testing Strategy
 
+> Components and hooks that consume TanStack Query are rendered through a shared test
+> helper that wraps them in a fresh `QueryClientProvider`; the Zustand store is `reset()`
+> in `beforeEach` for isolation.
+
 ### Unit / Component Tests (Vitest + jsdom + real backend)
+- `workspaceStore`: `selectAdr` sets `activeAspect="editor"` and clears `paletteOpen`;
+  `closeCompare`/palette dismiss never mutate `selectedAdrId`; `reset` restores defaults
+  (10.4, 2.5).
 - `AspectSwitcher`: renders nothing with no selection; renders four controls with
   migrated `panel-tab-*` hooks when selected; shows counts only for present keys; marks
   the active aspect (2.1–2.4, 11.1).
@@ -585,10 +736,11 @@ component test suite.
 - `CommandPalette`: opens/closes; Esc/overlay dismiss preserves selection; mounting
   `SearchPanel` selecting a hit calls `onSelectAdr` and closes; action buttons fire
   (4.1–4.6).
-- `useAspectCounts`: returns `{}` for null ADR; populates keys from resolved fetches;
-  omits keys on failure/offline-empty (2.4).
+- `useAspectCounts` / `useInspectorPreviews`: disabled (no fetch) for null ADR; populate
+  from resolved queries; omit/empty on failure or offline-empty similarity without
+  throwing (2.4, 6.1, 6.3, 10.4).
 - `FolderTree` (extended): filter narrows nodes; selected row gets `adr-node--selected`;
-  move hooks remain present; defaults preserve existing behavior (5.2, 5.4–5.6, 10.4).
+  move hooks remain present; defaults preserve existing behavior (5.2, 5.4–5.6, 10.5).
 
 ### Integration / Cross-component (App)
 - Selecting an ADR shows the context header + aspect switcher and hides the browse/create
@@ -607,7 +759,8 @@ component test suite.
   (3.1, 6.1, 12.1).
 - Soft UI depth present (e.g. a raised primary button carries a non-`none` box-shadow)
   and a keyboard-focused control still shows a visible focus outline (7.1, 7.4, 9.1,
-  12.2); no pixel-baseline snapshot, no new dependency, runs offline (12.3, 12.4).
+  12.2); no pixel-baseline snapshot, no new test/runtime dependency in the E2E layer, runs
+  offline (12.3, 12.4).
 
 ## Security Considerations
 No new authentication, authorization, sensitive data, or external integration is

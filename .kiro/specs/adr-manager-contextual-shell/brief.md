@@ -75,7 +75,8 @@ was delivered (additive, contract-preserving, offline-E2E-verified) to keep risk
     tokens are introduced).
   - New product capabilities or navigation destinations beyond rearranging existing ones.
   - The `apps/e2e` harness/config design (reused unchanged; only spec files added).
-  - A client-side router, CSS framework, or component library (plain CSS + existing React).
+  - A client-side router, CSS framework, or component library (plain CSS + existing React);
+    note state-management libraries (TanStack Query + Zustand) are the one permitted exception.
 
 ## Boundary Candidates
 - **Soft UI depth-token layer** — additive tokens + refined component rules in
@@ -112,8 +113,10 @@ was delivered (additive, contract-preserving, offline-E2E-verified) to keep risk
   contradict its behavior or API contracts).
 
 ## Constraints
-- Plain CSS + existing React 18 / Vite / TypeScript; **no new runtime or dev dependency**,
-  no CSS framework, component library, or client-side router.
+- Plain CSS + existing React 18 / Vite / TypeScript; no CSS framework, component library,
+  or client-side router. **State management is the one deliberate exception to the
+  no-new-dependency rule**: this feature adopts TanStack Query (server state) and Zustand
+  (UI state); no other new runtime or dev dependency is permitted.
 - Preserve the morski/teal palette, typography, and the five primitives; depth is added via
   shadow/gradient/glass, never by lowering text contrast (avoid the classic neumorphism
   accessibility trap). Maintain WCAG AA contrast and a visible keyboard-focus indicator.
