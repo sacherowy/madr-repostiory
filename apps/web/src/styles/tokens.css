@@ -30,4 +30,33 @@
   --sh-sm:0 1px 2px rgba(23,33,31,.06),0 1px 1px rgba(23,33,31,.04);
   --sh-md:0 14px 34px -18px rgba(6,60,55,.26),0 2px 6px rgba(23,33,31,.05);
   --glow:0 8px 22px -10px rgba(14,158,142,.5);
+
+  /* =======================================================================
+     Soft UI depth layer (Req 7.1–7.4) — ADDITIVE ONLY.
+     New custom properties consumed by soft-ui.css to give surfaces a tactile,
+     layered feel. These do NOT re-value or replace any token above: the
+     palette, type, shape and existing --sh-sm/--sh-md/--glow are untouched.
+     Depth is expressed purely through shadow / gradient / glass — never by
+     lowering text contrast (Req 7.4, 9.4).
+     ======================================================================= */
+
+  /* Recessed input — inner inset shadow so fields read carved-in. */
+  --depth-inset:inset 0 1px 2px rgba(23,33,31,.10),inset 0 1px 1px rgba(23,33,31,.06);
+
+  /* Raised, tactile button — elevation + a soft highlight rim. */
+  --depth-raised:0 2px 4px rgba(23,33,31,.10),0 6px 16px -6px rgba(6,60,55,.30);
+  /* Subtle top-light gradient overlay for the raised material. */
+  --depth-raised-grad:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 55%);
+  /* Pressed (depressed) button — flattened + slight inner shadow (Req 7.2). */
+  --depth-pressed:inset 0 2px 4px rgba(6,60,55,.32),0 1px 1px rgba(23,33,31,.06);
+
+  /* Layered card material — soft floating elevation; deeper on hover. */
+  --depth-card:0 1px 2px rgba(23,33,31,.05),0 12px 28px -16px rgba(6,60,55,.22);
+  --depth-card-hover:0 2px 4px rgba(23,33,31,.06),0 20px 44px -18px rgba(6,60,55,.30);
+
+  /* Frosted glass — translucent surface + blur for command bar / aspect bar. */
+  --glass-bg:rgba(255,255,255,.72);
+  --glass-blur:saturate(140%) blur(12px);
+  --glass-border:rgba(231,237,235,.85);
+  --glass-shadow:0 8px 24px -16px rgba(6,60,55,.28);
 }

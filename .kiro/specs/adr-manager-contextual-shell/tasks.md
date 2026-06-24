@@ -23,7 +23,7 @@
   - _Depends: 1.1_
   - _Boundary: workspaceStore_
 
-- [ ] 1.4 Add the Soft UI depth layer
+- [x] 1.4 Add the Soft UI depth layer
   - Append additive depth, elevation, gradient, and glass tokens to the token sheet without re-valuing any existing token, and author a depth stylesheet refining inputs (recessed), primary buttons (raised + pressed), cards (layered), and the command bar / aspect switcher (frosted glass)
   - Import the depth stylesheet after the existing component styles so refinements win via the cascade; preserve text contrast and the visible focus indicator, and honor reduced-motion for new transitions
   - Observable: rendered primary buttons carry a non-empty box-shadow, inputs read as recessed, and the focus outline remains visible — all without lowering text contrast

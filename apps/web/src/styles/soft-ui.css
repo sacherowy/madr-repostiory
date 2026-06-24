@@ -1,0 +1,130 @@
+/* =========================================================================
+   soft-ui.css — additive Soft UI depth refinements (Req 7.1–7.4, 9.1, 9.4).
+
+   Last in the cascade (imported AFTER tokens.css, base.css, app-shell.css in
+   main.tsx) so these refinements win over the resting component treatment in
+   base.css / app-shell.css. It is purely additive: it references existing
+   tokens by name only and consumes the NEW depth/glass custom properties from
+   tokens.css. It never re-values a token and never redefines a primitive's
+   structural spec — it only layers tactile depth (shadow / gradient / glass)
+   over the surfaces named in the design:
+
+     - .field__input  → recessed (inset shadow)
+     - .btn--primary  → raised + tactile, with a pressed (:active) state
+     - .card          → layered material
+     - .command-bar / .aspect-switcher / .tab-bar → frosted glass
+
+   Accessibility discipline (Req 7.4, 9.1, 9.4):
+     - Depth is added ONLY via shadow / gradient / glass. No text color, no
+       background that carries text, and no contrast token is lowered here.
+     - The :focus-visible treatment from base.css is NOT touched — the visible
+       focus indicator is preserved exactly.
+     - Every NEW transition added below is suppressed/reduced under
+       prefers-reduced-motion (mirrors the base.css reduced-motion block).
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Recessed inputs (Req 7.1) — fields read carved-in via an inset shadow.
+   Keeps the existing border, background and text colors from base.css; only
+   adds the inset depth. base.css already transitions box-shadow on
+   .field__input, so no new transition is introduced here.
+   ------------------------------------------------------------------------- */
+
+.field__input {
+  box-shadow: var(--depth-inset);
+}
+
+/* On focus, base.css sets a teal halo box-shadow. Re-assert the recessed inset
+   ALONGSIDE that halo so the field stays recessed while focused, without
+   touching the border-color or the focus halo color (contrast preserved). */
+.field__input:focus {
+  box-shadow: var(--depth-inset), 0 0 0 3px var(--teal-100);
+}
+
+.field--error .field__input:focus {
+  box-shadow: var(--depth-inset), 0 0 0 3px var(--danger-bg);
+}
+
+/* -------------------------------------------------------------------------
+   Raised, tactile primary button (Req 7.1, 7.2).
+   The primary button reads as raised material: existing teal fill + the
+   existing --glow, plus an elevation shadow and a soft top-light gradient
+   overlay. The text color (var(--bg) on teal) is unchanged — contrast intact.
+   base.css already transitions box-shadow + background-color on .btn, so the
+   elevation/press change animates within the existing transition (no NEW
+   transition declared, but we still guard transform under reduced motion).
+   ------------------------------------------------------------------------- */
+
+.btn--primary {
+  /* Layer the raised top-light gradient over the existing teal fill. */
+  background-image: var(--depth-raised-grad);
+  /* Elevation in addition to the existing --glow (kept first). */
+  box-shadow: var(--glow), var(--depth-raised);
+  /* NEW transition for the tactile lift/press — guarded for reduced motion. */
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.btn--primary:hover:not(:disabled) {
+  /* Keep the existing hover darkening (base.css) while lifting slightly. */
+  box-shadow: var(--glow), var(--depth-raised);
+  transform: translateY(-1px);
+}
+
+/* Pressed (depressed) state (Req 7.2): flatten and sink with an inner shadow. */
+.btn--primary:active:not(:disabled) {
+  background-image: none;
+  box-shadow: var(--depth-pressed);
+  transform: translateY(1px);
+}
+
+/* -------------------------------------------------------------------------
+   Layered card material (Req 7.1) — cards float as soft layered material.
+   Overrides only the resting/hover box-shadow from base.css with the deeper
+   depth tokens; structure, border and colors are untouched. base.css does not
+   transition box-shadow on .card, so we add a NEW one (reduced-motion guarded).
+   ------------------------------------------------------------------------- */
+
+.card {
+  box-shadow: var(--depth-card);
+  transition: box-shadow 0.18s ease;
+}
+
+.card:hover {
+  box-shadow: var(--depth-card-hover);
+}
+
+/* -------------------------------------------------------------------------
+   Frosted glass surfaces (Req 7.1) — the command bar and the aspect switcher
+   bar read as frosted glass: a translucent background with a backdrop blur.
+   `.command-bar` and `.aspect-switcher` are class hooks the later shell tasks
+   apply; `.tab-bar` already exists in app-shell.css and is refined here too
+   (the aspect switcher supersedes the global tab bar). Only background, border
+   and a soft shadow change — no text inside loses contrast.
+   ------------------------------------------------------------------------- */
+
+.command-bar,
+.aspect-switcher,
+.tab-bar {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* -------------------------------------------------------------------------
+   Reduced motion (Req 9.4) — suppress the NEW motion introduced above.
+   base.css already neutralizes animation/transition DURATION globally; here we
+   additionally remove the tactile transforms so no positional motion remains
+   for users who request reduced motion. Depth (shadow/glass) is static and
+   stays, only the movement is removed.
+   ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn--primary,
+  .btn--primary:hover:not(:disabled),
+  .btn--primary:active:not(:disabled) {
+    transform: none !important;
+  }
+}
