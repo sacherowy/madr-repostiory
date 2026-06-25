@@ -141,7 +141,7 @@
   - _Depends: 7.2_
   - _Boundary: design-system journey spec_
 
-- [ ] 8.2 Run the full offline regression and confirm constraints
+- [x] 8.2 Run the full offline regression and confirm constraints
   - Run the web unit/component suite and the end-to-end suite offline; verify responsive collapse and reduced-motion behavior, that all existing flows and contracts are preserved, and that no dependency was added beyond the two state libraries
   - Observable: both suites pass offline, responsive/reduced-motion checks hold, and the dependency manifest shows only the two new packages added
   - _Requirements: 7.4, 8.2, 8.3, 9.1, 9.4, 10.1, 10.2, 10.5, 12.4_
