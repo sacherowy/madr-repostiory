@@ -90,7 +90,7 @@
 
 ## 5. Core: command palette
 
-- [ ] 5.1 (P) Build the Cmd-K command palette
+- [x] 5.1 (P) Build the Cmd-K command palette
   - Implement a focus-managed dialog that opens via the command shortcut/trigger, reuses the existing keyword-search panel for search and jump, and offers New ADR, Compare, and Focus search actions; selecting a result or an action closes the palette while dismissing it preserves the current selection
   - Move focus to the query field on open, support Escape/overlay dismissal, and label the palette and its controls for assistive technology
   - Observable: opening the palette focuses the query field, selecting a search hit invokes selection and closes it, each action fires its callback, and Escape closes it without changing selection
