@@ -109,7 +109,7 @@
 
 ## 7. Integration: assemble the contextual shell
 
-- [ ] 7.1 Restructure the application shell around the store
+- [x] 7.1 Restructure the application shell around the store
   - Replace the global tab bar with the four-zone shell, driving selection/aspect/visibility from the workspace store; render the context header, aspect switcher, and active aspect panel only when an ADR is selected, otherwise render a welcoming browse/create state with no dead-end placeholder
   - Mount the search panel only inside the command palette (remove it from the sidebar), bind the command-palette keyboard shortcut, and wire the explorer, aspect counts, and inspector into their zones; preserve all existing user-facing flows
   - Observable: with no selection the center shows the browse/create state and no aspect switcher; selecting an ADR reveals the header, switcher, and active aspect and refreshes the inspector/counts for that ADR; the shortcut opens the palette
@@ -117,7 +117,7 @@
   - _Depends: 1.3, 1.4, 1.5, 2.1, 2.2, 3.1, 4.2, 5.1, 6.1_
   - _Boundary: App_
 
-- [ ] 7.2 Wire comparison as an action and the context-header actions
+- [x] 7.2 Wire comparison as an action and the context-header actions
   - Surface a Compare action in the command bar that is reachable with no selection and opens a comparison overlay rendering the existing comparison launcher unchanged; relocate the legacy comparison tab hook onto this Compare action and keep the overlay container's hook; wire the context header's Edit action to the Edit aspect and its Compare action to the comparison flow scoped to the selected ADR
   - Observable: the command-bar Compare action opens the overlay with no ADR selected, the context-header Edit opens the Edit aspect, and the context-header Compare opens comparison for the selected ADR
   - _Requirements: 2.5, 3.3, 3.4, 11.2_

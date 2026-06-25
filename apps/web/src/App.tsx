@@ -1,35 +1,25 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { createApiClient } from "./api/client.js";
 import type { ApiClient } from "./api/client.js";
+import { useWorkspaceStore } from "./state/workspaceStore.js";
+import { ContextHeader } from "./components/ContextHeader.js";
+import { AspectSwitcher } from "./components/AspectSwitcher.js";
+import { ExplorerRail } from "./features/explorer/ExplorerRail.js";
+import { CommandPalette } from "./features/command-palette/CommandPalette.js";
+import { InspectorRail } from "./features/inspector/InspectorRail.js";
+import { useAspectCounts } from "./hooks/useAspectCounts.js";
 import { AdrEditor } from "./features/adr-editor/AdrEditor.js";
-import { FolderTree } from "./features/folder-tree/FolderTree.js";
 import { RelationsPanel } from "./features/relations-graph/RelationsPanel.js";
 import { HistoryTimeline } from "./features/history-timeline/HistoryTimeline.js";
-import { SearchPanel } from "./features/search/SearchPanel.js";
 import { SimilarityPanel } from "./features/similarity-panel/SimilarityPanel.js";
 import { CompareLauncher } from "./features/diff-viewer/CompareLauncher.js";
 
-// Szkielet GUI. Docelowe features (osobne katalogi w src/features/):
-//   adr-editor · folder-tree · relations-graph · history-timeline · diff-viewer · similarity-panel · search
-//
-// This shell owns only local view-state (selected folder, selected ADR, active panel, session
-// author name). Each feature component built in task group 5 will own its own ApiClient calls.
-
-type ActivePanel = "editor" | "relations" | "history" | "comparison" | "similarity";
-
-const PANEL_TABS: ActivePanel[] = ["editor", "relations", "history", "comparison", "similarity"];
-
-// Human-readable labels for the panel switcher (Req 2.2): tab buttons show
-// these instead of the raw internal state keys, while the keys still drive the
-// preserved `data-testid="panel-tab-<key>"` hooks below.
-const PANEL_LABELS: Record<ActivePanel, string> = {
-  editor: "Editor",
-  relations: "Relations",
-  history: "History",
-  comparison: "Comparison",
-  similarity: "Similarity",
-};
+// Contextual four-zone shell (Req 1.1). All cross-zone view-state (selection,
+// active aspect, comparison/palette/inspector flags, session author) lives in
+// the Zustand `workspaceStore`; zones dispatch intent-named actions and never
+// co-own state. Each feature panel still owns its own ApiClient calls.
 
 interface AppProps {
   /** Optional injection seam mirroring AdrEditor's own DI pattern, used by tests to provide a
@@ -38,116 +28,256 @@ interface AppProps {
   apiClient?: ApiClient;
 }
 
+/**
+ * Lightweight ADR summary for the context header. Derives a real title/status
+ * from the backend when reachable, falling back to the id as title and a neutral
+ * status while loading or on failure (the design treats title/status as inputs
+ * wired by App, and explicitly does not block the header on a fetch — the id
+ * chip is the essential element).
+ */
+function useAdrSummary(
+  apiClient: ApiClient,
+  adrId: string | null,
+): { title: string; status: string } {
+  const query = useQuery({
+    queryKey: ["context-header", adrId],
+    enabled: adrId !== null,
+    queryFn: async () => {
+      const result = await apiClient.getAdr(adrId as string);
+      if (!result.ok) {
+        return null;
+      }
+      return { title: result.adr.title, status: result.adr.status };
+    },
+  });
+
+  if (adrId === null) {
+    return { title: "", status: "" };
+  }
+  if (query.data == null) {
+    // Loading or unreachable: fall back to the id as title and a neutral status.
+    return { title: adrId, status: "" };
+  }
+  return { title: query.data.title, status: query.data.status };
+}
+
 export function App({ apiClient: injectedApiClient }: AppProps = {}) {
   const apiClient = useMemo(() => injectedApiClient ?? createApiClient(), [injectedApiClient]);
 
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [selectedAdrId, setSelectedAdrId] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<ActivePanel>("editor");
-  const [authorName, setAuthorName] = useState("");
+  const selectedFolder = useWorkspaceStore((s) => s.selectedFolder);
+  const selectedAdrId = useWorkspaceStore((s) => s.selectedAdrId);
+  const authorName = useWorkspaceStore((s) => s.authorName);
+  const activeAspect = useWorkspaceStore((s) => s.activeAspect);
+  const comparisonOpen = useWorkspaceStore((s) => s.comparisonOpen);
+  const paletteOpen = useWorkspaceStore((s) => s.paletteOpen);
+  const inspectorOpen = useWorkspaceStore((s) => s.inspectorOpen);
 
-  function handleSelectFolder(folderPath: string) {
-    setSelectedFolder(folderPath);
-  }
+  const selectFolder = useWorkspaceStore((s) => s.selectFolder);
+  const selectAdr = useWorkspaceStore((s) => s.selectAdr);
+  const clearSelection = useWorkspaceStore((s) => s.clearSelection);
+  const setAuthorName = useWorkspaceStore((s) => s.setAuthorName);
+  const setAspect = useWorkspaceStore((s) => s.setAspect);
+  const openCompare = useWorkspaceStore((s) => s.openCompare);
+  const closeCompare = useWorkspaceStore((s) => s.closeCompare);
+  const setPaletteOpen = useWorkspaceStore((s) => s.setPaletteOpen);
+  const toggleInspector = useWorkspaceStore((s) => s.toggleInspector);
 
-  function handleSelectAdr(adrId: string) {
-    setSelectedAdrId(adrId);
-    setActivePanel("editor");
-  }
+  const counts = useAspectCounts(apiClient, selectedAdrId, selectedFolder);
+  const summary = useAdrSummary(apiClient, selectedAdrId);
 
-  function handleSwitchPanel(panel: ActivePanel) {
-    setActivePanel(panel);
-  }
+  // Global Cmd/Ctrl-K opens the command palette from anywhere (Req 4.1).
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "K")) {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setPaletteOpen]);
 
   return (
-    <main className="app-shell">
-      <aside className="app-shell__sidebar">
-        <h1>ADR Manager</h1>
-        <p>Nakładka na git do zarządzania Architecture Decision Records.</p>
-        <p>Źródłem prawdy jest repozytorium git; SQLite to tylko projekcja do wyszukiwania.</p>
+    <div className="shell">
+      <header className="shell__command-bar">
+        <div className="command-bar" role="toolbar" aria-label="Command bar">
+          <h1 className="command-bar__brand">ADR Manager</h1>
 
-        <div className="field">
-          <label className="field__label" htmlFor="author-name-input">
-            Session author name
-          </label>
-          <input
-            id="author-name-input"
-            data-testid="author-name-input"
-            className="field__input"
-            type="text"
-            value={authorName}
-            onChange={(event) => setAuthorName(event.target.value)}
-          />
+          <div className="field command-bar__author">
+            <label className="field__label" htmlFor="author-name-input">
+              Session author name
+            </label>
+            <input
+              id="author-name-input"
+              data-testid="author-name-input"
+              className="field__input"
+              type="text"
+              value={authorName}
+              onChange={(event) => setAuthorName(event.target.value)}
+            />
+          </div>
+
+          <button
+            type="button"
+            data-testid="command-palette-open"
+            className="btn"
+            onClick={() => setPaletteOpen(true)}
+          >
+            Search (⌘K)
+          </button>
+
+          <button
+            type="button"
+            data-testid="command-bar-new-adr"
+            className="btn btn--primary"
+            onClick={() => clearSelection()}
+          >
+            New ADR
+          </button>
+
+          {/* Compare is exposed as an action, reachable with no selection
+              (Req 2.5). Carries the migrated `panel-tab-comparison` hook. */}
+          <button
+            type="button"
+            data-testid="panel-tab-comparison"
+            className="btn"
+            onClick={() => openCompare()}
+          >
+            Compare
+          </button>
         </div>
+      </header>
 
-        <FolderTree
+      <aside className="shell__explorer">
+        <ExplorerRail
           apiClient={apiClient}
           authorName={authorName}
-          onSelectFolder={handleSelectFolder}
-          onSelectAdr={handleSelectAdr}
+          selectedAdrId={selectedAdrId}
+          selectedFolder={selectedFolder}
+          onSelectFolder={selectFolder}
+          onSelectAdr={selectAdr}
         />
-
-        <SearchPanel apiClient={apiClient} onSelectAdr={handleSelectAdr} />
       </aside>
 
-      <section className="app-shell__workspace">
-        <div className="tab-bar" role="tablist" aria-label="Panels">
-          {PANEL_TABS.map((panel) => (
-            <button
-              key={panel}
-              type="button"
-              role="tab"
-              data-testid={`panel-tab-${panel}`}
-              className={`tab${activePanel === panel ? " tab--active" : ""}`}
-              aria-current={activePanel === panel ? "true" : undefined}
-              aria-selected={activePanel === panel}
-              onClick={() => handleSwitchPanel(panel)}
-            >
-              {PANEL_LABELS[panel]}
-            </button>
-          ))}
-        </div>
-
-        {activePanel === "editor" ? (
-          <div className="app-shell__panel" role="tabpanel" data-testid="panel-editor">
+      <section className="shell__object">
+        {selectedAdrId === null ? (
+          // Welcoming browse/create state (Req 1.3): NO aspect switcher, NO
+          // "select an ADR first" placeholder. The create flow stays reachable
+          // here so a new ADR can be authored directly.
+          <div className="shell__object-browse" data-testid="center-browse">
+            <div className="state state--empty">
+              <p className="state__message">
+                No ADR selected. Browse the explorer to open a decision, or create a new one
+                below.
+              </p>
+            </div>
             <AdrEditor
-              adrId={selectedAdrId}
+              adrId={null}
               folder={selectedFolder}
               authorName={authorName}
               apiClient={apiClient}
-              onAdrSaved={(adr) => setSelectedAdrId(adr.id)}
+              onAdrSaved={(adr) => selectAdr(adr.id)}
             />
           </div>
-        ) : activePanel === "comparison" ? (
-          // Deliberately reachable without a pre-selected ADR (unlike
-          // relations/history/similarity below, gated on selectedAdrId): both
-          // CompareLauncher sub-flows own their own free-text ADR-id entry, so
-          // there's nothing for the gate below to usefully prevent here.
-          <div className="app-shell__panel" role="tabpanel" data-testid="panel-comparison">
-            <CompareLauncher apiClient={apiClient} />
-          </div>
-        ) : selectedAdrId === null ? (
-          <div
-            className="app-shell__panel state state--empty"
-            role="tabpanel"
-            data-testid="panel-empty"
-          >
-            <p className="state__message">Select an ADR first to view this panel.</p>
-          </div>
-        ) : activePanel === "relations" ? (
-          <div className="app-shell__panel" role="tabpanel" data-testid="panel-relations">
-            <RelationsPanel apiClient={apiClient} adrId={selectedAdrId} />
-          </div>
-        ) : activePanel === "history" ? (
-          <div className="app-shell__panel" role="tabpanel" data-testid="panel-history">
-            <HistoryTimeline apiClient={apiClient} adrId={selectedAdrId} />
-          </div>
         ) : (
-          <div className="app-shell__panel" role="tabpanel" data-testid="panel-similarity">
-            <SimilarityPanel apiClient={apiClient} adrId={selectedAdrId} folder={selectedFolder} />
-          </div>
+          <>
+            <ContextHeader
+              adrId={selectedAdrId}
+              title={summary.title}
+              status={summary.status}
+              onEdit={() => setAspect("editor")}
+              onCompare={openCompare}
+            />
+
+            <AspectSwitcher
+              activeAspect={activeAspect}
+              counts={counts}
+              onSelectAspect={setAspect}
+            />
+
+            {activeAspect === "editor" ? (
+              <div className="shell__aspect" role="tabpanel" data-testid="panel-editor">
+                <AdrEditor
+                  adrId={selectedAdrId}
+                  folder={selectedFolder}
+                  authorName={authorName}
+                  apiClient={apiClient}
+                  onAdrSaved={(adr) => selectAdr(adr.id)}
+                />
+              </div>
+            ) : activeAspect === "relations" ? (
+              <div className="shell__aspect" role="tabpanel" data-testid="panel-relations">
+                <RelationsPanel apiClient={apiClient} adrId={selectedAdrId} />
+              </div>
+            ) : activeAspect === "history" ? (
+              <div className="shell__aspect" role="tabpanel" data-testid="panel-history">
+                <HistoryTimeline apiClient={apiClient} adrId={selectedAdrId} />
+              </div>
+            ) : (
+              <div className="shell__aspect" role="tabpanel" data-testid="panel-similarity">
+                <SimilarityPanel
+                  apiClient={apiClient}
+                  adrId={selectedAdrId}
+                  folder={selectedFolder}
+                />
+              </div>
+            )}
+          </>
         )}
       </section>
-    </main>
+
+      <aside className="shell__inspector">
+        <InspectorRail
+          apiClient={apiClient}
+          adrId={selectedAdrId}
+          folder={selectedFolder}
+          open={inspectorOpen}
+          onToggle={toggleInspector}
+          onOpenAspect={(aspect) => setAspect(aspect === "similar" ? "similar" : "history")}
+        />
+      </aside>
+
+      <CommandPalette
+        open={paletteOpen}
+        apiClient={apiClient}
+        onClose={() => setPaletteOpen(false)}
+        onSelectAdr={selectAdr}
+        onNewAdr={clearSelection}
+        onCompare={openCompare}
+      />
+
+      {comparisonOpen ? (
+        // Comparison-as-action overlay (Req 2.5, 3.4, 11.2). Reachable with no
+        // selection (command-bar Compare) and scoped from the header (header
+        // Compare) — both call `openCompare()`. CompareLauncher owns its own id
+        // entry. The container keeps the migrated `panel-comparison` hook.
+        <div className="comparison-overlay" role="presentation">
+          <div
+            className="comparison-overlay__backdrop"
+            data-testid="comparison-overlay-backdrop"
+            onClick={() => closeCompare()}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Comparison"
+            className="comparison-overlay__panel"
+            data-testid="panel-comparison"
+          >
+            <div className="comparison-overlay__bar">
+              <button
+                type="button"
+                data-testid="comparison-close"
+                className="btn btn--ghost"
+                onClick={() => closeCompare()}
+              >
+                Close
+              </button>
+            </div>
+            <CompareLauncher apiClient={apiClient} />
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
