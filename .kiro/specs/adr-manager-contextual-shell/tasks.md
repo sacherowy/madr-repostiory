@@ -133,7 +133,7 @@
 
 ## 8. Validation: design verification and full regression
 
-- [ ] 8.1 Extend the offline design spec with contextual-navigation and depth assertions
+- [x] 8.1 Extend the offline design spec with contextual-navigation and depth assertions
   - Add DOM-level assertions, through computed styles, that the aspect switcher is absent before selection and present after creating an ADR (migrated labels asserted after creation), the command palette opens and selects an ADR, the context header renders for the selected ADR, the inspector previews appear when opened, the Soft UI depth treatment is present, and a keyboard-focused control still shows a visible focus outline
   - Keep the suite offline and snapshot-free with no new test/runtime dependency
   - Observable: the extended design spec passes in the pre-provisioned browser without network or an embedding key and introduces no pixel-baseline snapshot
