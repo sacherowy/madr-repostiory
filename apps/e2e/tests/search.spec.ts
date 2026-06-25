@@ -2,6 +2,13 @@
 // and saves an ADR carrying a unique token (the search index is populated only
 // on save), searches for it and confirms the ranked match, then searches a
 // guaranteed-absent token and confirms the no-results state.
+//
+// Keyword search now lives INSIDE the Cmd-K command palette (the standalone
+// sidebar SearchPanel was removed) — Req 11.1/11.3. The journey opens the
+// palette first (command-bar button), then drives the reused search panel's
+// `search-query-input`/`search-submit-button`. Submitting a search keeps the
+// palette open; only selecting a result closes it, so both searches run
+// against the same open palette.
 
 import { test, expect } from "@playwright/test";
 
@@ -28,6 +35,10 @@ test("keyword search shows a ranked match and a no-results state", async ({ page
   await page.getByTestId("body-textarea").fill(`Body mentioning ${tag} for indexing.`);
   await page.getByTestId("save-button").click();
   await expect(page.getByTestId("save-success-message")).toBeVisible();
+
+  // Open the command palette — keyword search now lives inside it.
+  await page.getByTestId("command-palette-open").click();
+  await expect(page.getByTestId("command-palette")).toBeVisible();
 
   // Search the unique token → a matching ranked result appears.
   await page.getByTestId("search-query-input").fill(tag);

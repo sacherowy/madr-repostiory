@@ -181,3 +181,267 @@
   border-color: var(--line-strong);
   box-shadow: var(--sh-sm);
 }
+
+/* =========================================================================
+   Four-zone contextual shell LAYOUT (Req 1.1, 8.1, 8.2, 8.3, 10.2).
+
+   ADDITIVE: this block introduces the new object-centric shell grid that
+   App.tsx adopts in a later task. It lives ALONGSIDE the `.app-shell*` and
+   `.tab-bar`/`.tab` rules above, which the current App.tsx still renders —
+   nothing above is changed. New class names (`.shell`, `.shell__*`) are what
+   the later restructure will consume.
+
+   The four zones (Req 1.1):
+     - `.shell__command-bar` — top region, full width across the shell.
+     - `.shell__explorer`    — left rail (Tree View 2.0).
+     - `.shell__object`      — center ADR-as-object region.
+     - `.shell__inspector`   — right contextual inspector rail.
+
+   This file owns only the LAYOUT of the bar surfaces `.command-bar` /
+   `.aspect-switcher`; soft-ui.css owns their frosted-glass DEPTH. The two
+   are deliberately not duplicated here (Req 7 boundary).
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Shell root (Req 1.1, 8.1) — the four-zone grid container.
+   Mobile-first: a single column where every zone stacks vertically so all
+   content stays reachable without horizontal page scroll. `min-width: 0` on
+   the container (and on each zone track below) lets wide child content (diffs,
+   long mono lines) scroll WITHIN its zone instead of stretching the page;
+   `max-width: 100%` reinforces the no-horizontal-page-scroll rule (Req 8.1).
+   ------------------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  /* Mobile-first: single column, all zones stacked. */
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "command"
+    "explorer"
+    "object"
+    "inspector";
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-width: 0;
+  padding: 16px;
+  background: var(--bg);
+}
+
+/* Desktop: command bar across the top, then explorer | object | inspector
+   on one row below. `minmax(0, …)` on every track lets each zone shrink and
+   contain its own overflow rather than forcing horizontal page scroll
+   (Req 8.1). The center object track flexes; the rails are fixed-width. */
+@media (min-width: 768px) {
+  .shell {
+    grid-template-columns: 300px minmax(0, 1fr) 320px;
+    grid-template-areas:
+      "command  command  command"
+      "explorer object   inspector";
+    gap: 24px;
+    padding: 24px;
+    align-items: start;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Command-bar zone (Req 1.1) — full-width top region holding the command bar
+   (Cmd-K palette trigger, global actions). Spans all columns on desktop via
+   its grid area. The frosted-glass depth comes from soft-ui.css `.command-bar`.
+   ------------------------------------------------------------------------- */
+
+.shell__command-bar {
+  grid-area: command;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* -------------------------------------------------------------------------
+   Explorer rail zone (Req 1.1, 5.1) — left rail holding Tree View 2.0.
+   Token-derived surface; scrolls INTERNALLY on tall content so it never forces
+   page-wide scroll. On desktop it sticks within the viewport.
+   ------------------------------------------------------------------------- */
+
+.shell__explorer {
+  grid-area: explorer;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  /* Wide tree labels wrap/scroll inside, not across the page. */
+  overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+  .shell__explorer {
+    position: sticky;
+    top: 24px;
+    /* Keep the rail within the viewport and scroll its own overflow. */
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Object zone (Req 1.1, 1.2) — center ADR-as-object region (context header +
+   aspect switcher + active aspect panel, or the browse/create state).
+   `min-width: 0` is essential so wide aspect content scrolls WITHIN the zone
+   rather than stretching the page; `max-width: 100%` reinforces it (Req 8.1).
+   ------------------------------------------------------------------------- */
+
+.shell__object {
+  grid-area: object;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  /* Contain overflow of wide aspect content inside the center column. */
+  overflow-x: auto;
+}
+
+/* -------------------------------------------------------------------------
+   Inspector rail zone (Req 1.1, 6.1) — right rail holding contextual
+   previews (top-Similar, recent history). Collapsed by default at the
+   component level; this zone provides its layout + viewport stickiness.
+   ------------------------------------------------------------------------- */
+
+.shell__inspector {
+  grid-area: inspector;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+  .shell__inspector {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Responsive rail collapse (Req 8.2, 8.3, 10.2).
+   On narrow viewports the explorer and inspector rails COLLAPSE to keep the
+   object region usable without horizontal page scroll, while staying
+   reveal-able on demand. A later task (6.1/7.1) toggles the modifier classes
+   below; this task provides the visual collapse + reveal treatment only.
+
+     - `.shell__explorer--collapsed` / `.shell__inspector--collapsed` hide the
+       rail's content but keep a reveal hook in flow.
+     - `.shell__explorer--open` / `.shell__inspector--open` force the rail
+       visible (drawer revealed) regardless of the collapsed default.
+
+   These collapse rules apply only below the desktop breakpoint; at desktop
+   width all three zones are always laid out, so the modifiers are inert there.
+   ------------------------------------------------------------------------- */
+
+.shell__explorer--collapsed,
+.shell__inspector--collapsed {
+  /* Collapse the rail's own content; the reveal control stays reachable. */
+  gap: 0;
+  padding: 0;
+  border-width: 0;
+  background: transparent;
+  box-shadow: none;
+  /* Hide the body but leave the reveal toggle (kept outside this content) in
+     flow so each rail can be re-opened on demand (Req 8.2, 10.2). */
+  max-height: 0;
+  overflow: hidden;
+}
+
+/* Open (revealed) rails win over the collapsed default on narrow viewports —
+   the drawer is shown again with its full surface treatment. */
+.shell__explorer--open,
+.shell__inspector--open {
+  gap: 16px;
+  padding: 16px;
+  border-width: 1px;
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+  max-height: none;
+  overflow-x: auto;
+}
+
+/* At desktop width the rails are part of the three-column row and are never
+   collapsed by the narrow-viewport modifiers — restore full layout so the
+   modifier classes cannot hide a rail on desktop (Req 8.3). */
+@media (min-width: 768px) {
+  .shell__explorer--collapsed,
+  .shell__inspector--collapsed,
+  .shell__explorer--open,
+  .shell__inspector--open {
+    gap: 16px;
+    padding: 16px;
+    border-width: 1px;
+    background: var(--surface);
+    box-shadow: var(--sh-sm);
+    max-height: calc(100vh - 48px);
+    overflow: hidden auto;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Command-bar surface LAYOUT (Req 1.1) — the horizontal bar inside the
+   command-bar zone. soft-ui.css gives `.command-bar` its frosted-glass depth;
+   this file owns only its layout: a flex row that wraps on small screens so
+   every control stays reachable without page scroll (Req 10.2). The border /
+   radius are structural and token-derived (NOT the glass treatment).
+   ------------------------------------------------------------------------- */
+
+.command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+/* -------------------------------------------------------------------------
+   Aspect-switcher surface LAYOUT (Req 2.1) — the contextual replacement for
+   the global tab bar, shown inside the object zone when an ADR is selected.
+   soft-ui.css gives `.aspect-switcher` its frosted-glass depth; this file owns
+   only its layout: a row of aspect controls that wraps, and scrolls
+   horizontally if it cannot wrap, so every aspect stays reachable without
+   scrolling the page (Req 10.2). The data-testid / role / aria-current come
+   from the aspect-switcher component in a later task.
+   ------------------------------------------------------------------------- */
+
+.aspect-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  /* If aspects can neither fit nor wrap usefully, scroll the bar itself —
+     never the page. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
