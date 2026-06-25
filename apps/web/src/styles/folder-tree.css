@@ -37,3 +37,57 @@
   overflow: visible;
   pointer-events: auto;
 }
+
+/* =========================================================================
+   ExplorerRail — filter + breadcrumb layout AROUND the folder/ADR tree
+   (Req 5.2, 5.3). Layout only; colors come from existing tokens (tokens.css),
+   never re-valued here.
+   ========================================================================= */
+
+/* Stack the filter, breadcrumb, and tree vertically as the left rail. */
+.explorer-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The filter reuses the shared `.field` styling; drop the default field
+   bottom margin so the rail's own `gap` controls spacing consistently. */
+.explorer-rail__filter {
+  margin-bottom: 0;
+}
+
+/* Path breadcrumb (Req 5.3): a horizontal, muted orientation line above the
+   tree. */
+.explorer-rail__breadcrumb {
+  font-size: 0.9rem;
+  color: var(--ink-500);
+}
+
+/* Reset the ordered-list defaults so crumbs read as an inline trail. */
+.explorer-rail__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Separator between crumbs, drawn before every crumb except the first. */
+.explorer-rail__crumbs .explorer-rail__crumb + .explorer-rail__crumb::before {
+  content: "/";
+  margin-right: 4px;
+  color: var(--ink-300);
+}
+
+.explorer-rail__crumb {
+  color: var(--ink-700);
+}
+
+/* Root/empty and ADR-location states read as the muted, non-clickable label. */
+.explorer-rail__crumb--root,
+.explorer-rail__crumb--adr {
+  color: var(--ink-500);
+}

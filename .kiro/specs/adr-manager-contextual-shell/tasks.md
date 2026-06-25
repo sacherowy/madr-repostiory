@@ -80,7 +80,7 @@
   - _Requirements: 5.2, 5.4, 5.5, 5.6, 10.5_
   - _Boundary: FolderTree_
 
-- [ ] 4.2 Wrap the tree in the explorer rail
+- [x] 4.2 Wrap the tree in the explorer rail
   - Compose a filter input and a path breadcrumb reflecting the current folder/selected ADR around the tree, passing the filter and selection down without re-implementing tree fetch, folder creation, or move
   - Label the filter and breadcrumb for assistive technology
   - Observable: typing in the filter narrows the tree and the breadcrumb updates to the current location
