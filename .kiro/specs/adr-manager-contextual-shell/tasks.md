@@ -99,7 +99,7 @@
 
 ## 6. Core: contextual inspector rail
 
-- [ ] 6.1 Build the collapsed-by-default inspector rail
+- [x] 6.1 Build the collapsed-by-default inspector rail
   - Render the rail collapsed by default with a toggle; when open and an ADR is selected, show the top-Similar preview (with similarity meters) and the recent-history preview, with graceful loading/empty/error states; each preview item links into the corresponding full aspect; show no ADR previews when nothing is selected
   - Make the toggle and preview links keyboard operable
   - Observable: the rail starts collapsed, opening it with a selection shows the two previews, activating a preview item requests the matching aspect, and with no selection no ADR previews appear
