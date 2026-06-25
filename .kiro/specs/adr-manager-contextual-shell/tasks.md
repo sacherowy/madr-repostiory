@@ -124,7 +124,7 @@
   - _Depends: 7.1_
   - _Boundary: App, ContextHeader wiring_
 
-- [ ] 7.3 Update affected tests for the migrated hooks and providers
+- [x] 7.3 Update affected tests for the migrated hooks and providers
   - Update the component and end-to-end queries affected by the tab→aspect/action migration (aspect controls now appear after selection; comparison via the command bar; search via the palette), wrap query-consuming renders in the server-state test wrapper, and reset the store between tests; leave all non-migrated hooks unchanged
   - Observable: the previously affected component and journey tests pass against the new navigation with only the migrated queries changed
   - _Requirements: 10.5, 11.1, 11.2, 11.3_
