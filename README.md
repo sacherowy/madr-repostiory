@@ -95,6 +95,8 @@ API wystawia na start `GET /health`. Web proxuje `/api` na `http://localhost:300
 
 ## Format ADR (MADR)
 
+Format oparty na [MADR v4.0.0](https://github.com/adr/madr/releases/tag/4.0.0) (wydanie 2024-09-17, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`) — przykład poniżej odpowiada aktualnie zaimplementowanemu formatowi; pełne dostosowanie do szablonu MADR (`decision-makers`/`consulted`/`informed`, status `rejected`, tytuł jako H1 w treści) jest w toku, zobacz `.kiro/specs/madr-template-alignment/`.
+
 ```markdown
 ---
 id: "0007"

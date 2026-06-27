@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Purpose**: This feature realigns the ADR Manager's ADR data model and serialization with the official MADR template (`adr/madr`, `develop` branch), so that files this system commits are directly portable to other MADR-aware tooling, and new ADRs are scaffolded with MADR's section structure instead of starting blank.
+**Purpose**: This feature realigns the ADR Manager's ADR data model and serialization with the official MADR template, pinned to [MADR v4.0.0](https://github.com/adr/madr/releases/tag/4.0.0) (released 2024-09-17, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`), so that files this system commits are directly portable to other MADR-aware tooling, and new ADRs are scaffolded with MADR's section structure instead of starting blank.
 
 **Users**: ADR authors and maintainers of this repository, who create, edit, compare, and read ADRs through the existing web app and API.
 
@@ -107,7 +107,7 @@ graph TB
 ### Modified Files
 - `packages/shared/src/types.ts` — `AdrFrontmatter` drops `title`, renames `deciders?` to `decisionMakers?`, adds `consulted?`/`informed?`; `Adr` declares `title: string` directly; `AdrStatus` adds `"rejected"`; `CreateAdrRequest`/`UpdateAdrRequest` get the same field rename and additions.
 - `packages/core/src/adr/parse.ts` — `parseAdr` extracts the title from the body's first H1 (falling back to a legacy frontmatter `title`, else `""`), and maps the frontmatter `decision-makers` key (falling back to legacy `deciders`) into `decisionMakers`. `serializeAdr` prepends `# {title}` to the body and writes `decision-makers` in frontmatter — it never writes `title` or `deciders`.
-- `packages/core/src/adr/madrTemplate.ts` (new) — exports `MADR_BODY_SCAFFOLD: string`: the 8 MADR section headings in order, with optional sections marked by an HTML comment beneath the heading (mirroring MADR's own template convention) and all sections left empty.
+- `packages/core/src/adr/madrTemplate.ts` (new) — exports `MADR_BODY_SCAFFOLD: string`: the 8 MADR v4.0.0 section headings in order and at the same heading levels as the upstream template (Consequences/Confirmation nested as `###` under `## Decision Outcome`, the other six as `##`), with optional sections marked by an HTML comment beneath the heading (mirroring MADR's own template convention) and all sections left empty.
 - `packages/core/src/adr/editingService.ts` — `create()` uses `MADR_BODY_SCAFFOLD` instead of `""` as the initial body, and passes `decisionMakers`/`consulted`/`informed` instead of `deciders`; `save()` gets the same field rename.
 - `packages/core/src/compare/comparisonService.ts` — `FIELD_NAMES` replaces `"deciders"` with `"decisionMakers"`, `"consulted"`, `"informed"`; `fieldValue()`'s array-join branch covers the three renamed/new fields.
 - `apps/web/src/features/adr-editor/AdrEditor.tsx` — `ADR_STATUSES` adds `"rejected"`; the `deciders` form field/input is renamed to `decisionMakers` (testid `decision-makers-input`), with two additional optional inputs for `consulted` and `informed`.
@@ -249,8 +249,8 @@ interface AdrParser {
 
 **Responsibilities & Constraints**
 - A single exported string constant; no logic, no parsing dependency on `parse.ts`.
-- Section order is fixed: Context and Problem Statement, Decision Drivers, Considered Options, Decision Outcome, Consequences, Confirmation, Pros and Cons of the Options, More Information.
-- Required sections (Context and Problem Statement, Decision Outcome) carry no marker; optional sections carry an HTML comment beneath the heading, mirroring the official MADR template's own convention for marking optional elements.
+- Section order and heading levels match MADR v4.0.0 exactly: six `##` sections — Context and Problem Statement, Decision Drivers, Considered Options, Decision Outcome, Pros and Cons of the Options, More Information — with Consequences and Confirmation nested as `###` subsections under Decision Outcome, mirroring the upstream template's structure rather than flattening all 8 to the same heading level.
+- Required sections (Context and Problem Statement, Decision Outcome) carry no marker; optional sections — including the two `###` ones nested under Decision Outcome — carry an HTML comment beneath the heading, mirroring the official MADR template's own convention for marking optional elements.
 
 **Contracts**: Service [ ] / API [ ] / Event [ ] / Batch [ ] / State [x]
 
@@ -429,7 +429,7 @@ No new logging or monitoring is introduced. The existing best-effort search-inde
 
 ### Unit Tests
 - `parse.ts`: `parseAdr` extracts the title from the first H1 and strips that line from `body`; falls back to a legacy frontmatter `title` when no H1 exists; returns `""` when neither exists; prefers frontmatter `decision-makers` over legacy `deciders` when both are present. `serializeAdr` prepends `# {title}` to the body and never emits frontmatter `title` or `deciders`. A serialize-then-parse round trip preserves `title`/`decisionMakers`/`consulted`/`informed`.
-- `madrTemplate.ts`: the scaffold contains exactly the 8 headings in MADR order; the two required sections carry no optional-marker comment, the six optional sections do.
+- `madrTemplate.ts`: the scaffold contains exactly the 8 MADR v4.0.0 headings, in order and at the correct heading level (Consequences/Confirmation as `###` under Decision Outcome, the rest as `##`); the two required sections carry no optional-marker comment, the six optional sections do.
 - `editingService.test.ts`: `create()` seeds `body` with `MADR_BODY_SCAFFOLD` and passes `decisionMakers`/`consulted`/`informed` through; `save()` persists those same fields and succeeds for `status: "rejected"`/`"superseded"` with no relation present (regression check for 2.4).
 - `comparisonService.test.ts`: the field diff includes `decisionMakers`/`consulted`/`informed`; the `title` field reflects each ADR's H1-derived value.
 
@@ -443,11 +443,9 @@ No new logging or monitoring is introduced. The existing best-effort search-inde
 
 ## Supporting References
 
-Full text of `MADR_BODY_SCAFFOLD` (`packages/core/src/adr/madrTemplate.ts`):
+Full text of `MADR_BODY_SCAFFOLD` (`packages/core/src/adr/madrTemplate.ts`), matching MADR v4.0.0's heading levels:
 ```markdown
 ## Context and Problem Statement
-
-
 
 ## Decision Drivers
 
@@ -459,13 +457,11 @@ Full text of `MADR_BODY_SCAFFOLD` (`packages/core/src/adr/madrTemplate.ts`):
 
 ## Decision Outcome
 
-
-
-## Consequences
+### Consequences
 
 <!-- Optional: describe the consequences of this decision. -->
 
-## Confirmation
+### Confirmation
 
 <!-- Optional: describe how compliance with this decision is confirmed. -->
 
@@ -478,4 +474,5 @@ Full text of `MADR_BODY_SCAFFOLD` (`packages/core/src/adr/madrTemplate.ts`):
 <!-- Optional: add supporting evidence, links, or follow-up notes. -->
 ```
 
-- [MADR template](https://github.com/adr/madr/blob/develop/template/adr-template.md) — canonical section structure, frontmatter field names, and the optional-section comment convention this feature aligns with.
+- [MADR template, v4.0.0](https://github.com/adr/madr/blob/4.0.0/template/adr-template.md) (released 2024-09-17, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`) — canonical section structure, frontmatter field names, and the optional-section comment convention this feature aligns with. Pinned to this tag, not the `develop` branch, so a future upstream template change cannot silently drift this spec's alignment without a deliberate version bump.
+- Frontmatter optionality note: MADR v4.0.0 marks every frontmatter field — including `status` and `date` — as optional ("These are optional metadata elements. Feel free to remove any of them."). This design keeps `id`, `status`, and `date` required-by-type on `AdrFrontmatter`/`Adr`, consistent with this application's pre-existing architecture (status drives the badge/filter UI; date drives sorting/history) rather than a new restriction introduced by this feature. Only `decisionMakers`, `consulted`, `informed`, `tags`, and `relations` are optional here, matching MADR's own optionality for those specific fields.

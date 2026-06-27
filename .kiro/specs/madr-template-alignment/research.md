@@ -16,6 +16,7 @@
   - The `Adr` domain type and the `AdrFrontmatter` YAML-serialized type can diverge without disrupting most consumers: `Adr.title` can remain a plain `string` field even after it stops being a literal frontmatter key, because every consumer (`AdrCard`, `ContextHeader`, `App.tsx`, `comparisonService`, `reindex.ts`, `AdrEditor.tsx`, `folderService.ts`) already reads `adr.title` generically and is agnostic to where it is physically stored.
   - All renaming/relocation logic can be isolated to a single boundary: `packages/core/src/adr/parse.ts` (`parseAdr`/`serializeAdr`). No other file needs to know about the legacy `deciders` key, the legacy frontmatter `title`, or the H1-extraction mechanics.
   - `relationGraphService.ts` is already fully decoupled from `status`, and `reindex.ts` already treats `title`/`body`/`tags` generically — both require zero code changes, which independently confirms Requirement 2.3/2.4 and Requirement 6.3 are satisfied by the existing architecture plus the `parse.ts` change alone.
+  - The official MADR reference is pinned to [v4.0.0](https://github.com/adr/madr/releases/tag/4.0.0) (released 2024-09-17, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`) rather than the `develop` branch. Fetching that pinned version verbatim also surfaced that upstream nests `### Consequences`/`### Confirmation` under `## Decision Outcome` rather than placing all 8 sections at one heading level — `design.md`'s scaffold has been corrected to match.
 
 ## Research Log
 
@@ -42,9 +43,9 @@
 
 ### MADR body section scaffold
 - **Context**: Requirement 3 requires new ADRs to start with the 8 MADR section headings in order, with required (Context and Problem Statement, Decision Outcome) sections distinguishable from optional ones, all left empty.
-- **Sources Consulted**: `adr/madr` `template/adr-template.md` (official MADR template, as referenced in the spec's Introduction), `packages/core/src/adr/editingService.ts` (`create()` currently sets `body: ""`).
-- **Findings**: The official template marks optional sections with an HTML comment (`<!-- This is an optional element... -->`) immediately under the heading. This is a convention already native to Markdown/MADR and requires no new parsing logic, since these scaffolded bodies are just initial content the author edits or replaces.
-- **Implications**: Introduce one new constant module exporting the scaffold body text; `editingService.create()` substitutes it for the current `body: ""`. No parser changes needed — the scaffold is plain Markdown content within the existing `body` field.
+- **Sources Consulted**: [`adr/madr` v4.0.0 `template/adr-template.md`](https://raw.githubusercontent.com/adr/madr/4.0.0/template/adr-template.md) (pinned tag, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`, released 2024-09-17 — fetched and read verbatim rather than relied on from requirements.md's own wording), `packages/core/src/adr/editingService.ts` (`create()` currently sets `body: ""`).
+- **Findings**: The official v4.0.0 template marks optional sections with an HTML comment (`<!-- This is an optional element... -->`) immediately under the heading. It also nests `### Consequences` and `### Confirmation` as subsections under `## Decision Outcome`, rather than placing all 8 sections at the same heading level — this nesting was missing from the original draft scaffold and has been corrected in `design.md`. This convention is already native to Markdown/MADR and requires no new parsing logic, since these scaffolded bodies are just initial content the author edits or replaces.
+- **Implications**: Introduce one new constant module exporting the scaffold body text; `editingService.create()` substitutes it for the current `body: ""`. No parser changes needed — the scaffold is plain Markdown content within the existing `body` field. Requirement 3.1 only constrains heading presence and order, not heading depth, so matching upstream's `###` nesting for Consequences/Confirmation is a design-level refinement, not a requirements change.
 
 ## Architecture Pattern Evaluation
 
@@ -84,7 +85,7 @@
 - **Selected Approach**: Add `packages/core/src/adr/madrTemplate.ts` exporting a single `MADR_BODY_SCAFFOLD: string` constant with the 8 headings in MADR order, optional sections marked with an HTML comment beneath the heading (mirroring MADR's own template convention), all section bodies empty. `editingService.create()` uses this constant as the initial `body` instead of `""`. The H1 title itself is not part of this constant — it is added by `serializeAdr` from `adr.title` at write time, keeping the scaffold orthogonal to the title-relocation logic.
 - **Rationale**: Single-responsibility module, trivially unit-testable (assert heading order/presence), and keeps `editingService.create()`'s diff minimal.
 - **Trade-offs**: None significant.
-- **Follow-up**: Confirm exact heading text/order against the official MADR template before finalizing the constant's content.
+- **Follow-up**: Confirmed against MADR v4.0.0 (commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`): heading text and order match, and the scaffold's heading levels were corrected to nest Consequences/Confirmation as `###` under `## Decision Outcome`, mirroring the upstream template instead of flattening all 8 headings to one level.
 
 ### Decision: Add `rejected` to `AdrStatus` with no relation-linkage changes
 - **Context**: Requirement 2 adds `rejected` as a status value, independent of relations (already decided with the user before design phase).
@@ -100,4 +101,4 @@
 - Risk: Legacy fixture migration (Req 5.4) must not break `examples/0001-uzycie-gita-jako-zrodla-prawdy.md`'s existing non-MADR section headings (`## Kontekst`/`## Decyzja`/`## Konsekwencje`, Polish) — Mitigation: migration only needs to relocate the title to H1 and rename `deciders`→`decision-makers` in this fixture; the spec's Boundary Context does not require translating or restructuring the body's existing section headings, only adding the H1 title above them.
 
 ## References
-- [MADR template](https://github.com/adr/madr/blob/develop/template/adr-template.md) — canonical section structure, frontmatter field names, and optional-section comment convention this spec aligns with.
+- [MADR template, v4.0.0](https://github.com/adr/madr/blob/4.0.0/template/adr-template.md) (released 2024-09-17, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`) — canonical section structure, frontmatter field names, and optional-section comment convention this spec aligns with. Pinned to this tag rather than the `develop` branch for stable traceability.
