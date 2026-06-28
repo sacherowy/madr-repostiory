@@ -85,7 +85,7 @@ describe("compareRoutes", () => {
   }
 
   describe("GET /api/compare", () => {
-    it("returns 200 with an AdrCompareView containing 6 fields with correct differs flags for two distinct ADRs", async () => {
+    it("returns 200 with an AdrCompareView containing 8 fields with correct differs flags for two distinct ADRs", async () => {
       const a = await createAdr("ADR A title");
       const b = await createAdr("ADR B title");
 
@@ -113,7 +113,7 @@ describe("compareRoutes", () => {
       const view = res.json();
       expect(view.a.id).toBe(a.id);
       expect(view.b.id).toBe(b.id);
-      expect(view.fields).toHaveLength(6);
+      expect(view.fields).toHaveLength(8);
 
       const byField = (name: string) => view.fields.find((f: { field: string }) => f.field === name);
       expect(byField("title").differs).toBe(true);

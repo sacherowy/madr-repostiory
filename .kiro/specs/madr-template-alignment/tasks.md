@@ -105,7 +105,7 @@
 
 - [ ] 9. Integration: API and reindex verification
 
-- [ ] 9.1 (P) Verify the ADR API carries the renamed/new fields and the body-derived title end to end
+- [x] 9.1 (P) Verify the ADR API carries the renamed/new fields and the body-derived title end to end
   - Confirm that creating and updating an ADR through the API accepts and returns decision-makers, consulted, and informed, and that reading an ADR with no frontmatter title returns the body-derived title
   - Confirm the existing concurrency-conflict and git-commit behavior is unaffected by these field changes
   - Observable: an API round trip through create, read, and update preserves the renamed/new fields and the derived title
@@ -129,3 +129,7 @@
   - Load the migrated example fixture and confirm its body-derived title displays correctly in the folder tree, the ADR card, and the editor
   - Observable: all three surfaces show the same, correct title for the migrated fixture
   - _Requirements: 4.4, 5.5_
+
+## Implementation Notes
+
+- Task 9.1 found two pre-existing regressions from earlier tasks, fixed in the same commit: (1) `MADR_BODY_SCAFFOLD` (task 3.1) ended with a trailing newline, which `parseAdr`'s title-extraction `.trim()` (task 2.2) silently stripped on every read-back — so a freshly created ADR's in-memory body never matched a subsequent GET; fixed by removing the scaffold's trailing newline. (2) `apps/api/src/routes/compare.test.ts` still asserted 6 comparison fields after task 5.1 raised the count to 8 (added consulted/informed); updated the assertion to 8.

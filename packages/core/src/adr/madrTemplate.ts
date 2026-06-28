@@ -44,5 +44,4 @@ export const MADR_BODY_SCAFFOLD = `## Context and Problem Statement
 
 ## More Information
 
-<!-- Optional: add supporting evidence, links, or follow-up notes. -->
-`;
+<!-- Optional: add supporting evidence, links, or follow-up notes. -->`;
