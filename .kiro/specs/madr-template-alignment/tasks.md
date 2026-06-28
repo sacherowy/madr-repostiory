@@ -80,7 +80,7 @@
   - _Requirements: 1.3_
   - _Boundary: AdrEditor (CreateAdrForm)_
 
-- [ ] 6.3 Make rejected selectable as an ADR status
+- [x] 6.3 Make rejected selectable as an ADR status
   - Add the rejected value to the set of statuses a user can choose from when setting an ADR's status
   - Observable: the status selector offers rejected as a choice and selecting it is saveable
   - _Requirements: 2.2_
