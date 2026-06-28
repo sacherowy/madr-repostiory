@@ -44,7 +44,7 @@
 
 - [ ] 4. Core: ADR creation and save orchestration
 
-- [ ] 4.1 (P) Use the new scaffold and renamed fields when creating an ADR
+- [x] 4.1 (P) Use the new scaffold and renamed fields when creating an ADR
   - When a new ADR is created, start its body from the MADR scaffold instead of leaving it empty, and record the renamed decision-participant field plus the new consulted/informed fields instead of the old field name
   - Observable: creating a new ADR produces a committed file whose body contains the MADR section headings and whose frontmatter uses the new field names
   - _Requirements: 1.1, 1.2, 3.3, 4.1, 6.1_

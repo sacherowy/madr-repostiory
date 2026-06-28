@@ -3,6 +3,7 @@ import type { GitPort, AdrFile, CommitMeta, DiffResult, TreeEntry } from "../por
 import type { SearchDoc, SearchIndex, SearchHit } from "../ports/search.js";
 import { RelationGraphService } from "../relations/relationGraphService.js";
 import { serializeAdr } from "./parse.js";
+import { MADR_BODY_SCAFFOLD } from "./madrTemplate.js";
 import { AdrEditingService } from "./editingService.js";
 
 /**
@@ -159,7 +160,7 @@ describe("AdrEditingService", () => {
       expect(adr.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
-    it("sets body to an empty string", async () => {
+    it("sets body to the MADR scaffold instead of an empty string", async () => {
       const git = new FakeGitPort(new Map());
       const relations = new RelationGraphService(git);
       const search = new FakeSearchIndex();
@@ -167,7 +168,7 @@ describe("AdrEditingService", () => {
 
       const adr = await svc.create({ title: "New decision", folder: "." }, "Alice");
 
-      expect(adr.body).toBe("");
+      expect(adr.body).toBe(MADR_BODY_SCAFFOLD);
     });
 
     it("places the file at '${folder}/${id}.md' when folder is not '.'", async () => {
@@ -217,21 +218,32 @@ describe("AdrEditingService", () => {
       expect(search.upsertCalls).toHaveLength(0);
     });
 
-    it("passes through deciders/tags as-is without defaulting to []", async () => {
+    it("passes through decisionMakers/consulted/informed/tags as-is without defaulting to []", async () => {
       const git = new FakeGitPort(new Map());
       const relations = new RelationGraphService(git);
       const search = new FakeSearchIndex();
       const svc = new AdrEditingService(git, relations, search);
 
       const withFields = await svc.create(
-        { title: "New decision", folder: ".", deciders: ["Alice"], tags: ["infra"] },
+        {
+          title: "New decision",
+          folder: ".",
+          decisionMakers: ["Alice"],
+          consulted: ["Carol"],
+          informed: ["Dave"],
+          tags: ["infra"],
+        },
         "Alice"
       );
-      expect(withFields.deciders).toEqual(["Alice"]);
+      expect(withFields.decisionMakers).toEqual(["Alice"]);
+      expect(withFields.consulted).toEqual(["Carol"]);
+      expect(withFields.informed).toEqual(["Dave"]);
       expect(withFields.tags).toEqual(["infra"]);
 
       const without = await svc.create({ title: "Another", folder: "." }, "Alice");
-      expect(without.deciders).toBeUndefined();
+      expect(without.decisionMakers).toBeUndefined();
+      expect(without.consulted).toBeUndefined();
+      expect(without.informed).toBeUndefined();
       expect(without.tags).toBeUndefined();
     });
   });
