@@ -267,7 +267,9 @@ describe("AdrEditingService", () => {
           title: "Updated title",
           status: "accepted",
           date: "2024-02-02",
-          deciders: ["Bob"],
+          decisionMakers: ["Bob"],
+          consulted: ["Carol"],
+          informed: ["Dave"],
           tags: ["security"],
           body: "Updated body.",
         },
@@ -278,6 +280,9 @@ describe("AdrEditingService", () => {
       expect(result.kind).toBe("saved");
       if (result.kind !== "saved") throw new Error("expected saved");
       expect(result.adr.title).toBe("Updated title");
+      expect(result.adr.decisionMakers).toEqual(["Bob"]);
+      expect(result.adr.consulted).toEqual(["Carol"]);
+      expect(result.adr.informed).toEqual(["Dave"]);
       expect(result.adr.blobSha).toBe("blob-after-save");
       expect(result.adr.blobSha).not.toMatch(/^commit-/);
       expect(search.upsertCalls).toEqual([
@@ -415,6 +420,58 @@ describe("AdrEditingService", () => {
         kind: "invalidRelations",
         missingTargets: ["adr-8888", "adr-7777"],
       });
+    });
+
+    it("succeeds with status 'rejected' and no relations present (relation existence is independent of status)", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const baseBlobSha = await git.currentBlobSha("adr-0001.md");
+      const result = await svc.save(
+        "adr-0001",
+        {
+          title: "Updated title",
+          status: "rejected",
+          date: "2024-02-02",
+          body: "Updated body.",
+        },
+        baseBlobSha as string,
+        "Bob"
+      );
+
+      expect(result.kind).toBe("saved");
+      if (result.kind !== "saved") throw new Error("expected saved");
+      expect(result.adr.status).toBe("rejected");
+    });
+
+    it("succeeds with status 'superseded' and an explicitly empty relations array (relation existence is independent of status)", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const baseBlobSha = await git.currentBlobSha("adr-0001.md");
+      const result = await svc.save(
+        "adr-0001",
+        {
+          title: "Updated title",
+          status: "superseded",
+          date: "2024-02-02",
+          body: "Updated body.",
+          relations: [],
+        },
+        baseBlobSha as string,
+        "Bob"
+      );
+
+      expect(result.kind).toBe("saved");
+      if (result.kind !== "saved") throw new Error("expected saved");
+      expect(result.adr.status).toBe("superseded");
+      expect(result.adr.relations).toEqual([]);
     });
 
     it("throws when the given id does not resolve to any existing ADR", async () => {

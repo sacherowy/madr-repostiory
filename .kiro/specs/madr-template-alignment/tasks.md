@@ -50,7 +50,7 @@
   - _Requirements: 1.1, 1.2, 3.3, 4.1, 6.1_
   - _Boundary: AdrEditingService_
 
-- [ ] 4.2 Use the renamed fields when saving an ADR and confirm relation-independence
+- [x] 4.2 Use the renamed fields when saving an ADR and confirm relation-independence
   - When an existing ADR is saved, persist the renamed decision-participant field and the consulted/informed fields instead of the old field name
   - Confirm that saving with a status of rejected or superseded succeeds without requiring any relation to exist, and that the relations-based supersession mechanism is untouched by the status value
   - Observable: saving an ADR with status rejected or superseded and no relations succeeds, and the saved file uses the new field names

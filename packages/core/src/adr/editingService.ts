@@ -124,7 +124,9 @@ export class AdrEditingService {
 
     const adr: Adr = {
       ...withoutUndefined({
-        deciders: input.deciders,
+        decisionMakers: input.decisionMakers,
+        consulted: input.consulted,
+        informed: input.informed,
         tags: input.tags,
         relations: input.relations,
       }),
