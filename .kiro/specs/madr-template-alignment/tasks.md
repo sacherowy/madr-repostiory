@@ -120,7 +120,7 @@
 
 - [ ] 10. Validation: end-to-end regression
 
-- [ ] 10.1 Extend the ADR lifecycle end-to-end test for the realigned model
+- [x] 10.1 Extend the ADR lifecycle end-to-end test for the realigned model
   - Cover creating an ADR and confirming its body contains the MADR section headings, entering decision-makers/consulted/informed on create and on edit and confirming both round-trip through save and reload, and selecting and saving status rejected without adding a relation
   - Observable: the end-to-end test passes covering all of the above in one ADR lifecycle
   - _Requirements: 1.3, 2.2, 2.4, 3.1, 3.3_
