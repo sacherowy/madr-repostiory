@@ -112,7 +112,7 @@
   - _Requirements: 1.4, 6.1, 6.2_
   - _Boundary: API routes_
 
-- [ ] 9.2 (P) Verify the search index rebuild reflects the realigned fields
+- [x] 9.2 (P) Verify the search index rebuild reflects the realigned fields
   - Confirm rebuilding the index against the migrated example fixture, and against a fixture still using the legacy field name and frontmatter title, produces the correct title and tags in the index for both
   - Observable: reindexing both fixture styles produces equivalent, correct index entries
   - _Requirements: 5.5, 6.3_

@@ -178,6 +178,69 @@ describe("reindex main()", () => {
     ).not.toContain("adr-0001");
   });
 
+  /**
+   * Commits raw markdown content verbatim (bypassing serializeAdr, which can
+   * only ever emit the canonical new-style frontmatter) so legacy-style
+   * fixtures can be exercised, and pre-seeds the resulting blob sha exactly
+   * like commitAdr does.
+   */
+  async function commitRaw(path: string, raw: string): Promise<string> {
+    await git.writeAndCommit(path, raw, `seed ${path}`, AUTHOR);
+    const blobSha = (await git.currentBlobSha(path)) as string;
+    const store = new SqliteEmbeddingStore(sqlitePath);
+    store.set(blobSha, [0, 0, 0]);
+    return blobSha;
+  }
+
+  it("produces correct title and tags in the index for both a migrated-style fixture (decision-makers key, body H1 title) and a legacy-style fixture (deciders key, frontmatter title)", async () => {
+    const migratedStyle = [
+      "---",
+      "id: adr-migrated",
+      "status: accepted",
+      "date: 2026-01-01",
+      "decision-makers: [alice]",
+      "tags: [zzznewstyletag]",
+      "---",
+      "",
+      "# New Style Title Zzzmarker",
+      "",
+      "## Context and Problem Statement",
+      "Some migrated-style body content.",
+      "",
+    ].join("\n");
+
+    const legacyStyle = [
+      "---",
+      "id: adr-legacy",
+      "status: accepted",
+      "date: 2026-01-01",
+      "deciders: [bob]",
+      "title: Legacy Style Title Zzzmarker",
+      "tags: [zzzlegacytag]",
+      "---",
+      "Some legacy-style body content with no heading.",
+      "",
+    ].join("\n");
+
+    await commitRaw("decisions/migrated.md", migratedStyle);
+    await commitRaw("decisions/legacy.md", legacyStyle);
+
+    await main(cfg);
+
+    const searchIndex = new SqliteSearchIndex(sqlitePath);
+
+    // Both titles resolve correctly (body H1 for the migrated style, legacy
+    // frontmatter title for the legacy style) and are indexed identically.
+    expect(searchIndex.search("Zzzmarker").map((h) => h.id).sort()).toEqual([
+      "adr-legacy",
+      "adr-migrated",
+    ]);
+
+    // tags are indexed per-ADR with no cross-contamination between styles.
+    expect(searchIndex.search("zzznewstyletag").map((h) => h.id)).toEqual(["adr-migrated"]);
+    expect(searchIndex.search("zzzlegacytag").map((h) => h.id)).toEqual(["adr-legacy"]);
+  });
+
   it("completes without throwing when every blob sha is pre-seeded (embedding cache-hit path, no network call attempted)", async () => {
     await commitAdr(
       fixture({
