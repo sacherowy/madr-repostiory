@@ -17,6 +17,7 @@
   - All renaming/relocation logic can be isolated to a single boundary: `packages/core/src/adr/parse.ts` (`parseAdr`/`serializeAdr`). No other file needs to know about the legacy `deciders` key, the legacy frontmatter `title`, or the H1-extraction mechanics.
   - `relationGraphService.ts` is already fully decoupled from `status`, and `reindex.ts` already treats `title`/`body`/`tags` generically — both require zero code changes, which independently confirms Requirement 2.3/2.4 and Requirement 6.3 are satisfied by the existing architecture plus the `parse.ts` change alone.
   - The official MADR reference is pinned to [v4.0.0](https://github.com/adr/madr/releases/tag/4.0.0) (released 2024-09-17, commit `2475fe1973f66a12aaf58a91d8fa7b42c0f5ea3d`) rather than the `develop` branch. Fetching that pinned version verbatim also surfaced that upstream nests `### Consequences`/`### Confirmation` under `## Decision Outcome` rather than placing all 8 sections at one heading level — `design.md`'s scaffold has been corrected to match.
+  - A `/kiro-validate-design` pass against the live codebase found that `CreateAdrForm` (`apps/web/src/features/adr-editor/AdrEditor.tsx`) has no fields beyond `title` today, while Req 1.3 requires `decision-makers`/`consulted`/`informed` to be editable on create as well as edit — the original design draft's AdrEditor Implementation Notes and Traceability row 1.3 only described `EditAdrForm`. Corrected in `design.md` to scope the same three inputs into `CreateAdrForm`.
 
 ## Research Log
 

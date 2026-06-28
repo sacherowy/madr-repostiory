@@ -110,7 +110,7 @@ graph TB
 - `packages/core/src/adr/madrTemplate.ts` (new) — exports `MADR_BODY_SCAFFOLD: string`: the 8 MADR v4.0.0 section headings in order and at the same heading levels as the upstream template (Consequences/Confirmation nested as `###` under `## Decision Outcome`, the other six as `##`), with optional sections marked by an HTML comment beneath the heading (mirroring MADR's own template convention) and all sections left empty.
 - `packages/core/src/adr/editingService.ts` — `create()` uses `MADR_BODY_SCAFFOLD` instead of `""` as the initial body, and passes `decisionMakers`/`consulted`/`informed` instead of `deciders`; `save()` gets the same field rename.
 - `packages/core/src/compare/comparisonService.ts` — `FIELD_NAMES` replaces `"deciders"` with `"decisionMakers"`, `"consulted"`, `"informed"`; `fieldValue()`'s array-join branch covers the three renamed/new fields.
-- `apps/web/src/features/adr-editor/AdrEditor.tsx` — `ADR_STATUSES` adds `"rejected"`; the `deciders` form field/input is renamed to `decisionMakers` (testid `decision-makers-input`), with two additional optional inputs for `consulted` and `informed`.
+- `apps/web/src/features/adr-editor/AdrEditor.tsx` — `ADR_STATUSES` adds `"rejected"`. In `EditAdrForm`, the `deciders` form field/input is renamed to `decisionMakers` (testid `decision-makers-input`), with two additional optional inputs for `consulted` and `informed`. `CreateAdrForm` (today: `title` only) gains the same three inputs (`decisionMakers`/`consulted`/`informed`, same testids/`splitCsv` convention), since Req 1.3 covers create as well as edit.
 - `apps/web/src/components/StatusBadge.tsx` — `STATUS_LABELS` adds `rejected: "Rejected"`.
 - `examples/0001-uzycie-gita-jako-zrodla-prawdy.md` — frontmatter `deciders` renamed to `decision-makers`, frontmatter `title` removed, and the body gains `# Użycie gita jako źródła prawdy dla ADR` as its new first line; the existing `## Kontekst`/`## Decyzja`/`## Konsekwencje` sections are unchanged below it.
 - Test files colocated with each module above (`*.test.ts`/`*.test.tsx`) and `apps/e2e/tests/adr-lifecycle.spec.ts` are updated in lockstep with their corresponding source change (field rename, added status, H1-title assertions) — not enumerated individually since each follows the same rename pattern as its source file.
@@ -147,7 +147,7 @@ flowchart TD
 |---|---|---|---|---|
 | 1.1 | `decision-makers` recorded on create | types.ts, editingService.create | `AdrFrontmatter`, `CreateAdrRequest` | — |
 | 1.2 | optional `consulted`/`informed` | types.ts | `AdrFrontmatter`, `CreateAdrRequest`, `UpdateAdrRequest` | — |
-| 1.3 | editor view/edit fields | AdrEditor.tsx | `EditAdrForm` | — |
+| 1.3 | create/edit view/edit fields | AdrEditor.tsx | `CreateAdrForm`, `EditAdrForm` | — |
 | 1.4 | API accepts/returns the renamed fields | types.ts (DTOs) | `CreateAdrRequest`, `UpdateAdrRequest`, `Adr` | — |
 | 1.5 | comparison includes the renamed/new fields | comparisonService.ts | `FIELD_NAMES`, `fieldValue` | — |
 | 2.1 | `rejected` is a valid status | types.ts | `AdrStatus` | — |
@@ -306,6 +306,7 @@ Summary-only (no new boundary — same form/API integration pattern as today).
 
 **Implementation Notes**
 - Integration: `EditAdrForm`'s `deciders` state/input is renamed to `decisionMakers` (testid `decision-makers-input`); two new optional text inputs are added for `consulted`/`informed`, following the existing comma-separated-list convention (`splitCsv`/join) already used for `tags`. `ADR_STATUSES` gains `"rejected"`, appearing in the existing `<select>` with no other change.
+- Integration (create flow): `CreateAdrForm` today only has a `title` input and calls `apiClient.createAdr({ title, folder, author })`. Req 1.3 requires create to expose `decision-makers`/`consulted`/`informed` as well, so `CreateAdrForm` gains the same three inputs/testids/`splitCsv` convention as `EditAdrForm`, and its `createAdr` call passes `decisionMakers`/`consulted`/`informed` through to `CreateAdrRequest` (already optional fields, so omitting them stays valid — only the missing UI wiring changes).
 - Validation: unchanged — the existing `missingFields`/`missingTargets`/`conflict` handling already covers every status value and every optional field.
 - Risks: none; this is a presentation-adjacent field/option addition, not a new boundary.
 
@@ -438,7 +439,7 @@ No new logging or monitoring is introduced. The existing best-effort search-inde
 - `reindex.ts`: rebuilding the index against the migrated example fixture, and against a fixture using legacy `deciders`/frontmatter `title`, produces the correct title and tags in the index (6.3, 5.5).
 
 ### E2E/UI Tests
-- `adr-lifecycle.spec.ts`: the create flow's resulting ADR body (reloaded into the editor) contains the MADR section headings; selecting `rejected` status and saving succeeds without adding a relation; the renamed decision-makers input round-trips through save and reload.
+- `adr-lifecycle.spec.ts`: the create flow's resulting ADR body (reloaded into the editor) contains the MADR section headings; entering `decisionMakers`/`consulted`/`informed` in `CreateAdrForm` round-trips through save and reload (Req 1.3 create-time coverage); selecting `rejected` status and saving succeeds without adding a relation; the renamed decision-makers input in `EditAdrForm` round-trips through save and reload.
 - Loading the migrated example fixture displays its H1-derived title correctly in the tree, card, and editor.
 
 ## Supporting References
