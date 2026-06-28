@@ -70,7 +70,7 @@ describe("SearchPanel", () => {
       title,
       status: created.adr.status,
       date: created.adr.date,
-      deciders: created.adr.deciders,
+      decisionMakers: created.adr.decisionMakers,
       tags: overrides.tags,
       body: overrides.body ?? "Body text.",
       author: AUTHOR,

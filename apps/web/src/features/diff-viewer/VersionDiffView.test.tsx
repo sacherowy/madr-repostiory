@@ -62,7 +62,7 @@ describe("VersionDiffView", () => {
       title: created.adr.title,
       status: created.adr.status,
       date: created.adr.date,
-      deciders: created.adr.deciders,
+      decisionMakers: created.adr.decisionMakers,
       tags: created.adr.tags,
       body: "Completely different body content.",
       author: AUTHOR,
