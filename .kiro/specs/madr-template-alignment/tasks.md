@@ -2,7 +2,7 @@
 
 - [ ] 1. Foundation: shared ADR type contract
 
-- [ ] 1.1 Rename the decision-participant field and add the consulted/informed fields
+- [x] 1.1 Rename the decision-participant field and add the consulted/informed fields
   - Replace the single decision-makers list field (currently named `deciders`) with the MADR-aligned name across the frontmatter shape and both the create and update request contracts
   - Add two new optional list fields, consulted and informed, alongside it in the same three shapes
   - Observable: the shared ADR type contract no longer declares the old field name anywhere, and declares the two new optional fields

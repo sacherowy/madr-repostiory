@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type {
   AdrId,
   AdrStatus,
   RelationType,
   AdrRelation,
   Adr,
+  AdrFrontmatter,
   AdrSummary,
   FolderNode,
   RelationView,
@@ -128,17 +131,22 @@ describe("view types", () => {
 });
 
 describe("request types", () => {
-  it("constructs a CreateAdrRequest literal with optional fields", () => {
+  it("constructs a CreateAdrRequest literal with optional fields, including consulted/informed", () => {
     const req: CreateAdrRequest = {
       title: "Use Postgres",
-      deciders: ["Alice"],
+      decisionMakers: ["Alice"],
+      consulted: ["Carol"],
+      informed: ["Dave"],
       tags: ["database"],
       folder: "decisions/db",
     };
     expect(req.folder).toBe("decisions/db");
+    expect(req.decisionMakers).toEqual(["Alice"]);
+    expect(req.consulted).toEqual(["Carol"]);
+    expect(req.informed).toEqual(["Dave"]);
   });
 
-  it("constructs an UpdateAdrRequest literal including the concurrency token and author", () => {
+  it("constructs an UpdateAdrRequest literal including the concurrency token, author, and consulted/informed", () => {
     const relations: AdrRelation[] = [{ type: "relates-to", target: "0002" as AdrId }];
     const status: AdrStatus = "accepted";
     const relationType: RelationType = relations[0].type;
@@ -146,7 +154,9 @@ describe("request types", () => {
       title: "Use Postgres",
       status,
       date: "2026-01-01",
-      deciders: ["Alice"],
+      decisionMakers: ["Alice"],
+      consulted: ["Carol"],
+      informed: ["Dave"],
       tags: ["database"],
       relations,
       body: "## Context\n...",
@@ -156,6 +166,8 @@ describe("request types", () => {
     expect(req.baseBlobSha).toBe("sha-base");
     expect(req.author).toBe("Alice");
     expect(relationType).toBe("relates-to");
+    expect(req.consulted).toEqual(["Carol"]);
+    expect(req.informed).toEqual(["Dave"]);
   });
 
   it("constructs a CreateFolderRequest literal including author", () => {
@@ -166,5 +178,29 @@ describe("request types", () => {
   it("constructs a MoveAdrRequest literal including author", () => {
     const req: MoveAdrRequest = { targetFolder: "decisions/db", author: "Bob" };
     expect(req.author).toBe("Bob");
+  });
+});
+
+describe("AdrFrontmatter decision-participant fields", () => {
+  it("constructs an AdrFrontmatter literal with decisionMakers, consulted, and informed", () => {
+    const frontmatter: AdrFrontmatter = {
+      id: "0001-use-postgres",
+      title: "Use Postgres",
+      status: "accepted",
+      date: "2026-01-01",
+      decisionMakers: ["Alice"],
+      consulted: ["Carol"],
+      informed: ["Dave"],
+      tags: ["database"],
+    };
+    expect(frontmatter.decisionMakers).toEqual(["Alice"]);
+    expect(frontmatter.consulted).toEqual(["Carol"]);
+    expect(frontmatter.informed).toEqual(["Dave"]);
+  });
+
+  it("never references the legacy 'deciders' field name anywhere in types.ts", () => {
+    const typesPath = fileURLToPath(new URL("./types.ts", import.meta.url));
+    const source = readFileSync(typesPath, "utf-8");
+    expect(source).not.toMatch(/\bdeciders\b/);
   });
 });

@@ -19,7 +19,9 @@ export interface AdrFrontmatter {
   title: string;
   status: AdrStatus;
   date: string;
-  deciders?: string[];
+  decisionMakers?: string[];
+  consulted?: string[];
+  informed?: string[];
   tags?: string[];
   relations?: AdrRelation[];
 }
@@ -102,7 +104,9 @@ export interface SimilarityResult {
 
 export interface CreateAdrRequest {
   title: string;
-  deciders?: string[];
+  decisionMakers?: string[];
+  consulted?: string[];
+  informed?: string[];
   tags?: string[];
   folder: string;
 }
@@ -111,7 +115,9 @@ export interface UpdateAdrRequest {
   title: string;
   status: AdrStatus;
   date: string;
-  deciders?: string[];
+  decisionMakers?: string[];
+  consulted?: string[];
+  informed?: string[];
   tags?: string[];
   relations?: AdrRelation[];
   body: string;
