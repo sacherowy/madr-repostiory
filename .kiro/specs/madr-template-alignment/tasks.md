@@ -18,7 +18,7 @@
 
 - [ ] 2. Foundation: parse/serialize translation boundary
 
-- [ ] 2.1 Resolve the decision-participant field with backward-compatible reads
+- [x] 2.1 Resolve the decision-participant field with backward-compatible reads
   - When reading an ADR, populate the renamed field from the new frontmatter key, falling back to the old key when the new one is absent
   - When writing an ADR, always write the new key and never the old one
   - Observable: reading a file that still uses the old key produces the same in-memory value as reading one that uses the new key, and saving either one afterward writes only the new key
