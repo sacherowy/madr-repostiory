@@ -5,7 +5,7 @@ import { StatusBadge } from "../../components/StatusBadge.js";
 import { MonoChip } from "../../components/MonoChip.js";
 import { RelationChip } from "../../components/RelationChip.js";
 
-const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded"];
+const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
 const RELATION_TYPES: RelationType[] = [
   "supersedes",
   "superseded-by",

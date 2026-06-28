@@ -334,7 +334,7 @@ describe("AdrEditor", () => {
       expect(screen.getByTestId("status-select")).toHaveValue("deprecated");
     });
 
-    it("status select offers exactly the four AdrStatus values", async () => {
+    it("status select offers exactly the five AdrStatus values", async () => {
       const { id } = await seedAdr("Status Options ADR", "Body.");
 
       render(
@@ -345,9 +345,27 @@ describe("AdrEditor", () => {
       const options = within(screen.getByTestId("status-select")).getAllByRole("option");
       const values = options.map((option) => option.textContent);
       expect(values).toEqual(
-        expect.arrayContaining(["proposed", "accepted", "deprecated", "superseded"])
+        expect.arrayContaining(["proposed", "accepted", "deprecated", "superseded", "rejected"])
       );
-      expect(options).toHaveLength(4);
+      expect(options).toHaveLength(5);
+    });
+
+    it("saves successfully when status is changed to rejected, with no relation required", async () => {
+      const { id } = await seedAdr("Rejectable ADR", "Body before edit.");
+      const onAdrSaved = vi.fn();
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
+      );
+      await waitFor(() => expect(screen.getByTestId("status-select")).toBeInTheDocument());
+
+      fireEvent.change(screen.getByTestId("status-select"), { target: { value: "rejected" } });
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      expect(onAdrSaved.mock.calls[0][0].status).toBe("rejected");
+      expect(screen.getByTestId("status-select")).toHaveValue("rejected");
+      expect(screen.getByTestId("save-success-message")).toBeInTheDocument();
     });
 
     it("relation-type select offers exactly the five RelationType values", async () => {
