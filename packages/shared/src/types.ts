@@ -1,6 +1,6 @@
 export type AdrId = string;
 
-export type AdrStatus = "proposed" | "accepted" | "deprecated" | "superseded";
+export type AdrStatus = "proposed" | "accepted" | "deprecated" | "superseded" | "rejected";
 
 export type RelationType =
   | "supersedes"
@@ -16,7 +16,6 @@ export interface AdrRelation {
 
 export interface AdrFrontmatter {
   id: AdrId;
-  title: string;
   status: AdrStatus;
   date: string;
   decisionMakers?: string[];
@@ -28,6 +27,7 @@ export interface AdrFrontmatter {
 
 /** Pełny ADR = frontmatter + treść + pozycja w gicie. */
 export interface Adr extends AdrFrontmatter {
+  title: string;
   body: string;
   path: string;
   blobSha: string;

@@ -9,7 +9,7 @@
   - _Requirements: 1.1, 1.2, 1.4_
   - _Boundary: AdrFrontmatter / Adr / CreateAdrRequest / UpdateAdrRequest_
 
-- [ ] 1.2 Add the rejected status value and relocate the title field onto the domain type
+- [x] 1.2 Add the rejected status value and relocate the title field onto the domain type
   - Add a fifth status value, rejected, to the existing status vocabulary
   - Stop declaring title as a frontmatter field; declare it directly on the domain ADR type instead, since it will now be derived from the document body rather than stored as metadata
   - Observable: the status vocabulary accepts the new value, and the frontmatter shape no longer declares a title field while the domain ADR type still exposes one

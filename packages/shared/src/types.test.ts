@@ -182,10 +182,9 @@ describe("request types", () => {
 });
 
 describe("AdrFrontmatter decision-participant fields", () => {
-  it("constructs an AdrFrontmatter literal with decisionMakers, consulted, and informed", () => {
+  it("constructs an AdrFrontmatter literal with decisionMakers, consulted, and informed (no title field)", () => {
     const frontmatter: AdrFrontmatter = {
       id: "0001-use-postgres",
-      title: "Use Postgres",
       status: "accepted",
       date: "2026-01-01",
       decisionMakers: ["Alice"],
@@ -202,5 +201,26 @@ describe("AdrFrontmatter decision-participant fields", () => {
     const typesPath = fileURLToPath(new URL("./types.ts", import.meta.url));
     const source = readFileSync(typesPath, "utf-8");
     expect(source).not.toMatch(/\bdeciders\b/);
+  });
+});
+
+describe("AdrStatus rejected value and title relocation onto Adr", () => {
+  it("accepts 'rejected' as a valid AdrStatus", () => {
+    const status: AdrStatus = "rejected";
+    expect(status).toBe("rejected");
+  });
+
+  it("constructs an Adr literal with a title field even though AdrFrontmatter has none", () => {
+    const adr: Adr = {
+      id: "0001-use-postgres",
+      status: "rejected",
+      date: "2026-01-01",
+      title: "Use Postgres",
+      body: "Body",
+      path: "decisions/0001.md",
+      blobSha: "sha-a",
+    };
+    expect(adr.title).toBe("Use Postgres");
+    expect(adr.status).toBe("rejected");
   });
 });
