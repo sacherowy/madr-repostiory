@@ -88,7 +88,7 @@
 
 - [ ] 7. Core: status badge label
 
-- [ ] 7.1 (P) Add a display label for the rejected status
+- [x] 7.1 (P) Add a display label for the rejected status
   - Add a human-readable label for the rejected status alongside the existing status labels, so it renders the same way the other known statuses do rather than falling back to the neutral/unknown treatment
   - Observable: an ADR with status rejected renders with its own label, not the unknown-status fallback
   - _Requirements: 2.2_
