@@ -59,10 +59,20 @@ interface CreateAdrFormProps {
 
 function CreateAdrForm({ folder, authorName, apiClient, onAdrSaved }: CreateAdrFormProps) {
   const [title, setTitle] = useState("");
+  const [decisionMakers, setDecisionMakers] = useState("");
+  const [consulted, setConsulted] = useState("");
+  const [informed, setInformed] = useState("");
   const [missingFields, setMissingFields] = useState<string[] | null>(null);
 
   async function handleCreate() {
-    const result = await apiClient.createAdr({ title, folder: folder ?? ".", author: authorName });
+    const result = await apiClient.createAdr({
+      title,
+      folder: folder ?? ".",
+      author: authorName,
+      decisionMakers: splitCsv(decisionMakers),
+      consulted: splitCsv(consulted),
+      informed: splitCsv(informed),
+    });
     if (result.ok) {
       setMissingFields(null);
       onAdrSaved(result.adr);
@@ -87,6 +97,45 @@ function CreateAdrForm({ folder, authorName, apiClient, onAdrSaved }: CreateAdrF
             type="text"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-decision-makers-input">
+            Decision Makers
+          </label>
+          <input
+            id="adr-editor-decision-makers-input"
+            data-testid="decision-makers-input"
+            className="field__input"
+            type="text"
+            value={decisionMakers}
+            onChange={(event) => setDecisionMakers(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-consulted-input">
+            Consulted
+          </label>
+          <input
+            id="adr-editor-consulted-input"
+            data-testid="consulted-input"
+            className="field__input"
+            type="text"
+            value={consulted}
+            onChange={(event) => setConsulted(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-informed-input">
+            Informed
+          </label>
+          <input
+            id="adr-editor-informed-input"
+            data-testid="informed-input"
+            className="field__input"
+            type="text"
+            value={informed}
+            onChange={(event) => setInformed(event.target.value)}
           />
         </div>
         <div className="card__footer">

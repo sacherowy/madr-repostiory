@@ -74,7 +74,7 @@
   - _Requirements: 1.3_
   - _Boundary: AdrEditor (EditAdrForm)_
 
-- [ ] 6.2 Add decision-participant inputs to the create form
+- [x] 6.2 Add decision-participant inputs to the create form
   - In the ADR creation form, which today only collects a title, add the same three inputs (decision-makers, consulted, informed) used in the edit form, and pass their values through when creating the ADR
   - Observable: creating a new ADR lets the user enter decision-makers, consulted, and informed, and the created ADR reflects whatever values were entered
   - _Requirements: 1.3_

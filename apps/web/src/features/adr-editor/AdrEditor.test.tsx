@@ -92,6 +92,32 @@ describe("AdrEditor", () => {
       await waitFor(() => expect(screen.getByTestId("missing-fields-message")).toBeInTheDocument());
       expect(onAdrSaved).not.toHaveBeenCalled();
     });
+
+    it("lets the user enter decisionMakers/consulted/informed and reflects them on the created Adr", async () => {
+      const onAdrSaved = vi.fn();
+      render(
+        <AdrEditor
+          adrId={null}
+          folder="decisions"
+          authorName={AUTHOR}
+          apiClient={client}
+          onAdrSaved={onAdrSaved}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId("title-input"), { target: { value: "Participants Create ADR" } });
+      fireEvent.change(screen.getByTestId("decision-makers-input"), { target: { value: "Alice, Bob" } });
+      fireEvent.change(screen.getByTestId("consulted-input"), { target: { value: "Carol" } });
+      fireEvent.change(screen.getByTestId("informed-input"), { target: { value: "Dave, Erin" } });
+      fireEvent.click(screen.getByTestId("create-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      const savedAdr = onAdrSaved.mock.calls[0][0];
+      expect(savedAdr.title).toBe("Participants Create ADR");
+      expect(savedAdr.decisionMakers).toEqual(["Alice", "Bob"]);
+      expect(savedAdr.consulted).toEqual(["Carol"]);
+      expect(savedAdr.informed).toEqual(["Dave", "Erin"]);
+    });
   });
 
   describe("edit mode (adrId is a string)", () => {
