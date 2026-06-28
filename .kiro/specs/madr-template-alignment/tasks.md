@@ -125,7 +125,7 @@
   - Observable: the end-to-end test passes covering all of the above in one ADR lifecycle
   - _Requirements: 1.3, 2.2, 2.4, 3.1, 3.3_
 
-- [ ] 10.2 Verify the migrated example fixture's title displays consistently across the app
+- [x] 10.2 Verify the migrated example fixture's title displays consistently across the app
   - Load the migrated example fixture and confirm its body-derived title displays correctly in the folder tree, the ADR card, and the editor
   - Observable: all three surfaces show the same, correct title for the migrated fixture
   - _Requirements: 4.4, 5.5_
