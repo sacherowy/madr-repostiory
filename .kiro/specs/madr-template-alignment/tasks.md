@@ -35,19 +35,19 @@
 
 - [ ] 3. Foundation: MADR body scaffold
 
-- [x] 3.1 (P) Create the MADR-aligned body scaffold for new ADRs
+- [x] 3.1 (P) Create the MADR-aligned body scaffold for new ADRs (superseded by tasks 11-12)
   - Define the initial body content new ADRs start with: the eight MADR section headings in order, at the same heading levels as the official template (with the two outcome-related sections nested under the decision-outcome section rather than flattened)
   - Mark the optional sections distinguishably from the two required sections, leaving every section's content empty
   - Observable: the scaffold contains exactly the eight headings in order at the correct levels, and the optional sections are visibly marked while the two required ones are not
-  - _Requirements: 3.1, 3.2, 3.3_
-  - _Boundary: MADR_BODY_SCAFFOLD_
+  - _Requirements: 3.1_
+  - _Boundary: MADR_BODY_SCAFFOLD (removed in task 12.2)_
 
 - [ ] 4. Core: ADR creation and save orchestration
 
 - [x] 4.1 (P) Use the new scaffold and renamed fields when creating an ADR
   - When a new ADR is created, start its body from the MADR scaffold instead of leaving it empty, and record the renamed decision-participant field plus the new consulted/informed fields instead of the old field name
   - Observable: creating a new ADR produces a committed file whose body contains the MADR section headings and whose frontmatter uses the new field names
-  - _Requirements: 1.1, 1.2, 3.3, 4.1, 6.1_
+  - _Requirements: 1.1, 1.2, 4.1, 6.1_
   - _Boundary: AdrEditingService_
 
 - [x] 4.2 Use the renamed fields when saving an ADR and confirm relation-independence
@@ -123,14 +123,121 @@
 - [x] 10.1 Extend the ADR lifecycle end-to-end test for the realigned model
   - Cover creating an ADR and confirming its body contains the MADR section headings, entering decision-makers/consulted/informed on create and on edit and confirming both round-trip through save and reload, and selecting and saving status rejected without adding a relation
   - Observable: the end-to-end test passes covering all of the above in one ADR lifecycle
-  - _Requirements: 1.3, 2.2, 2.4, 3.1, 3.3_
+  - _Requirements: 1.3, 2.2, 2.4_
 
 - [x] 10.2 Verify the migrated example fixture's title displays consistently across the app
   - Load the migrated example fixture and confirm its body-derived title displays correctly in the folder tree, the ADR card, and the editor
   - Observable: all three surfaces show the same, correct title for the migrated fixture
   - _Requirements: 4.4, 5.5_
 
+- [ ] 11. Foundation: shared section metadata and type contract
+
+- [ ] 11.1 (P) Define the canonical MADR section metadata and discrete-fields shape
+  - Declare eight section fields, one per MADR section, and an ordered metadata array describing each section's heading text, heading level, required flag, and key, as the single source every other component reads from instead of hardcoding heading text or order independently
+  - Mark exactly the two MADR-required sections (Context and Problem Statement, Decision Outcome) as required in that metadata, and the remaining six as optional
+  - Observable: a new shared module exports the eight-field shape and the ordered metadata array, importable by both the core/API layer and the web UI
+  - _Requirements: 3.1, 3.3_
+  - _Boundary: AdrSections / MADR_SECTIONS_
+
+- [ ] 11.2 Replace the single body field with the eight section fields and a catch-all field on the domain and update-request types
+  - Remove the single free-text body field from the domain ADR type and the update-request contract; compose both with the eight section fields from 11.1 and add one additional field to hold content that doesn't map to any of the eight sections
+  - Leave the frontmatter shape, the create-request contract, and every other existing field on these types untouched
+  - Observable: the domain ADR type and the update-request contract expose all eight section fields plus the catch-all field, and no longer declare a single body field anywhere
+  - _Requirements: 3.1, 3.6, 3.9_
+  - _Boundary: Adr / UpdateAdrRequest_
+  - _Depends: 11.1_
+
+- [ ] 12. Foundation: body-to-fields translation boundary
+
+- [ ] 12.1 (P) Implement the lossless split/join boundary between body text and the nine discrete fields
+  - Build a function that scans body content for the eight canonical section headings (matching exact heading text and level) and assigns each recognized section's content to its field, routing everything else — unmatched headings, duplicate headings, and content before the first heading — into the catch-all field, in original document order, without losing any of it
+  - Build the inverse function that always emits all eight canonical headings in canonical order and level, each followed by its field's content, then appends the catch-all field's content verbatim (no heading wrapper) if it is non-empty
+  - Add a function that produces the combined plain-text content of all nine fields together, for use by search indexing and embedding-text construction
+  - Observable: splitting a body containing all eight recognized headings reproduces each section's content correctly; splitting a body with no recognized headings places its entire content in the catch-all field with every section empty; joining a set of fields and then splitting the result reproduces the original fields exactly
+  - _Requirements: 3.5, 3.6, 3.7, 3.8_
+  - _Boundary: sections.ts (splitSections / joinSections / combined-text helper)_
+  - _Depends: 11.1_
+
+- [ ] 12.2 Wire the new split/join boundary into the parse/serialize translation boundary and remove the superseded scaffold module
+  - When reading an ADR, split the body content remaining after title extraction into the nine fields using the new boundary, instead of returning it as a single body value
+  - When writing an ADR, join the nine fields back into body text using the new boundary before prepending the title heading, instead of writing a single body value
+  - Remove the now-unused body-scaffold module and its tests, since static scaffold text no longer applies once content is nine discrete fields
+  - Observable: reading any existing ADR file produces an object with all nine fields populated (or empty) instead of a single body value, and round-tripping it through read-then-write reproduces the same nine field values
+  - _Requirements: 3.5, 3.7, 3.8_
+  - _Boundary: parseAdr / serializeAdr_
+  - _Depends: 11.2, 12.1_
+
+- [ ] 13. Core: ADR creation and save orchestration retrofit
+
+- [ ] 13.1 (P) Use the nine discrete fields instead of the single body field when creating, saving, and indexing an ADR
+  - When a new ADR is created, set all eight section fields and the catch-all field to empty instead of starting from scaffold text
+  - When an ADR is saved, replace the single missing-body check with a check against the two MADR-required sections specifically, reporting each by its own field name when empty
+  - When an ADR is saved, build the text passed to the search index from the combined content of all nine fields instead of the single body value
+  - Observable: creating a new ADR produces a committed file with all eight section headings present and empty content; saving an ADR with either required section empty is rejected and reports that section's own field name; saving an ADR with content spread across multiple sections produces a search-index entry containing all of that content
+  - _Requirements: 3.4, 3.11_
+  - _Boundary: AdrEditingService_
+  - _Depends: 12.2_
+
+- [ ] 14. Core: comparison field coverage retrofit
+
+- [ ] 14.1 (P) Extend ADR comparison to cover the nine discrete content fields individually
+  - Replace the single body entry in the set of fields compared between two ADRs or two versions of an ADR with the eight section fields and the catch-all field, so a change to any one of them is detected individually instead of as one combined difference
+  - Observable: comparing two ADRs that differ only in one section reports only that field as different, not a combined body difference
+  - _Requirements: 3.10_
+  - _Boundary: ComparisonService_
+  - _Depends: 11.2_
+
+- [ ] 15. Integration: embedding and reindex text construction
+
+- [ ] 15.1 (P) Build reindex embedding/index text from the combined section content instead of the single body field
+  - When the standalone reindex script builds the text it embeds and indexes for an ADR, use the combined content of all nine fields instead of the single body value
+  - Observable: rebuilding the index from a fixture with content spread across multiple sections produces index/embedding text containing all of that content
+  - _Requirements: 3.11, 6.3_
+  - _Boundary: reindex script_
+  - _Depends: 12.1_
+
+- [ ] 15.2 (P) Build similarity embedding text from the combined section content instead of the single body field
+  - When computing an ADR's embedding vector for similarity search, use the combined content of all nine fields instead of the single body value, through the same combined-text helper the reindex script uses, so the two call sites cannot drift apart
+  - Observable: computing a similarity vector for a fixture with content spread across multiple sections reflects all of that content, matching what the reindex script produces for the same fixture
+  - _Requirements: 6.3_
+  - _Boundary: similarityService_
+  - _Depends: 12.1_
+
+- [ ] 16. Core: editor UI fields retrofit
+
+- [ ] 16.1 (P) Replace the single body textarea with one field per MADR section plus one for unmapped content in the edit form
+  - In the existing ADR edit form, replace the single body field with one labeled textarea per MADR section, rendered from the shared section metadata in canonical order, plus one additional textarea for content that doesn't belong to any of the eight sections
+  - Render the two MADR-required sections' labels distinguishably from the six optional ones, driven by the same shared metadata rather than hardcoded per field
+  - Observable: editing an existing ADR shows eight separate section textareas in canonical order plus one additional-content textarea, with the two required ones visibly marked, and saving a change to any one of them persists independently of the others
+  - _Requirements: 3.2, 3.3_
+  - _Boundary: AdrEditor (EditAdrForm)_
+  - _Depends: 11.1, 11.2_
+
+- [ ] 17. Core: read-only history viewer fields retrofit
+
+- [ ] 17.1 (P) Replace the single body paragraph with one read-only block per MADR section plus one for unmapped content in the history viewer
+  - In the read-only historical-version viewer, replace the single body paragraph with one labeled, read-only block per MADR section, rendered from the same shared section metadata in canonical order, plus one additional block for unmapped content, shown only when non-empty
+  - Observable: viewing a historical ADR version shows its eight section contents and any unmapped content in separate labeled blocks instead of one paragraph
+  - _Requirements: 3.2_
+  - _Boundary: HistoryTimeline_
+  - _Depends: 11.1, 11.2_
+
+- [ ] 18. Validation: end-to-end regression for structured sections
+
+- [ ] 18.1 Add end-to-end coverage for creating and editing an ADR through its nine discrete fields
+  - Cover creating an ADR and confirming all eight section fields render empty with the two required ones visibly distinguished from the six optional ones; filling in and saving multiple sections independently and confirming each round-trips through reload; confirming the additional-content field round-trips for content that doesn't map to any section
+  - Observable: the end-to-end test passes covering ADR creation, independent per-section editing and reload, and additional-content round-tripping in one scenario
+  - _Requirements: 3.2, 3.3, 3.4, 3.7_
+  - _Depends: 13.1, 16.1_
+
+- [ ] 18.2 Verify the migrated example fixture's content displays consistently as catch-all content across the app
+  - Load the existing example fixture and confirm its non-MADR section headings and content appear in the additional-content field in both the editor and the history viewer, with all eight section fields empty
+  - Observable: both the editor and the history viewer show the fixture's full original content in the additional-content field, with no content lost or duplicated
+  - _Requirements: 5.5, 3.7_
+  - _Depends: 12.2, 16.1, 17.1_
+
 ## Implementation Notes
 
 - Task 9.1 found two pre-existing regressions from earlier tasks, fixed in the same commit: (1) `MADR_BODY_SCAFFOLD` (task 3.1) ended with a trailing newline, which `parseAdr`'s title-extraction `.trim()` (task 2.2) silently stripped on every read-back — so a freshly created ADR's in-memory body never matched a subsequent GET; fixed by removing the scaffold's trailing newline. (2) `apps/api/src/routes/compare.test.ts` still asserted 6 comparison fields after task 5.1 raised the count to 8 (added consulted/informed); updated the assertion to 8.
 - Cross-task validation after all 17 sub-tasks reached `[x]` found 7 pre-existing `apps/web` test files (outside any task's boundary — leftovers from earlier specs) still referencing the `deciders` field removed by task 1.1: `App.test.tsx`, `SimilarityPanel.test.tsx`, `SearchPanel.test.tsx`, `RelationsPanel.test.tsx`, `HistoryTimeline.test.tsx`, `CompareLauncher.test.tsx`, `VersionDiffView.test.tsx`. This produced 38 real `tsc --noEmit` errors (TS2353/TS2339) invisible to `pnpm -r test` because vitest's esbuild transform doesn't type-check and neither canonical command (`pnpm -r test`, `pnpm -r build`) runs `tsc --noEmit` against `apps/web` (its `build` script is `vite build` only). Fixed by renaming `deciders` → `decisionMakers` in those 7 files; verified clean via a fresh `tsc --noEmit` run plus unchanged 231/231 vitest pass.
+- Requirement 3 was rewritten during this spec's reopening (single scaffolded `body` field → eight discrete MADR section fields plus a catch-all). Tasks 3.1, 4.1, and 10.1 were completed under the old text and only ever built/tested the now-superseded `MADR_BODY_SCAFFOLD` approach (removed by task 12.2); their `_Requirements:_` citations to `3.1`/`3.2`/`3.3` have been corrected to stop claiming coverage of the rewritten acceptance criteria. Tasks 11-18 are the sole source of Requirement 3 coverage going forward.
