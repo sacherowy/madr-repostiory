@@ -68,7 +68,7 @@
 
 - [ ] 6. Core: editor UI fields
 
-- [ ] 6.1 (P) Rename the edit form's decision-participant field and add consulted/informed inputs
+- [x] 6.1 (P) Rename the edit form's decision-participant field and add consulted/informed inputs
   - In the existing ADR edit form, rename the decision-makers input to match the new field name and add two new optional inputs for consulted and informed, using the same comma-separated-list editing convention already used for tags
   - Observable: editing an ADR lets the user view and change decision-makers, consulted, and informed, and saving persists all three
   - _Requirements: 1.3_

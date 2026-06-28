@@ -125,7 +125,9 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<AdrStatus>("proposed");
   const [date, setDate] = useState("");
-  const [deciders, setDeciders] = useState("");
+  const [decisionMakers, setDecisionMakers] = useState("");
+  const [consulted, setConsulted] = useState("");
+  const [informed, setInformed] = useState("");
   const [tags, setTags] = useState("");
   const [body, setBody] = useState("");
   const [relations, setRelations] = useState<AdrRelation[]>([]);
@@ -142,7 +144,9 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     setTitle(adr.title);
     setStatus(adr.status);
     setDate(adr.date);
-    setDeciders((adr.deciders ?? []).join(", "));
+    setDecisionMakers((adr.decisionMakers ?? []).join(", "));
+    setConsulted((adr.consulted ?? []).join(", "));
+    setInformed((adr.informed ?? []).join(", "));
     setTags((adr.tags ?? []).join(", "));
     setBody(adr.body);
     setRelations(adr.relations ?? []);
@@ -196,7 +200,9 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
       title,
       status,
       date,
-      deciders: splitCsv(deciders),
+      decisionMakers: splitCsv(decisionMakers),
+      consulted: splitCsv(consulted),
+      informed: splitCsv(informed),
       tags: splitCsv(tags),
       relations,
       body,
@@ -325,16 +331,44 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
         </div>
 
         <div className="field">
-          <label className="field__label" htmlFor="adr-editor-deciders-input">
-            Deciders
+          <label className="field__label" htmlFor="adr-editor-decision-makers-input">
+            Decision Makers
           </label>
           <input
-            id="adr-editor-deciders-input"
-            data-testid="deciders-input"
+            id="adr-editor-decision-makers-input"
+            data-testid="decision-makers-input"
             className="field__input"
             type="text"
-            value={deciders}
-            onChange={(event) => setDeciders(event.target.value)}
+            value={decisionMakers}
+            onChange={(event) => setDecisionMakers(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-consulted-input">
+            Consulted
+          </label>
+          <input
+            id="adr-editor-consulted-input"
+            data-testid="consulted-input"
+            className="field__input"
+            type="text"
+            value={consulted}
+            onChange={(event) => setConsulted(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-informed-input">
+            Informed
+          </label>
+          <input
+            id="adr-editor-informed-input"
+            data-testid="informed-input"
+            className="field__input"
+            type="text"
+            value={informed}
+            onChange={(event) => setInformed(event.target.value)}
           />
         </div>
 

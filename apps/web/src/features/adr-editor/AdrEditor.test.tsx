@@ -151,6 +151,71 @@ describe("AdrEditor", () => {
       expect(screen.getByTestId("body-textarea")).toHaveValue("Body after edit.");
     });
 
+    it("loads and displays the real saved decisionMakers/consulted/informed values", async () => {
+      const created = await client.createAdr({
+        title: "Participants ADR",
+        folder: "decisions",
+        author: AUTHOR,
+      });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+      const saved = await client.updateAdr(created.adr.id, {
+        title: "Participants ADR",
+        status: "accepted",
+        date: "2026-01-01",
+        decisionMakers: ["Alice", "Bob"],
+        consulted: ["Carol"],
+        informed: ["Dave", "Erin"],
+        body: "Body content.",
+        author: AUTHOR,
+        baseBlobSha: created.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(
+        <AdrEditor
+          adrId={saved.adr.id}
+          folder={null}
+          authorName={AUTHOR}
+          apiClient={client}
+          onAdrSaved={vi.fn()}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByTestId("decision-makers-input")).toBeInTheDocument());
+      expect(screen.getByTestId("decision-makers-input")).toHaveValue("Alice, Bob");
+      expect(screen.getByTestId("consulted-input")).toHaveValue("Carol");
+      expect(screen.getByTestId("informed-input")).toHaveValue("Dave, Erin");
+    });
+
+    it("saves edited decisionMakers/consulted/informed and persists all three", async () => {
+      const { id } = await seedAdr("Editable Participants ADR", "Body before edit.");
+      const onAdrSaved = vi.fn();
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
+      );
+      await waitFor(() => expect(screen.getByTestId("decision-makers-input")).toBeInTheDocument());
+
+      fireEvent.change(screen.getByTestId("decision-makers-input"), {
+        target: { value: "Alice, Bob" },
+      });
+      fireEvent.change(screen.getByTestId("consulted-input"), { target: { value: "Carol" } });
+      fireEvent.change(screen.getByTestId("informed-input"), { target: { value: "Dave, Erin" } });
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      const savedAdr = onAdrSaved.mock.calls[0][0];
+      expect(savedAdr.decisionMakers).toEqual(["Alice", "Bob"]);
+      expect(savedAdr.consulted).toEqual(["Carol"]);
+      expect(savedAdr.informed).toEqual(["Dave", "Erin"]);
+
+      const refetched = await client.getAdr(id);
+      if (!refetched.ok) throw new Error("expected getAdr to succeed");
+      expect(refetched.adr.decisionMakers).toEqual(["Alice", "Bob"]);
+      expect(refetched.adr.consulted).toEqual(["Carol"]);
+      expect(refetched.adr.informed).toEqual(["Dave", "Erin"]);
+    });
+
     it("shows missing-fields-message when body is cleared, without discarding the draft", async () => {
       const { id } = await seedAdr("Invalid Save ADR", "Has a body.");
       const onAdrSaved = vi.fn();
