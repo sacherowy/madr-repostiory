@@ -59,7 +59,7 @@
 
 - [ ] 5. Core: comparison field coverage
 
-- [ ] 5.1 (P) Extend ADR comparison to cover the renamed/new fields and the body-derived title
+- [x] 5.1 (P) Extend ADR comparison to cover the renamed/new fields and the body-derived title
   - Add the consulted and informed fields to the set of fields compared between two ADRs or two versions of an ADR, and replace the old decision-participant field with its new name in that same comparison
   - Confirm the title comparison reflects each ADR's body-derived title with no special-casing needed beyond what already exists
   - Observable: comparing two ADRs that differ only in consulted, informed, or the renamed field reports those differences
