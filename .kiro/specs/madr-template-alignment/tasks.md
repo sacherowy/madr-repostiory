@@ -96,7 +96,7 @@
 
 - [ ] 8. Core: example fixture migration
 
-- [ ] 8.1 (P) Migrate this repository's example ADR fixture to the realigned format
+- [x] 8.1 (P) Migrate this repository's example ADR fixture to the realigned format
   - Update the example fixture's frontmatter to use the renamed decision-participant field, remove its frontmatter title, and add that title as the body's first heading above its existing content
   - Leave the fixture's existing section headings and written content otherwise unchanged
   - Observable: the example fixture file uses the new field name and has no frontmatter title, with the title now appearing as the body's first heading

@@ -1,14 +1,15 @@
 ---
 id: "0001"
-title: Użycie gita jako źródła prawdy dla ADR
 status: accepted
 date: 2026-06-17
-deciders: [pawel]
+decision-makers: [pawel]
 tags: [architecture, storage]
 relations:
   - type: relates-to
     target: "0002"
 ---
+
+# Użycie gita jako źródła prawdy dla ADR
 
 ## Kontekst
 Aplikacja zarządza ADR-ami i potrzebuje wersjonowania, historii oraz porównań.
