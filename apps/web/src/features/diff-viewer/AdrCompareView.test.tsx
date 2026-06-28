@@ -54,7 +54,7 @@ describe("AdrCompareView", () => {
     await rm(repoPath, { recursive: true, force: true });
   });
 
-  it("renders all 6 fields in fixed order with accurate differs flags for two distinct real ADRs", async () => {
+  it("renders all 8 fields in fixed order with accurate differs flags for two distinct real ADRs", async () => {
     const a = await client.createAdr({ title: "ADR A title", folder: "decisions", author: AUTHOR });
     if (!a.ok) throw new Error("fixture setup: createAdr A unexpectedly failed");
     const b = await client.createAdr({ title: "ADR B title", folder: "decisions", author: AUTHOR });
@@ -66,7 +66,7 @@ describe("AdrCompareView", () => {
       title: "ADR A title",
       status: "accepted",
       date: "2026-01-01",
-      deciders: a.adr.deciders,
+      decisionMakers: a.adr.decisionMakers,
       tags: a.adr.tags,
       body: "Body A.",
       author: AUTHOR,
@@ -78,7 +78,7 @@ describe("AdrCompareView", () => {
       title: "ADR B title",
       status: "accepted",
       date: "2026-01-01",
-      deciders: b.adr.deciders,
+      decisionMakers: b.adr.decisionMakers,
       tags: b.adr.tags,
       body: "Body B.",
       author: AUTHOR,
@@ -92,9 +92,18 @@ describe("AdrCompareView", () => {
 
     await waitFor(() => expect(screen.getByTestId("adr-compare")).toBeInTheDocument());
 
-    const fieldOrder = ["title", "status", "date", "deciders", "tags", "body"];
-    const renderedFields = screen.getAllByTestId(/^adr-compare-field-[a-z]+$/);
-    expect(renderedFields).toHaveLength(6);
+    const fieldOrder = [
+      "title",
+      "status",
+      "date",
+      "decisionMakers",
+      "consulted",
+      "informed",
+      "tags",
+      "body",
+    ];
+    const renderedFields = screen.getAllByTestId(/^adr-compare-field-[a-zA-Z]+$/);
+    expect(renderedFields).toHaveLength(8);
     expect(renderedFields.map((el) => el.getAttribute("data-field"))).toEqual(fieldOrder);
 
     // title and body actually differ between the two fixtures.
