@@ -35,7 +35,7 @@
 
 - [ ] 3. Foundation: MADR body scaffold
 
-- [ ] 3.1 (P) Create the MADR-aligned body scaffold for new ADRs
+- [x] 3.1 (P) Create the MADR-aligned body scaffold for new ADRs
   - Define the initial body content new ADRs start with: the eight MADR section headings in order, at the same heading levels as the official template (with the two outcome-related sections nested under the decision-outcome section rather than flattened)
   - Mark the optional sections distinguishably from the two required sections, leaving every section's content empty
   - Observable: the scaffold contains exactly the eight headings in order at the correct levels, and the optional sections are visibly marked while the two required ones are not
