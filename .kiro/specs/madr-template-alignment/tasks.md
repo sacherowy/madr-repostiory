@@ -25,7 +25,7 @@
   - _Requirements: 5.1, 5.2_
   - _Boundary: parseAdr / serializeAdr_
 
-- [ ] 2.2 Derive the ADR title from the document body instead of frontmatter
+- [x] 2.2 Derive the ADR title from the document body instead of frontmatter
   - When reading an ADR, take the title from the body's first top-level heading; if none exists, fall back to a legacy title stored in frontmatter; if neither exists, treat the title as missing
   - Strip the heading line used as the title out of the body content returned to callers, so it isn't shown twice
   - When writing an ADR, place the title back as the body's first top-level heading and never write a frontmatter title
