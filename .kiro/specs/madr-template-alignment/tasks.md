@@ -158,10 +158,10 @@
   - _Boundary: sections.ts (splitSections / joinSections / combined-text helper)_
   - _Depends: 11.1_
 
-- [ ] 12.2 Wire the new split/join boundary into the parse/serialize translation boundary and remove the superseded scaffold module
+- [x] 12.2 Wire the new split/join boundary into the parse/serialize translation boundary
   - When reading an ADR, split the body content remaining after title extraction into the nine fields using the new boundary, instead of returning it as a single body value
   - When writing an ADR, join the nine fields back into body text using the new boundary before prepending the title heading, instead of writing a single body value
-  - Remove the now-unused body-scaffold module and its tests, since static scaffold text no longer applies once content is nine discrete fields
+  - Do not remove the body-scaffold module yet: `AdrEditingService` (task 13.1) still imports it for `create()`'s initial body, so it is not actually unused until that task replaces that usage — its removal is deferred to 13.1, which is the task that drops the last reference
   - Observable: reading any existing ADR file produces an object with all nine fields populated (or empty) instead of a single body value, and round-tripping it through read-then-write reproduces the same nine field values
   - _Requirements: 3.5, 3.7, 3.8_
   - _Boundary: parseAdr / serializeAdr_
@@ -173,6 +173,7 @@
   - When a new ADR is created, set all eight section fields and the catch-all field to empty instead of starting from scaffold text
   - When an ADR is saved, replace the single missing-body check with a check against the two MADR-required sections specifically, reporting each by its own field name when empty
   - When an ADR is saved, build the text passed to the search index from the combined content of all nine fields instead of the single body value
+  - Remove the now-unused body-scaffold module (`madrTemplate.ts`) and its tests once this task removes `AdrEditingService`'s last reference to it (`create()`'s `body: MADR_BODY_SCAFFOLD`), since static scaffold text no longer applies once content is nine discrete fields
   - Observable: creating a new ADR produces a committed file with all eight section headings present and empty content; saving an ADR with either required section empty is rejected and reports that section's own field name; saving an ADR with content spread across multiple sections produces a search-index entry containing all of that content
   - _Requirements: 3.4, 3.11_
   - _Boundary: AdrEditingService_
@@ -185,7 +186,7 @@
   - Observable: comparing two ADRs that differ only in one section reports only that field as different, not a combined body difference
   - _Requirements: 3.10_
   - _Boundary: ComparisonService_
-  - _Depends: 11.2_
+  - _Depends: 11.2, 12.2_
 
 - [ ] 15. Integration: embedding and reindex text construction
 
@@ -194,14 +195,14 @@
   - Observable: rebuilding the index from a fixture with content spread across multiple sections produces index/embedding text containing all of that content
   - _Requirements: 3.11, 6.3_
   - _Boundary: reindex script_
-  - _Depends: 12.1_
+  - _Depends: 12.1, 12.2_
 
 - [ ] 15.2 (P) Build similarity embedding text from the combined section content instead of the single body field
   - When computing an ADR's embedding vector for similarity search, use the combined content of all nine fields instead of the single body value, through the same combined-text helper the reindex script uses, so the two call sites cannot drift apart
   - Observable: computing a similarity vector for a fixture with content spread across multiple sections reflects all of that content, matching what the reindex script produces for the same fixture
   - _Requirements: 6.3_
   - _Boundary: similarityService_
-  - _Depends: 12.1_
+  - _Depends: 12.1, 12.2_
 
 - [ ] 16. Core: editor UI fields retrofit
 
@@ -241,3 +242,4 @@
 - Task 9.1 found two pre-existing regressions from earlier tasks, fixed in the same commit: (1) `MADR_BODY_SCAFFOLD` (task 3.1) ended with a trailing newline, which `parseAdr`'s title-extraction `.trim()` (task 2.2) silently stripped on every read-back — so a freshly created ADR's in-memory body never matched a subsequent GET; fixed by removing the scaffold's trailing newline. (2) `apps/api/src/routes/compare.test.ts` still asserted 6 comparison fields after task 5.1 raised the count to 8 (added consulted/informed); updated the assertion to 8.
 - Cross-task validation after all 17 sub-tasks reached `[x]` found 7 pre-existing `apps/web` test files (outside any task's boundary — leftovers from earlier specs) still referencing the `deciders` field removed by task 1.1: `App.test.tsx`, `SimilarityPanel.test.tsx`, `SearchPanel.test.tsx`, `RelationsPanel.test.tsx`, `HistoryTimeline.test.tsx`, `CompareLauncher.test.tsx`, `VersionDiffView.test.tsx`. This produced 38 real `tsc --noEmit` errors (TS2353/TS2339) invisible to `pnpm -r test` because vitest's esbuild transform doesn't type-check and neither canonical command (`pnpm -r test`, `pnpm -r build`) runs `tsc --noEmit` against `apps/web` (its `build` script is `vite build` only). Fixed by renaming `deciders` → `decisionMakers` in those 7 files; verified clean via a fresh `tsc --noEmit` run plus unchanged 231/231 vitest pass.
 - Requirement 3 was rewritten during this spec's reopening (single scaffolded `body` field → eight discrete MADR section fields plus a catch-all). Tasks 3.1, 4.1, and 10.1 were completed under the old text and only ever built/tested the now-superseded `MADR_BODY_SCAFFOLD` approach (removed by task 12.2); their `_Requirements:_` citations to `3.1`/`3.2`/`3.3` have been corrected to stop claiming coverage of the rewritten acceptance criteria. Tasks 11-18 are the sole source of Requirement 3 coverage going forward.
+- Task 12.2's implementation surfaced a missing dependency edge in the task graph: once `parseAdr`/`serializeAdr` stop populating a literal `body` property, every other call site that still reads/writes `Adr.body` breaks at runtime, not just at type-check time. This affects `comparisonService.ts` (task 14.1's `FIELD_NAMES` still includes `"body"`, silently becoming a non-differentiating field instead of a type error), `apps/api/src/scripts/reindex.ts` (task 15.1, embeds/indexes `undefined` instead of body text), `similarityService.ts` (task 15.2, same), and `AdrEditingService.create()`/`save()` (task 13.1, still assigns `body:` and never sets the 8 section fields/`additionalContent` — this is the most severe instance, since `joinSections` then template-literal-stringifies the unset `additionalContent` as the literal text `"undefined"` into the committed file, a real data-corruption bug, not just a stale assertion). Tasks 14.1/15.1/15.2 previously depended only on `11.2`/`12.1`; added `12.2` to each `_Depends:_` since the break is tied to `parse.ts`'s wiring landing, not merely `sections.ts` existing. Task 13.1 already correctly depended on `12.2`. Remediation: tasks 13.1, 14.1, 15.1, 15.2 are executed immediately after 12.2, in that order, with no other task interleaved, so the full two-package (`@adr/core` + `apps/api`) test suite returns to green as soon as possible. Two test files had no owning task at all (`historyService.test.ts`, `folderService.test.ts` — stale `.body` assertions with no corresponding production-code reference) and were fixed as part of 12.2 itself.

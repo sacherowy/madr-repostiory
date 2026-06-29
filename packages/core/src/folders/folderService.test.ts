@@ -173,7 +173,7 @@ describe("FolderService", () => {
         expect(result.adr.title).toBe("First decision");
         expect(result.adr.path).toBe("archive/0001-first.md");
         expect(result.adr.relations).toEqual([{ type: "relates-to", target: "adr-0002" }]);
-        expect(result.adr.body).toBe("Body for adr-0001.");
+        expect(result.adr.additionalContent).toBe("Body for adr-0001.");
       }
       expect(git.moveCalls).toEqual([
         {

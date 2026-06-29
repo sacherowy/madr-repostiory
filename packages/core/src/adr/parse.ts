@@ -1,5 +1,6 @@
 import matter from "gray-matter";
 import type { Adr, AdrFrontmatter } from "@adr/shared";
+import { joinSections, splitSections } from "./sections.js";
 
 /** Matches the first ATX H1 heading line (`# Heading text`, or `# ` with
  * empty heading text) anywhere in the body, not just at the literal first
@@ -42,23 +43,41 @@ export function parseAdr(raw: string, path: string, blobSha: string): Adr {
   const decisionMakers = (decisionMakersKey ?? deciders) as string[] | undefined;
 
   const { title, body } = resolveTitle(content, legacyTitle);
+  const { sections, additionalContent } = splitSections(body);
 
   return {
     ...fm,
     ...(decisionMakers !== undefined ? { decisionMakers } : {}),
     title,
-    body,
+    ...sections,
+    additionalContent,
     path,
     blobSha,
   };
 }
 
 export function serializeAdr(adr: Adr): string {
-  const { body, path: _p, blobSha: _b, title, decisionMakers, ...fm } = adr;
+  const {
+    path: _p,
+    blobSha: _b,
+    title,
+    decisionMakers,
+    additionalContent,
+    contextAndProblemStatement: _contextAndProblemStatement,
+    decisionDrivers: _decisionDrivers,
+    consideredOptions: _consideredOptions,
+    decisionOutcome: _decisionOutcome,
+    consequences: _consequences,
+    confirmation: _confirmation,
+    prosAndConsOfTheOptions: _prosAndConsOfTheOptions,
+    moreInformation: _moreInformation,
+    ...fm
+  } = adr;
   const frontmatter: Record<string, unknown> = { ...fm };
   if (decisionMakers !== undefined) {
     frontmatter["decision-makers"] = decisionMakers;
   }
+  const body = joinSections(adr, additionalContent);
   const bodyWithTitle = `# ${title}\n\n${body}`;
   return matter.stringify(bodyWithTitle + "\n", frontmatter);
 }

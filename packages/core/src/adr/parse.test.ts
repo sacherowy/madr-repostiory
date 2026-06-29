@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
+import type { AdrSections } from "@adr/shared";
 import { parseAdr, serializeAdr } from "./parse.js";
+
+/** All 8 MADR section fields empty, for spreading into test fixtures that
+ * only care about a subset of fields. */
+const emptySections: AdrSections = {
+  contextAndProblemStatement: "",
+  decisionDrivers: "",
+  consideredOptions: "",
+  decisionOutcome: "",
+  consequences: "",
+  confirmation: "",
+  prosAndConsOfTheOptions: "",
+  moreInformation: "",
+};
 
 describe("parseAdr decisionMakers resolution", () => {
   it("reads decisionMakers from the canonical decision-makers frontmatter key", () => {
@@ -87,7 +101,8 @@ describe("serializeAdr decisionMakers writing", () => {
       date: "2024-01-01",
       decisionMakers: ["Alice"],
       title: "Title",
-      body: "Body text.",
+      ...emptySections,
+      additionalContent: "Body text.",
       path: "examples/0001-title.md",
       blobSha: "sha1",
     };
@@ -129,7 +144,8 @@ describe("serializeAdr decisionMakers writing", () => {
       status: "accepted" as const,
       date: "2024-01-01",
       title: "Title",
-      body: "Body text.",
+      ...emptySections,
+      additionalContent: "Body text.",
       path: "examples/0001-title.md",
       blobSha: "sha1",
     };
@@ -156,8 +172,8 @@ describe("parseAdr title resolution", () => {
     const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
 
     expect(adr.title).toBe("Some Title");
-    expect(adr.body).not.toMatch(/^# Some Title$/m);
-    expect(adr.body).toBe("Body text.");
+    expect(adr.additionalContent).not.toMatch(/^# Some Title$/m);
+    expect(adr.additionalContent).toBe("Body text.");
   });
 
   it("finds the first H1 even when preceded by leading blank lines in the body", () => {
@@ -177,7 +193,7 @@ describe("parseAdr title resolution", () => {
     const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
 
     expect(adr.title).toBe("Some Title");
-    expect(adr.body).toBe("Body text.");
+    expect(adr.additionalContent).toBe("Body text.");
   });
 
   it("falls back to the legacy frontmatter title key when no H1 heading exists", () => {
@@ -194,7 +210,7 @@ describe("parseAdr title resolution", () => {
     const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
 
     expect(adr.title).toBe("Legacy");
-    expect(adr.body).toBe("Body text with no heading.");
+    expect(adr.additionalContent).toBe("Body text with no heading.");
   });
 
   it("prefers the body H1 over a legacy frontmatter title when both are present", () => {
@@ -228,7 +244,7 @@ describe("parseAdr title resolution", () => {
     const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
 
     expect(adr.title).toBe("");
-    expect(adr.body).toBe("Body text with no heading.");
+    expect(adr.additionalContent).toBe("Body text with no heading.");
   });
 
   it("does not leak a frontmatter-sourced title key onto the returned object beyond Adr.title", () => {
@@ -256,7 +272,8 @@ describe("serializeAdr title writing", () => {
       status: "accepted" as const,
       date: "2024-01-01",
       title: "Some Title",
-      body: "Body text.",
+      ...emptySections,
+      additionalContent: "Body text.",
       path: "examples/0001-title.md",
       blobSha: "sha1",
     };
@@ -272,7 +289,8 @@ describe("serializeAdr title writing", () => {
       status: "accepted" as const,
       date: "2024-01-01",
       title: "Some Title",
-      body: "Body text.",
+      ...emptySections,
+      additionalContent: "Body text.",
       path: "examples/0001-title.md",
       blobSha: "sha1",
     };
@@ -281,7 +299,7 @@ describe("serializeAdr title writing", () => {
     const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
 
     expect(reparsed.title).toBe("Some Title");
-    expect(reparsed.body).toBe("Body text.");
+    expect(reparsed.additionalContent).toBe("Body text.");
   });
 });
 
@@ -301,14 +319,14 @@ describe("parseAdr/serializeAdr title round-trip", () => {
 
     const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
     expect(adr.title).toBe("Some Title");
-    expect(adr.body).toBe("Body content here.\nMore body content.");
+    expect(adr.additionalContent).toBe("Body content here.\nMore body content.");
 
     const serialized = serializeAdr(adr);
     expect(serialized).not.toMatch(/^title:/m);
 
     const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
     expect(reparsed.title).toBe("Some Title");
-    expect(reparsed.body).toBe(adr.body);
+    expect(reparsed.additionalContent).toBe(adr.additionalContent);
   });
 
   it("round-trips a body with no heading and no legacy title to an empty title", () => {
@@ -328,7 +346,7 @@ describe("parseAdr/serializeAdr title round-trip", () => {
     const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
 
     expect(reparsed.title).toBe("");
-    expect(reparsed.body).toBe("Body text with no heading.");
+    expect(reparsed.additionalContent).toBe("Body text with no heading.");
   });
 
   it("round-trips a legacy frontmatter title to a body H1 with no stray frontmatter title key on next save", () => {
@@ -351,6 +369,152 @@ describe("parseAdr/serializeAdr title round-trip", () => {
 
     const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
     expect(reparsed.title).toBe("Legacy");
-    expect(reparsed.body).toBe("Body text with no heading.");
+    expect(reparsed.additionalContent).toBe("Body text with no heading.");
   });
 });
+
+describe("parseAdr MADR section splitting", () => {
+  it("populates the matching section fields from body headings and leaves the rest empty", () => {
+    const raw = [
+      "---",
+      "id: ADR-0001",
+      "status: accepted",
+      "date: 2024-01-01",
+      "---",
+      "# Some Title",
+      "",
+      "## Context and Problem Statement",
+      "We need to decide something.",
+      "",
+      "## Decision Outcome",
+      "We chose option A.",
+    ].join("\n");
+
+    const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
+
+    expect(adr.contextAndProblemStatement).toBe("We need to decide something.\n");
+    expect(adr.decisionOutcome).toBe("We chose option A.");
+    expect(adr.decisionDrivers).toBe("");
+    expect(adr.consideredOptions).toBe("");
+    expect(adr.consequences).toBe("");
+    expect(adr.confirmation).toBe("");
+    expect(adr.prosAndConsOfTheOptions).toBe("");
+    expect(adr.moreInformation).toBe("");
+    expect(adr.additionalContent).toBe("");
+  });
+
+  it("routes non-MADR-heading content (e.g. a legacy free-form body) entirely into additionalContent", () => {
+    const adr = parseAdr(EXAMPLE_FIXTURE_RAW, "examples/0001-uzycie-gita-jako-zrodla-prawdy.md", "sha1");
+
+    expect(adr.title).toBe("Użycie gita jako źródła prawdy dla ADR");
+    expect(adr.contextAndProblemStatement).toBe("");
+    expect(adr.decisionDrivers).toBe("");
+    expect(adr.consideredOptions).toBe("");
+    expect(adr.decisionOutcome).toBe("");
+    expect(adr.consequences).toBe("");
+    expect(adr.confirmation).toBe("");
+    expect(adr.prosAndConsOfTheOptions).toBe("");
+    expect(adr.moreInformation).toBe("");
+    expect(adr.additionalContent).toContain("## Kontekst");
+    expect(adr.additionalContent).toContain("## Decyzja");
+    expect(adr.additionalContent).toContain("## Konsekwencje");
+  });
+});
+
+describe("parseAdr/serializeAdr MADR section round-trip", () => {
+  it("reproduces all eight section fields, additionalContent, and title through write-then-read", () => {
+    const adr = {
+      id: "ADR-0001",
+      status: "accepted" as const,
+      date: "2024-01-01",
+      title: "Some Title",
+      contextAndProblemStatement: "Context text.",
+      decisionDrivers: "Driver text.",
+      consideredOptions: "Option text.",
+      decisionOutcome: "Outcome text.",
+      consequences: "Consequence text.",
+      confirmation: "Confirmation text.",
+      prosAndConsOfTheOptions: "Pros and cons text.",
+      moreInformation: "More info text.",
+      additionalContent: "Extra unmapped content.",
+      path: "examples/0001-title.md",
+      blobSha: "sha1",
+    };
+
+    const serialized = serializeAdr(adr);
+    const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
+
+    expect(reparsed.title).toBe(adr.title);
+    expect(reparsed.contextAndProblemStatement).toBe(adr.contextAndProblemStatement);
+    expect(reparsed.decisionDrivers).toBe(adr.decisionDrivers);
+    expect(reparsed.consideredOptions).toBe(adr.consideredOptions);
+    expect(reparsed.decisionOutcome).toBe(adr.decisionOutcome);
+    expect(reparsed.consequences).toBe(adr.consequences);
+    expect(reparsed.confirmation).toBe(adr.confirmation);
+    expect(reparsed.prosAndConsOfTheOptions).toBe(adr.prosAndConsOfTheOptions);
+    expect(reparsed.moreInformation).toBe(adr.moreInformation);
+    expect(reparsed.additionalContent).toBe(adr.additionalContent);
+  });
+
+  it("reproduces all eight section fields and additionalContent when several are empty", () => {
+    const adr = {
+      id: "ADR-0001",
+      status: "accepted" as const,
+      date: "2024-01-01",
+      title: "Some Title",
+      ...emptySections,
+      contextAndProblemStatement: "Only this section is filled in.",
+      additionalContent: "",
+      path: "examples/0001-title.md",
+      blobSha: "sha1",
+    };
+
+    const serialized = serializeAdr(adr);
+    const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
+
+    expect(reparsed.title).toBe(adr.title);
+    expect(reparsed.contextAndProblemStatement).toBe(adr.contextAndProblemStatement);
+    expect(reparsed.decisionDrivers).toBe("");
+    expect(reparsed.consideredOptions).toBe("");
+    expect(reparsed.decisionOutcome).toBe("");
+    expect(reparsed.consequences).toBe("");
+    expect(reparsed.confirmation).toBe("");
+    expect(reparsed.prosAndConsOfTheOptions).toBe("");
+    expect(reparsed.moreInformation).toBe("");
+    expect(reparsed.additionalContent).toBe("");
+  });
+});
+
+/** Mirrors examples/0001-uzycie-gita-jako-zrodla-prawdy.md: a real committed
+ * fixture whose body uses Polish, non-MADR headings (`## Kontekst`,
+ * `## Decyzja`, `## Konsekwencje`) instead of the canonical MADR section
+ * headings, exercising the documented fallback where none of the 8 section
+ * fields match and all body content lands in `additionalContent`. */
+const EXAMPLE_FIXTURE_RAW = [
+  "---",
+  'id: "0001"',
+  "status: accepted",
+  "date: 2026-06-17",
+  "decision-makers: [pawel]",
+  "tags: [architecture, storage]",
+  "relations:",
+  "  - type: relates-to",
+  '    target: "0002"',
+  "---",
+  "",
+  "# Użycie gita jako źródła prawdy dla ADR",
+  "",
+  "## Kontekst",
+  "Aplikacja zarządza ADR-ami i potrzebuje wersjonowania, historii oraz porównań.",
+  "",
+  "## Decyzja",
+  "Trzymamy ADR-y jako pliki Markdown z frontmatterem YAML w repozytorium git.",
+  "Git jest jedynym źródłem prawdy; SQLite pełni rolę wtórnej projekcji do indeksowania",
+  "(cache embeddingów, wyszukiwanie), zawsze odtwarzalnej przez `pnpm reindex`.",
+  "",
+  "## Konsekwencje",
+  "- Pełna historia i diff za darmo z gita.",
+  "- Brak stanu autorytatywnego poza repo → łatwy backup i migracja.",
+  "- Współbieżne zapisy wymagają optymistycznej kontroli po SHA blobu.",
+  "",
+].join("\n");
