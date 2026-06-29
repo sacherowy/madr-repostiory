@@ -149,9 +149,9 @@
 
 - [ ] 12. Foundation: body-to-fields translation boundary
 
-- [ ] 12.1 (P) Implement the lossless split/join boundary between body text and the nine discrete fields
-  - Build a function that scans body content for the eight canonical section headings (matching exact heading text and level) and assigns each recognized section's content to its field, routing everything else — unmatched headings, duplicate headings, and content before the first heading — into the catch-all field, in original document order, without losing any of it
-  - Build the inverse function that always emits all eight canonical headings in canonical order and level, each followed by its field's content, then appends the catch-all field's content verbatim (no heading wrapper) if it is non-empty
+- [x] 12.1 (P) Implement the lossless split/join boundary between body text and the nine discrete fields
+  - Build a function that scans body content for the eight canonical section headings (matching exact heading text and level) and assigns each recognized section's content to its field, routing everything else — unmatched headings, duplicate headings, and content before the first heading — into the catch-all field, in original document order, without losing any of it; one additional reserved heading (`## Additional Content`) is recognized the same way and marks the start of catch-all content, with the heading line itself stripped from it
+  - Build the inverse function that always emits all eight canonical headings in canonical order and level, each followed by its field's content, then — only if the catch-all field's content is non-empty — emits the reserved `## Additional Content` heading followed by the catch-all field's content verbatim, so the boundary between the last canonical section and the catch-all is always unambiguous on re-read
   - Add a function that produces the combined plain-text content of all nine fields together, for use by search indexing and embedding-text construction
   - Observable: splitting a body containing all eight recognized headings reproduces each section's content correctly; splitting a body with no recognized headings places its entire content in the catch-all field with every section empty; joining a set of fields and then splitting the result reproduces the original fields exactly
   - _Requirements: 3.5, 3.6, 3.7, 3.8_
