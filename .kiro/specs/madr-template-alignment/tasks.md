@@ -139,7 +139,7 @@
   - _Requirements: 3.1, 3.3_
   - _Boundary: AdrSections / MADR_SECTIONS_
 
-- [ ] 11.2 Replace the single body field with the eight section fields and a catch-all field on the domain and update-request types
+- [x] 11.2 Replace the single body field with the eight section fields and a catch-all field on the domain and update-request types
   - Remove the single free-text body field from the domain ADR type and the update-request contract; compose both with the eight section fields from 11.1 and add one additional field to hold content that doesn't map to any of the eight sections
   - Leave the frontmatter shape, the create-request contract, and every other existing field on these types untouched
   - Observable: the domain ADR type and the update-request contract expose all eight section fields plus the catch-all field, and no longer declare a single body field anywhere

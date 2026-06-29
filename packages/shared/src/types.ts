@@ -1,3 +1,5 @@
+import { AdrSections } from "./adrSections.js";
+
 export type AdrId = string;
 
 export type AdrStatus = "proposed" | "accepted" | "deprecated" | "superseded" | "rejected";
@@ -26,9 +28,9 @@ export interface AdrFrontmatter {
 }
 
 /** Pełny ADR = frontmatter + treść + pozycja w gicie. */
-export interface Adr extends AdrFrontmatter {
+export interface Adr extends AdrFrontmatter, AdrSections {
   title: string;
-  body: string;
+  additionalContent: string;
   path: string;
   blobSha: string;
 }
@@ -111,7 +113,7 @@ export interface CreateAdrRequest {
   folder: string;
 }
 
-export interface UpdateAdrRequest {
+export interface UpdateAdrRequest extends AdrSections {
   title: string;
   status: AdrStatus;
   date: string;
@@ -120,7 +122,7 @@ export interface UpdateAdrRequest {
   informed?: string[];
   tags?: string[];
   relations?: AdrRelation[];
-  body: string;
+  additionalContent: string;
   author: string;
   baseBlobSha: string;
 }
