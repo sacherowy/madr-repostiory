@@ -132,7 +132,7 @@
 
 - [ ] 11. Foundation: shared section metadata and type contract
 
-- [ ] 11.1 (P) Define the canonical MADR section metadata and discrete-fields shape
+- [x] 11.1 (P) Define the canonical MADR section metadata and discrete-fields shape
   - Declare eight section fields, one per MADR section, and an ordered metadata array describing each section's heading text, heading level, required flag, and key, as the single source every other component reads from instead of hardcoding heading text or order independently
   - Mark exactly the two MADR-required sections (Context and Problem Statement, Decision Outcome) as required in that metadata, and the remaining six as optional
   - Observable: a new shared module exports the eight-field shape and the ordered metadata array, importable by both the core/API layer and the web UI
