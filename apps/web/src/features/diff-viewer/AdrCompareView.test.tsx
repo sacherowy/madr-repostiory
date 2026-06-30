@@ -54,21 +54,29 @@ describe("AdrCompareView", () => {
     await rm(repoPath, { recursive: true, force: true });
   });
 
-  it("renders all 8 fields in fixed order with accurate differs flags for two distinct real ADRs", async () => {
+  it("renders all 16 fields in fixed order with accurate differs flags for two distinct real ADRs", async () => {
     const a = await client.createAdr({ title: "ADR A title", folder: "decisions", author: AUTHOR });
     if (!a.ok) throw new Error("fixture setup: createAdr A unexpectedly failed");
     const b = await client.createAdr({ title: "ADR B title", folder: "decisions", author: AUTHOR });
     if (!b.ok) throw new Error("fixture setup: createAdr B unexpectedly failed");
 
-    // Give both ADRs the SAME status/date but DIFFERENT title/body, so we can
-    // assert both differs:true and differs:false outcomes against reality.
+    // Give both ADRs the SAME status/date but DIFFERENT title/contextAndProblemStatement,
+    // so we can assert both differs:true and differs:false outcomes against reality.
     const savedA = await client.updateAdr(a.adr.id, {
       title: "ADR A title",
       status: "accepted",
       date: "2026-01-01",
       decisionMakers: a.adr.decisionMakers,
       tags: a.adr.tags,
-      body: "Body A.",
+      contextAndProblemStatement: "Body A.",
+      decisionOutcome: "Proceed.",
+      decisionDrivers: "",
+      consideredOptions: "",
+      consequences: "",
+      confirmation: "",
+      prosAndConsOfTheOptions: "",
+      moreInformation: "",
+      additionalContent: "",
       author: AUTHOR,
       baseBlobSha: a.adr.blobSha,
     });
@@ -80,7 +88,15 @@ describe("AdrCompareView", () => {
       date: "2026-01-01",
       decisionMakers: b.adr.decisionMakers,
       tags: b.adr.tags,
-      body: "Body B.",
+      contextAndProblemStatement: "Body B.",
+      decisionOutcome: "Proceed.",
+      decisionDrivers: "",
+      consideredOptions: "",
+      consequences: "",
+      confirmation: "",
+      prosAndConsOfTheOptions: "",
+      moreInformation: "",
+      additionalContent: "",
       author: AUTHOR,
       baseBlobSha: b.adr.blobSha,
     });
@@ -100,15 +116,25 @@ describe("AdrCompareView", () => {
       "consulted",
       "informed",
       "tags",
-      "body",
+      "contextAndProblemStatement",
+      "decisionDrivers",
+      "consideredOptions",
+      "decisionOutcome",
+      "consequences",
+      "confirmation",
+      "prosAndConsOfTheOptions",
+      "moreInformation",
+      "additionalContent",
     ];
     const renderedFields = screen.getAllByTestId(/^adr-compare-field-[a-zA-Z]+$/);
-    expect(renderedFields).toHaveLength(8);
+    expect(renderedFields).toHaveLength(16);
     expect(renderedFields.map((el) => el.getAttribute("data-field"))).toEqual(fieldOrder);
 
-    // title and body actually differ between the two fixtures.
+    // title and contextAndProblemStatement actually differ between the two fixtures.
     expect(screen.getByTestId("adr-compare-field-title").getAttribute("data-differs")).toBe("true");
-    expect(screen.getByTestId("adr-compare-field-body").getAttribute("data-differs")).toBe("true");
+    expect(
+      screen.getByTestId("adr-compare-field-contextAndProblemStatement").getAttribute("data-differs")
+    ).toBe("true");
     // status and date were set identically on both ADRs.
     expect(screen.getByTestId("adr-compare-field-status").getAttribute("data-differs")).toBe("false");
     expect(screen.getByTestId("adr-compare-field-date").getAttribute("data-differs")).toBe("false");
