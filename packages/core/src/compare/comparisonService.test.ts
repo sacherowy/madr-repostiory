@@ -205,7 +205,7 @@ describe("ComparisonService", () => {
   });
 
   describe("adrDiff", () => {
-    it("produces exactly 8 FieldComparison entries in fixed order, correctly flagging differing vs identical fields", async () => {
+    it("produces exactly 16 FieldComparison entries in fixed order, correctly flagging differing vs identical fields", async () => {
       const files = new Map([
         [
           "0001-first.md",
@@ -247,9 +247,17 @@ describe("ComparisonService", () => {
         "consulted",
         "informed",
         "tags",
-        "body",
+        "contextAndProblemStatement",
+        "decisionDrivers",
+        "consideredOptions",
+        "decisionOutcome",
+        "consequences",
+        "confirmation",
+        "prosAndConsOfTheOptions",
+        "moreInformation",
+        "additionalContent",
       ]);
-      expect(result.view.fields).toHaveLength(8);
+      expect(result.view.fields).toHaveLength(16);
 
       const byField = Object.fromEntries(result.view.fields.map((f) => [f.field, f]));
       expect(byField.title.differs).toBe(true);
@@ -259,7 +267,74 @@ describe("ComparisonService", () => {
       expect(byField.consulted.differs).toBe(true);
       expect(byField.informed.differs).toBe(true);
       expect(byField.tags.differs).toBe(false);
-      expect(byField.body.differs).toBe(true);
+      // adrRaw's free-text `body` (no MADR headings) lands entirely in the
+      // catch-all `additionalContent` field per splitSections, not in any of
+      // the 8 discrete section fields -- so it is additionalContent that
+      // differs here, individually, not a combined body field.
+      expect(byField.additionalContent.differs).toBe(true);
+      expect(byField.contextAndProblemStatement.differs).toBe(false);
+      expect(byField.decisionDrivers.differs).toBe(false);
+      expect(byField.consideredOptions.differs).toBe(false);
+      expect(byField.decisionOutcome.differs).toBe(false);
+      expect(byField.consequences.differs).toBe(false);
+      expect(byField.confirmation.differs).toBe(false);
+      expect(byField.prosAndConsOfTheOptions.differs).toBe(false);
+      expect(byField.moreInformation.differs).toBe(false);
+    });
+
+    it("detects a difference in a single MADR section field individually, without affecting other section fields (requirement 3.10)", async () => {
+      const sectionsBody = (contextText: string): string =>
+        `## Context and Problem Statement\n${contextText}\n## Decision Drivers\nSame drivers.\n## Considered Options\nSame options.\n## Decision Outcome\nSame outcome.\n### Consequences\nSame consequences.\n### Confirmation\nSame confirmation.\n## Pros and Cons of the Options\nSame pros and cons.\n## More Information\nSame more info.`;
+
+      const files = new Map([
+        [
+          "0001-first.md",
+          adrRaw("adr-0001", "Same Title", {
+            status: "proposed",
+            date: "2024-01-01",
+            body: sectionsBody("Context A."),
+          }),
+        ],
+        [
+          "0002-second.md",
+          adrRaw("adr-0002", "Same Title", {
+            status: "proposed",
+            date: "2024-01-01",
+            body: sectionsBody("Context B."),
+          }),
+        ],
+      ]);
+      const git = new FakeGitPort(files);
+      const svc = new ComparisonService(git);
+
+      const result = await svc.adrDiff("adr-0001", "adr-0002");
+
+      expect(result.kind).toBe("ok");
+      if (result.kind !== "ok") throw new Error("expected ok");
+      const byField = Object.fromEntries(result.view.fields.map((f) => [f.field, f]));
+
+      expect(byField.contextAndProblemStatement.differs).toBe(true);
+      expect(byField.contextAndProblemStatement.a).toContain("Context A.");
+      expect(byField.contextAndProblemStatement.b).toContain("Context B.");
+
+      // Every other field -- including the other 7 section fields and the
+      // catch-all -- must report no difference: only the single changed
+      // section is detected individually.
+      expect(byField.title.differs).toBe(false);
+      expect(byField.status.differs).toBe(false);
+      expect(byField.date.differs).toBe(false);
+      expect(byField.decisionMakers.differs).toBe(false);
+      expect(byField.consulted.differs).toBe(false);
+      expect(byField.informed.differs).toBe(false);
+      expect(byField.tags.differs).toBe(false);
+      expect(byField.decisionDrivers.differs).toBe(false);
+      expect(byField.consideredOptions.differs).toBe(false);
+      expect(byField.decisionOutcome.differs).toBe(false);
+      expect(byField.consequences.differs).toBe(false);
+      expect(byField.confirmation.differs).toBe(false);
+      expect(byField.prosAndConsOfTheOptions.differs).toBe(false);
+      expect(byField.moreInformation.differs).toBe(false);
+      expect(byField.additionalContent.differs).toBe(false);
     });
 
     it("reflects each ADR's body-derived (H1-fallback) title with no special-casing, via the legacy frontmatter title path", async () => {

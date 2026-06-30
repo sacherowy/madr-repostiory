@@ -5,7 +5,24 @@ import { parseAdr } from "../adr/parse.js";
 export type VersionDiffResult = { kind: "ok"; view: VersionDiffView } | { kind: "invalid"; reason: string };
 export type AdrDiffResult = { kind: "ok"; view: AdrCompareView } | { kind: "invalid"; reason: string };
 
-const FIELD_NAMES = ["title", "status", "date", "decisionMakers", "consulted", "informed", "tags", "body"] as const;
+const FIELD_NAMES = [
+  "title",
+  "status",
+  "date",
+  "decisionMakers",
+  "consulted",
+  "informed",
+  "tags",
+  "contextAndProblemStatement",
+  "decisionDrivers",
+  "consideredOptions",
+  "decisionOutcome",
+  "consequences",
+  "confirmation",
+  "prosAndConsOfTheOptions",
+  "moreInformation",
+  "additionalContent",
+] as const;
 
 /** Comma-joined stringification for array fields; undefined and [] both
  * collapse to "" so an unset field never appears to "differ" from an

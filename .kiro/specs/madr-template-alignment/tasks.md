@@ -181,7 +181,7 @@
 
 - [ ] 14. Core: comparison field coverage retrofit
 
-- [ ] 14.1 (P) Extend ADR comparison to cover the nine discrete content fields individually
+- [x] 14.1 (P) Extend ADR comparison to cover the nine discrete content fields individually
   - Replace the single body entry in the set of fields compared between two ADRs or two versions of an ADR with the eight section fields and the catch-all field, so a change to any one of them is detected individually instead of as one combined difference
   - Observable: comparing two ADRs that differ only in one section reports only that field as different, not a combined body difference
   - _Requirements: 3.10_
