@@ -61,7 +61,12 @@ describe("similarityRoutes", () => {
   async function saveAdr(
     id: string,
     baseBlobSha: string,
-    overrides: Partial<{ title: string; status: string; date: string; body: string }> = {}
+    overrides: Partial<{
+      title: string;
+      status: string;
+      date: string;
+      contextAndProblemStatement: string;
+    }> = {}
   ): Promise<{ blobSha: string }> {
     const res = await app.inject({
       method: "PUT",
@@ -70,7 +75,8 @@ describe("similarityRoutes", () => {
         title: overrides.title ?? "Saved title",
         status: overrides.status ?? "accepted",
         date: overrides.date ?? "2026-01-01",
-        body: overrides.body ?? "Saved body.",
+        contextAndProblemStatement: overrides.contextAndProblemStatement ?? "Saved body.",
+        decisionOutcome: "Saved outcome.",
         author: AUTHOR,
         baseBlobSha,
       },
@@ -95,11 +101,11 @@ describe("similarityRoutes", () => {
   describe("GET /api/adrs/:id/similar", () => {
     it("returns 200 with a SimilarityResult[] ranking a sibling ADR in the same scope (req 10.1, 10.2)", async () => {
       const target = await createAdr("Target ADR");
-      const saved = await saveAdr(target.id, target.blobSha, { body: "Target body." });
+      const saved = await saveAdr(target.id, target.blobSha, { contextAndProblemStatement: "Target body." });
       seedVector(saved.blobSha, [1, 0, 0]);
 
       const sibling = await createAdr("Sibling ADR");
-      const savedSibling = await saveAdr(sibling.id, sibling.blobSha, { body: "Sibling body." });
+      const savedSibling = await saveAdr(sibling.id, sibling.blobSha, { contextAndProblemStatement: "Sibling body." });
       seedVector(savedSibling.blobSha, [0.9, 0.1, 0]);
 
       const res = await app.inject({
@@ -117,7 +123,7 @@ describe("similarityRoutes", () => {
 
     it("returns 200 with the literal { kind: 'emptyScope' } body (not []) when the target ADR is alone in its scope (req 10.3)", async () => {
       const alone = await createAdr("Alone ADR", "decisions/solo");
-      const saved = await saveAdr(alone.id, alone.blobSha, { body: "Alone body." });
+      const saved = await saveAdr(alone.id, alone.blobSha, { contextAndProblemStatement: "Alone body." });
       seedVector(saved.blobSha, [1, 0, 0]);
 
       const res = await app.inject({
@@ -140,7 +146,7 @@ describe("similarityRoutes", () => {
 
     it("returns 404 for a real ADR id that exists but NOT within the requested scope", async () => {
       const target = await createAdr("Out of scope ADR", "decisions");
-      const saved = await saveAdr(target.id, target.blobSha, { body: "Out of scope body." });
+      const saved = await saveAdr(target.id, target.blobSha, { contextAndProblemStatement: "Out of scope body." });
       seedVector(saved.blobSha, [1, 0, 0]);
 
       const res = await app.inject({
@@ -153,11 +159,11 @@ describe("similarityRoutes", () => {
 
     it("defaults scope to the whole repo (\".\") when the 'scope' query param is omitted entirely", async () => {
       const target = await createAdr("Default scope target");
-      const saved = await saveAdr(target.id, target.blobSha, { body: "Default scope target body." });
+      const saved = await saveAdr(target.id, target.blobSha, { contextAndProblemStatement: "Default scope target body." });
       seedVector(saved.blobSha, [1, 0, 0]);
 
       const sibling = await createAdr("Default scope sibling");
-      const savedSibling = await saveAdr(sibling.id, sibling.blobSha, { body: "Default scope sibling body." });
+      const savedSibling = await saveAdr(sibling.id, sibling.blobSha, { contextAndProblemStatement: "Default scope sibling body." });
       seedVector(savedSibling.blobSha, [0.8, 0.2, 0]);
 
       const res = await app.inject({
@@ -173,7 +179,7 @@ describe("similarityRoutes", () => {
 
     it("returns 200 (not 500) when 'scope' is supplied as a repeated query param, parsed by Fastify as an array", async () => {
       const target = await createAdr("Repeated param target");
-      const saved = await saveAdr(target.id, target.blobSha, { body: "Repeated param target body." });
+      const saved = await saveAdr(target.id, target.blobSha, { contextAndProblemStatement: "Repeated param target body." });
       seedVector(saved.blobSha, [1, 0, 0]);
 
       const res = await app.inject({

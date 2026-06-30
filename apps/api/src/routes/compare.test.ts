@@ -66,7 +66,12 @@ describe("compareRoutes", () => {
   async function saveAdr(
     id: string,
     baseBlobSha: string,
-    overrides: Partial<{ title: string; status: string; date: string; body: string }> = {}
+    overrides: Partial<{
+      title: string;
+      status: string;
+      date: string;
+      contextAndProblemStatement: string;
+    }> = {}
   ): Promise<{ blobSha: string }> {
     const res = await app.inject({
       method: "PUT",
@@ -75,7 +80,8 @@ describe("compareRoutes", () => {
         title: overrides.title ?? "Saved title",
         status: overrides.status ?? "accepted",
         date: overrides.date ?? "2026-01-01",
-        body: overrides.body ?? "Saved body.",
+        contextAndProblemStatement: overrides.contextAndProblemStatement ?? "Saved body.",
+        decisionOutcome: "Saved outcome.",
         author: AUTHOR,
         baseBlobSha,
       },
@@ -95,13 +101,13 @@ describe("compareRoutes", () => {
         title: "ADR A title",
         status: "accepted",
         date: "2026-01-01",
-        body: "Body A.",
+        contextAndProblemStatement: "Body A.",
       });
       await saveAdr(b.id, b.blobSha, {
         title: "ADR B title",
         status: "accepted",
         date: "2026-01-01",
-        body: "Body B.",
+        contextAndProblemStatement: "Body B.",
       });
 
       const res = await app.inject({

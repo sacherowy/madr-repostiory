@@ -9,6 +9,26 @@ import { adrRoutes } from "./adrs.js";
 
 const AUTHOR = "Test Author <test@example.com>";
 
+/**
+ * `UpdateAdrRequest` requires all 6 optional-content MADR sections plus
+ * `additionalContent` as non-optional `string` fields (only
+ * `contextAndProblemStatement`/`decisionOutcome` are validated as non-empty
+ * by `AdrEditingService.save`) — omitting them from a PUT payload leaves
+ * them `undefined` in-memory, which `serializeAdr`/`joinSections` then
+ * stringifies into the literal text "undefined" in the committed file. Every
+ * PUT payload below spreads this default so that real bug isn't exercised
+ * by these fixtures.
+ */
+const OPTIONAL_SECTIONS = {
+  decisionDrivers: "",
+  consideredOptions: "",
+  consequences: "",
+  confirmation: "",
+  prosAndConsOfTheOptions: "",
+  moreInformation: "",
+  additionalContent: "",
+};
+
 async function initRepo(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "adr-routes-"));
   const git = simpleGit(dir);
@@ -172,7 +192,9 @@ describe("adrRoutes", () => {
         title: "Use Postgres for storage",
         status: "accepted",
         date: "2026-01-01",
-        body: "We will use Postgres.",
+        contextAndProblemStatement: "We will use Postgres.",
+        decisionOutcome: "We will use Postgres.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
@@ -182,7 +204,7 @@ describe("adrRoutes", () => {
     const saved = putRes.json();
     expect(saved.title).toBe("Use Postgres for storage");
     expect(saved.status).toBe("accepted");
-    expect(saved.body).toBe("We will use Postgres.");
+    expect(saved.contextAndProblemStatement).toBe("We will use Postgres.");
     expect(saved.blobSha).not.toBe(created.blobSha);
 
     const getRes = await app.inject({
@@ -207,7 +229,9 @@ describe("adrRoutes", () => {
         title: "Use Postgres for storage",
         status: "accepted",
         date: "2026-01-01",
-        body: "We will use Postgres.",
+        contextAndProblemStatement: "We will use Postgres.",
+        decisionOutcome: "We will use Postgres.",
+        ...OPTIONAL_SECTIONS,
         decisionMakers: ["alice", "dave"],
         consulted: ["bob"],
         informed: ["carol"],
@@ -244,14 +268,15 @@ describe("adrRoutes", () => {
         title: "",
         status: "accepted",
         date: "2026-01-01",
-        body: "",
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
     });
 
     expect(putRes.statusCode).toBe(400);
-    expect(putRes.json().missingFields).toEqual(expect.arrayContaining(["title", "body"]));
+    expect(putRes.json().missingFields).toEqual(
+      expect.arrayContaining(["title", "contextAndProblemStatement", "decisionOutcome"])
+    );
   });
 
   it("rejects PUT /api/adrs/:id with a stale baseBlobSha with 409 and the actual latest ADR", async () => {
@@ -269,7 +294,9 @@ describe("adrRoutes", () => {
         title: "First save",
         status: "accepted",
         date: "2026-01-01",
-        body: "First body.",
+        contextAndProblemStatement: "First body.",
+        decisionOutcome: "First body.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
@@ -285,7 +312,9 @@ describe("adrRoutes", () => {
         title: "Second save attempt",
         status: "accepted",
         date: "2026-01-02",
-        body: "Second body.",
+        contextAndProblemStatement: "Second body.",
+        decisionOutcome: "Second body.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
@@ -310,7 +339,9 @@ describe("adrRoutes", () => {
         title: "Use Postgres for storage",
         status: "accepted",
         date: "2026-01-01",
-        body: "We will use Postgres.",
+        contextAndProblemStatement: "We will use Postgres.",
+        decisionOutcome: "We will use Postgres.",
+        ...OPTIONAL_SECTIONS,
         relations: [{ type: "relates-to", target: "adr-9999" }],
         author: AUTHOR,
         baseBlobSha: created.blobSha,
@@ -329,7 +360,9 @@ describe("adrRoutes", () => {
         title: "Whatever",
         status: "accepted",
         date: "2026-01-01",
-        body: "Body.",
+        contextAndProblemStatement: "Body.",
+        decisionOutcome: "Body.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: "deadbeef",
       },
@@ -354,7 +387,9 @@ describe("adrRoutes", () => {
           title: "Save A",
           status: "accepted",
           date: "2026-01-01",
-          body: "Body A.",
+          contextAndProblemStatement: "Body A.",
+          decisionOutcome: "Body A.",
+          ...OPTIONAL_SECTIONS,
           author: AUTHOR,
           baseBlobSha: created.blobSha,
         },
@@ -366,7 +401,9 @@ describe("adrRoutes", () => {
           title: "Save B",
           status: "accepted",
           date: "2026-01-02",
-          body: "Body B.",
+          contextAndProblemStatement: "Body B.",
+          decisionOutcome: "Body B.",
+          ...OPTIONAL_SECTIONS,
           author: AUTHOR,
           baseBlobSha: created.blobSha,
         },

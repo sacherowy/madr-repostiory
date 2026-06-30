@@ -3,8 +3,25 @@ import type { GitPort, AdrFile, CommitMeta, DiffResult, TreeEntry } from "../por
 import type { SearchDoc, SearchIndex, SearchHit } from "../ports/search.js";
 import { RelationGraphService } from "../relations/relationGraphService.js";
 import { serializeAdr } from "./parse.js";
-import { MADR_BODY_SCAFFOLD } from "./madrTemplate.js";
+import { combinedSectionText } from "./sections.js";
 import { AdrEditingService } from "./editingService.js";
+
+/**
+ * A complete set of the 9 content fields (8 MADR sections + additionalContent)
+ * with non-empty required sections, used as a baseline for save() inputs so
+ * each test only needs to override what it actually cares about.
+ */
+const FULL_SECTIONS = {
+  contextAndProblemStatement: "Context.",
+  decisionDrivers: "",
+  consideredOptions: "",
+  decisionOutcome: "Outcome.",
+  consequences: "",
+  confirmation: "",
+  prosAndConsOfTheOptions: "",
+  moreInformation: "",
+  additionalContent: "",
+};
 
 /**
  * In-memory fake GitPort test double, mirroring RelationGraphService's /
@@ -160,7 +177,7 @@ describe("AdrEditingService", () => {
       expect(adr.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
-    it("sets body to the MADR scaffold instead of an empty string", async () => {
+    it("sets all eight section fields and additionalContent to empty strings instead of scaffold text", async () => {
       const git = new FakeGitPort(new Map());
       const relations = new RelationGraphService(git);
       const search = new FakeSearchIndex();
@@ -168,7 +185,15 @@ describe("AdrEditingService", () => {
 
       const adr = await svc.create({ title: "New decision", folder: "." }, "Alice");
 
-      expect(adr.body).toBe(MADR_BODY_SCAFFOLD);
+      expect(adr.contextAndProblemStatement).toBe("");
+      expect(adr.decisionDrivers).toBe("");
+      expect(adr.consideredOptions).toBe("");
+      expect(adr.decisionOutcome).toBe("");
+      expect(adr.consequences).toBe("");
+      expect(adr.confirmation).toBe("");
+      expect(adr.prosAndConsOfTheOptions).toBe("");
+      expect(adr.moreInformation).toBe("");
+      expect(adr.additionalContent).toBe("");
     });
 
     it("places the file at '${folder}/${id}.md' when folder is not '.'", async () => {
@@ -271,7 +296,9 @@ describe("AdrEditingService", () => {
           consulted: ["Carol"],
           informed: ["Dave"],
           tags: ["security"],
-          body: "Updated body.",
+          ...FULL_SECTIONS,
+          contextAndProblemStatement: "Updated context.",
+          decisionOutcome: "Updated outcome.",
         },
         baseBlobSha as string,
         "Bob"
@@ -286,7 +313,15 @@ describe("AdrEditingService", () => {
       expect(result.adr.blobSha).toBe("blob-after-save");
       expect(result.adr.blobSha).not.toMatch(/^commit-/);
       expect(search.upsertCalls).toEqual([
-        { id: "adr-0001", title: "Updated title", body: "Updated body.", tags: ["security"] },
+        {
+          id: "adr-0001",
+          title: "Updated title",
+          body: combinedSectionText(
+            { ...FULL_SECTIONS, contextAndProblemStatement: "Updated context.", decisionOutcome: "Updated outcome." },
+            ""
+          ),
+          tags: ["security"],
+        },
       ]);
     });
 
@@ -299,7 +334,7 @@ describe("AdrEditingService", () => {
 
       const result = await svc.save(
         "adr-0001",
-        { title: "", status: "proposed", date: "2024-01-01", body: "Has body" },
+        { title: "", status: "proposed", date: "2024-01-01", ...FULL_SECTIONS },
         "irrelevant",
         "Bob"
       );
@@ -307,7 +342,7 @@ describe("AdrEditingService", () => {
       expect(result).toEqual({ kind: "invalid", missingFields: ["title"] });
     });
 
-    it("returns {kind:'invalid', missingFields:['body']} when body is missing", async () => {
+    it("returns {kind:'invalid', missingFields:['contextAndProblemStatement']} when contextAndProblemStatement is missing", async () => {
       const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
       const git = new FakeGitPort(files);
       const relations = new RelationGraphService(git);
@@ -316,15 +351,15 @@ describe("AdrEditingService", () => {
 
       const result = await svc.save(
         "adr-0001",
-        { title: "Has title", status: "proposed", date: "2024-01-01", body: "" },
+        { title: "Has title", status: "proposed", date: "2024-01-01", ...FULL_SECTIONS, contextAndProblemStatement: "" },
         "irrelevant",
         "Bob"
       );
 
-      expect(result).toEqual({ kind: "invalid", missingFields: ["body"] });
+      expect(result).toEqual({ kind: "invalid", missingFields: ["contextAndProblemStatement"] });
     });
 
-    it("returns {kind:'invalid', missingFields:['title','body']} (exact order) when both are missing", async () => {
+    it("returns {kind:'invalid', missingFields:['decisionOutcome']} when decisionOutcome is missing", async () => {
       const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
       const git = new FakeGitPort(files);
       const relations = new RelationGraphService(git);
@@ -333,12 +368,39 @@ describe("AdrEditingService", () => {
 
       const result = await svc.save(
         "adr-0001",
-        { title: "", status: "proposed", date: "2024-01-01", body: "" },
+        { title: "Has title", status: "proposed", date: "2024-01-01", ...FULL_SECTIONS, decisionOutcome: "" },
         "irrelevant",
         "Bob"
       );
 
-      expect(result).toEqual({ kind: "invalid", missingFields: ["title", "body"] });
+      expect(result).toEqual({ kind: "invalid", missingFields: ["decisionOutcome"] });
+    });
+
+    it("returns {kind:'invalid', missingFields:['title','contextAndProblemStatement','decisionOutcome']} (exact order) when all three are missing", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const result = await svc.save(
+        "adr-0001",
+        {
+          title: "",
+          status: "proposed",
+          date: "2024-01-01",
+          ...FULL_SECTIONS,
+          contextAndProblemStatement: "",
+          decisionOutcome: "",
+        },
+        "irrelevant",
+        "Bob"
+      );
+
+      expect(result).toEqual({
+        kind: "invalid",
+        missingFields: ["title", "contextAndProblemStatement", "decisionOutcome"],
+      });
     });
 
     it("returns {kind:'conflict', latest} reflecting current content when baseBlobSha is stale, and never calls writeAndCommit", async () => {
@@ -350,7 +412,7 @@ describe("AdrEditingService", () => {
 
       const result = await svc.save(
         "adr-0001",
-        { title: "Updated title", status: "accepted", date: "2024-02-02", body: "Updated body." },
+        { title: "Updated title", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS },
         "stale-sha-not-current",
         "Bob"
       );
@@ -377,7 +439,7 @@ describe("AdrEditingService", () => {
           title: "Updated title",
           status: "accepted",
           date: "2024-02-02",
-          body: "Updated body.",
+          ...FULL_SECTIONS,
           relations: [{ type: "relates-to", target: "adr-9999" }],
         },
         baseBlobSha as string,
@@ -405,7 +467,7 @@ describe("AdrEditingService", () => {
           title: "Updated title",
           status: "accepted",
           date: "2024-02-02",
-          body: "Updated body.",
+          ...FULL_SECTIONS,
           relations: [
             { type: "relates-to", target: "adr-0002" },
             { type: "depends-on", target: "adr-8888" },
@@ -436,7 +498,7 @@ describe("AdrEditingService", () => {
           title: "Updated title",
           status: "rejected",
           date: "2024-02-02",
-          body: "Updated body.",
+          ...FULL_SECTIONS,
         },
         baseBlobSha as string,
         "Bob"
@@ -461,7 +523,7 @@ describe("AdrEditingService", () => {
           title: "Updated title",
           status: "superseded",
           date: "2024-02-02",
-          body: "Updated body.",
+          ...FULL_SECTIONS,
           relations: [],
         },
         baseBlobSha as string,
@@ -484,7 +546,7 @@ describe("AdrEditingService", () => {
       await expect(
         svc.save(
           "adr-9999",
-          { title: "Title", status: "proposed", date: "2024-01-01", body: "Body" },
+          { title: "Title", status: "proposed", date: "2024-01-01", ...FULL_SECTIONS },
           "irrelevant",
           "Bob"
         )
@@ -502,7 +564,7 @@ describe("AdrEditingService", () => {
       const baseBlobSha = await git.currentBlobSha("adr-0001.md");
       const result = await svc.save(
         "adr-0001",
-        { title: "Updated title", status: "accepted", date: "2024-02-02", body: "Updated body." },
+        { title: "Updated title", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS },
         baseBlobSha as string,
         "Bob"
       );
@@ -521,14 +583,20 @@ describe("AdrEditingService", () => {
       const baseBlobSha = await git.currentBlobSha("adr-0001.md");
       const result = await svc.save(
         "adr-0001",
-        { title: "Updated title", status: "accepted", date: "2024-02-02", body: "Brand new body." },
+        {
+          title: "Updated title",
+          status: "accepted",
+          date: "2024-02-02",
+          ...FULL_SECTIONS,
+          contextAndProblemStatement: "Brand new content.",
+        },
         baseBlobSha as string,
         "Bob"
       );
       expect(result.kind).toBe("saved");
 
       const reRead = await git.read("adr-0001.md");
-      expect(reRead).toContain("Brand new body.");
+      expect(reRead).toContain("Brand new content.");
       expect(reRead).toContain("Updated title");
     });
 
@@ -542,7 +610,7 @@ describe("AdrEditingService", () => {
       const baseBlobSha = await git.currentBlobSha("adr-0001.md");
       await svc.save(
         "adr-0001",
-        { title: "Updated title", status: "accepted", date: "2024-02-02", body: "Updated body." },
+        { title: "Updated title", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS },
         baseBlobSha as string,
         "Bob"
       );
@@ -556,7 +624,7 @@ describe("AdrEditingService", () => {
         title: "Updated title",
         status: "accepted",
         date: "2024-02-02",
-        body: "Updated body.",
+        ...FULL_SECTIONS,
         path: "adr-0001.md",
         blobSha: "irrelevant-for-serialization",
       });

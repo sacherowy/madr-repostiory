@@ -66,7 +66,12 @@ describe("historyRoutes", () => {
   async function saveAdr(
     id: string,
     baseBlobSha: string,
-    overrides: Partial<{ title: string; status: string; date: string; body: string }> = {}
+    overrides: Partial<{
+      title: string;
+      status: string;
+      date: string;
+      contextAndProblemStatement: string;
+    }> = {}
   ): Promise<{ blobSha: string }> {
     const res = await app.inject({
       method: "PUT",
@@ -75,7 +80,8 @@ describe("historyRoutes", () => {
         title: overrides.title ?? "Saved title",
         status: overrides.status ?? "accepted",
         date: overrides.date ?? "2026-01-01",
-        body: overrides.body ?? "Saved body.",
+        contextAndProblemStatement: overrides.contextAndProblemStatement ?? "Saved body.",
+        decisionOutcome: "Saved outcome.",
         author: AUTHOR,
         baseBlobSha,
       },
@@ -103,7 +109,7 @@ describe("historyRoutes", () => {
       const { id, blobSha } = await createAdr("Multi version ADR");
       await saveAdr(id, blobSha, {
         title: "Multi version ADR",
-        body: "Updated body.",
+        contextAndProblemStatement: "Updated body.",
       });
 
       const res = await app.inject({
@@ -135,7 +141,7 @@ describe("historyRoutes", () => {
       const { id, blobSha } = await createAdr("Versioned ADR");
       await saveAdr(id, blobSha, {
         title: "Versioned ADR (updated)",
-        body: "Updated body content.",
+        contextAndProblemStatement: "Updated body content.",
       });
 
       const historyRes = await app.inject({
@@ -154,7 +160,7 @@ describe("historyRoutes", () => {
       expect(versionRes.statusCode).toBe(200);
       const version = versionRes.json();
       // The original (pre-save) content, not the updated content.
-      expect(version.body).not.toBe("Updated body content.");
+      expect(version.contextAndProblemStatement).not.toBe("Updated body content.");
       expect(version.title).toBe("Versioned ADR");
     });
 
@@ -184,7 +190,7 @@ describe("historyRoutes", () => {
       const { id, blobSha } = await createAdr("Diffed ADR");
       await saveAdr(id, blobSha, {
         title: "Diffed ADR",
-        body: "Completely different body content.",
+        contextAndProblemStatement: "Completely different body content.",
       });
 
       const historyRes = await app.inject({
