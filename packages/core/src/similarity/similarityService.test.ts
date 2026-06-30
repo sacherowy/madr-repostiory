@@ -164,7 +164,7 @@ describe("SimilarityService", () => {
       expect(result.results[0].score).toBeCloseTo(1, 5);
     });
 
-    it("computes and stores a fresh embedding on a cache miss, using exactly `${title}\\n\\n${body}`", async () => {
+    it("computes and stores a fresh embedding on a cache miss, using exactly `${title}\\n\\n${combinedSectionText}`", async () => {
       const files = new Map([
         ["decisions/0001-target.md", { content: adrRaw("adr-0001", "Target", "Target body."), blobSha: "sha-1" }],
         ["decisions/0002-other.md", { content: adrRaw("adr-0002", "Other", "Other body."), blobSha: "sha-2" }],
@@ -183,6 +183,57 @@ describe("SimilarityService", () => {
       if (result.kind !== "ranked") throw new Error("expected ranked");
       expect(result.results[0].adr.id).toBe("adr-0002");
       expect(result.results[0].score).toBeCloseTo(0, 5);
+    });
+
+    it("builds the embedding text from the combined content of all sections, not just one, when content is spread across multiple MADR section fields", async () => {
+      const otherBody = [
+        "## Context and Problem Statement",
+        "",
+        "Marker contextzzzalpha needs a decision.",
+        "",
+        "## Decision Drivers",
+        "",
+        "Marker driverzzzbeta requires high availability.",
+        "",
+        "## Decision Outcome",
+        "",
+        "Marker outcomezzzgamma chosen.",
+        "",
+      ].join("\n");
+      const files = new Map([
+        ["decisions/0001-target.md", { content: adrRaw("adr-0001", "Target", "Target body."), blobSha: "sha-1" }],
+        ["decisions/0002-other.md", { content: adrRaw("adr-0002", "Other", otherBody), blobSha: "sha-2" }],
+      ]);
+      const git = new FakeGitPort(files);
+      const store = new FakeEmbeddingStore(new Map([["sha-1", [1, 0, 0]]]));
+      const provider = new FakeEmbeddingProvider(new Map());
+      // Program a catch-all so the exact text doesn't need to be replicated
+      // here -- only its content is asserted below -- while still failing
+      // loudly (via FakeEmbeddingProvider) on any other unprogrammed call.
+      const recordingProvider: EmbeddingProvider = {
+        model: provider.model,
+        dimensions: provider.dimensions,
+        embed: async (texts: string[]) => {
+          provider.embedCalls.push(texts);
+          return texts.map(() => [0, 1, 0]);
+        },
+      };
+      const svc = new SimilarityService(git, store, recordingProvider);
+
+      const result = await svc.findSimilar("adr-0001", "decisions");
+
+      // Asserting all three sections' marker text appears in the single
+      // call's text proves the combined content of multiple sections (not
+      // just one field) made it into the text passed to embed().
+      expect(provider.embedCalls).toHaveLength(1);
+      const embeddedText = provider.embedCalls[0][0];
+      expect(embeddedText).toContain("Marker contextzzzalpha needs a decision.");
+      expect(embeddedText).toContain("Marker driverzzzbeta requires high availability.");
+      expect(embeddedText).toContain("Marker outcomezzzgamma chosen.");
+      expect(embeddedText.startsWith("Other\n\n")).toBe(true);
+      expect(result.kind).toBe("ranked");
+      if (result.kind !== "ranked") throw new Error("expected ranked");
+      expect(result.results[0].adr.id).toBe("adr-0002");
     });
 
     it("never calls EmbeddingStore.set for a blob sha that was already a cache hit", async () => {
