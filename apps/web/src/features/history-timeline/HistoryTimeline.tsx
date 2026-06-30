@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import type { Adr, CommitMeta } from "@adr/shared";
+import { MADR_SECTIONS } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
 import { MonoChip } from "../../components/MonoChip.js";
+
+/**
+ * camelCase section key -> kebab-case testid segment, e.g.
+ * "contextAndProblemStatement" -> "context-and-problem-statement". Mirrors
+ * AdrEditor.tsx's `toKebabCase` (task 16.1) so the same shared-metadata-driven
+ * testid convention applies on the read-only side.
+ */
+function toKebabCase(key: string): string {
+  return key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
 
 export interface HistoryTimelineProps {
   apiClient: ApiClient;
@@ -152,7 +163,23 @@ export function HistoryTimeline({ apiClient, adrId }: HistoryTimelineProps) {
             <h3 data-testid="history-version-title" className="card__title">
               {selected.adr.title}
             </h3>
-            <p data-testid="history-version-body">{selected.adr.body}</p>
+            {MADR_SECTIONS.map((meta) => {
+              const testId = `${toKebabCase(meta.key)}-block`;
+              return (
+                <div className="field" key={meta.key} data-testid={testId}>
+                  <span className="field__label">
+                    {meta.heading} {meta.required ? "(required)" : "(optional)"}
+                  </span>
+                  <p className="history__section-content">{selected.adr[meta.key]}</p>
+                </div>
+              );
+            })}
+            {selected.adr.additionalContent ? (
+              <div className="field" data-testid="additional-content-block">
+                <span className="field__label">Additional Content</span>
+                <p className="history__section-content">{selected.adr.additionalContent}</p>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
