@@ -15,7 +15,7 @@ export interface StatusBadgeProps extends BasePrimitiveProps {
 }
 
 /**
- * Human-readable display labels for the four known statuses (Req 4.2). The app
+ * Human-readable display labels for the five known statuses (Req 4.2). The app
  * surfaces raw English status keys elsewhere, so the labels stay in English but
  * are capitalized to read as a label rather than a machine key. An unknown
  * status has no entry here and falls back to rendering its raw value verbatim.
@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<KnownStatus, string> = {
   accepted: "Accepted",
   deprecated: "Deprecated",
   superseded: "Superseded",
+  rejected: "Rejected",
 };
 
 function isKnownStatus(status: string): status is KnownStatus {
@@ -35,7 +36,7 @@ function isKnownStatus(status: string): status is KnownStatus {
  * Renders an ADR status as a colored dot plus a human-readable label (Req 4.1,
  * 4.2). Known statuses get the `badge badge--<status>` modifier whose colors
  * derive from the `--<status>` / `--<status>-bg` tokens via base.css; any value
- * outside the four known statuses gets the neutral `badge` treatment with the
+ * outside the five known statuses gets the neutral `badge` treatment with the
  * raw value as its label (Req 4.3). Pure presentational: no data access, and
  * the reserved danger tokens are never used here (status is non-error).
  */

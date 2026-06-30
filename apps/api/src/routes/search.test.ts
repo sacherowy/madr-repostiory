@@ -68,7 +68,13 @@ describe("searchRoutes", () => {
   async function saveAdr(
     id: string,
     baseBlobSha: string,
-    overrides: Partial<{ title: string; status: string; date: string; body: string; tags: string[] }> = {}
+    overrides: Partial<{
+      title: string;
+      status: string;
+      date: string;
+      contextAndProblemStatement: string;
+      tags: string[];
+    }> = {}
   ): Promise<{ blobSha: string }> {
     const res = await app.inject({
       method: "PUT",
@@ -77,7 +83,8 @@ describe("searchRoutes", () => {
         title: overrides.title ?? "Saved title",
         status: overrides.status ?? "accepted",
         date: overrides.date ?? "2026-01-01",
-        body: overrides.body ?? "Saved body.",
+        contextAndProblemStatement: overrides.contextAndProblemStatement ?? "Saved body.",
+        decisionOutcome: "Saved outcome.",
         tags: overrides.tags,
         author: AUTHOR,
         baseBlobSha,
@@ -92,7 +99,7 @@ describe("searchRoutes", () => {
       const a = await createAdr("Bespoke widget rendering");
       await saveAdr(a.id, a.blobSha, {
         title: "Bespoke widget rendering",
-        body: "Discusses how widgets are rendered.",
+        contextAndProblemStatement: "Discusses how widgets are rendered.",
       });
 
       const res = await app.inject({
@@ -111,7 +118,7 @@ describe("searchRoutes", () => {
       const a = await createAdr("Completely unrelated topic");
       await saveAdr(a.id, a.blobSha, {
         title: "Completely unrelated topic",
-        body: "Nothing to do with the search term at all.",
+        contextAndProblemStatement: "Nothing to do with the search term at all.",
       });
 
       const res = await app.inject({
@@ -137,13 +144,13 @@ describe("searchRoutes", () => {
       const bodyMatch = await createAdr("First ADR");
       await saveAdr(bodyMatch.id, bodyMatch.blobSha, {
         title: "First ADR",
-        body: "This decision concerns the quasar subsystem in passing.",
+        contextAndProblemStatement: "This decision concerns the quasar subsystem in passing.",
       });
 
       const titleMatch = await createAdr("Quasar subsystem redesign");
       await saveAdr(titleMatch.id, titleMatch.blobSha, {
         title: "Quasar subsystem redesign",
-        body: "Unrelated body content here.",
+        contextAndProblemStatement: "Unrelated body content here.",
       });
 
       const res = await app.inject({
@@ -162,7 +169,7 @@ describe("searchRoutes", () => {
       const a = await createAdr("Tagged ADR");
       await saveAdr(a.id, a.blobSha, {
         title: "Tagged ADR",
-        body: "Body text with no overlap with the search term.",
+        contextAndProblemStatement: "Body text with no overlap with the search term.",
         tags: ["zephyr"],
       });
 
@@ -180,7 +187,7 @@ describe("searchRoutes", () => {
       const a = await createAdr("Repeated param ADR");
       await saveAdr(a.id, a.blobSha, {
         title: "Repeated param ADR",
-        body: "Discusses a gizmo at length.",
+        contextAndProblemStatement: "Discusses a gizmo at length.",
       });
 
       const res = await app.inject({

@@ -2,6 +2,7 @@ import type { Adr, SimilarityResult } from "@adr/shared";
 import type { GitPort } from "../ports/git.js";
 import type { EmbeddingProvider, EmbeddingStore } from "../ports/embeddings.js";
 import { parseAdr } from "../adr/parse.js";
+import { combinedSectionText } from "../adr/sections.js";
 import { cosine } from "./cosine.js";
 
 export type SimilarityFindResult =
@@ -58,7 +59,8 @@ export class SimilarityService {
     if (this.store.has(adr.blobSha)) {
       return this.store.get(adr.blobSha) as number[];
     }
-    const [vector] = await this.provider.embed([`${adr.title}\n\n${adr.body}`]);
+    const combinedText = combinedSectionText(adr, adr.additionalContent);
+    const [vector] = await this.provider.embed([`${adr.title}\n\n${combinedText}`]);
     this.store.set(adr.blobSha, vector);
     return vector;
   }

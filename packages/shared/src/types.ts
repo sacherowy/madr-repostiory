@@ -1,6 +1,8 @@
+import { AdrSections } from "./adrSections.js";
+
 export type AdrId = string;
 
-export type AdrStatus = "proposed" | "accepted" | "deprecated" | "superseded";
+export type AdrStatus = "proposed" | "accepted" | "deprecated" | "superseded" | "rejected";
 
 export type RelationType =
   | "supersedes"
@@ -16,17 +18,19 @@ export interface AdrRelation {
 
 export interface AdrFrontmatter {
   id: AdrId;
-  title: string;
   status: AdrStatus;
   date: string;
-  deciders?: string[];
+  decisionMakers?: string[];
+  consulted?: string[];
+  informed?: string[];
   tags?: string[];
   relations?: AdrRelation[];
 }
 
 /** Pełny ADR = frontmatter + treść + pozycja w gicie. */
-export interface Adr extends AdrFrontmatter {
-  body: string;
+export interface Adr extends AdrFrontmatter, AdrSections {
+  title: string;
+  additionalContent: string;
   path: string;
   blobSha: string;
 }
@@ -102,19 +106,23 @@ export interface SimilarityResult {
 
 export interface CreateAdrRequest {
   title: string;
-  deciders?: string[];
+  decisionMakers?: string[];
+  consulted?: string[];
+  informed?: string[];
   tags?: string[];
   folder: string;
 }
 
-export interface UpdateAdrRequest {
+export interface UpdateAdrRequest extends AdrSections {
   title: string;
   status: AdrStatus;
   date: string;
-  deciders?: string[];
+  decisionMakers?: string[];
+  consulted?: string[];
+  informed?: string[];
   tags?: string[];
   relations?: AdrRelation[];
-  body: string;
+  additionalContent: string;
   author: string;
   baseBlobSha: string;
 }

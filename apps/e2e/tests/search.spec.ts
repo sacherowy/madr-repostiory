@@ -32,7 +32,8 @@ test("keyword search shows a ranked match and a no-results state", async ({ page
   await page.getByTestId("title-input").fill(`Search ${tag} topic`);
   await page.getByTestId("create-button").click();
   await expect(page.getByTestId("adr-editor-edit")).toBeVisible();
-  await page.getByTestId("body-textarea").fill(`Body mentioning ${tag} for indexing.`);
+  await page.getByTestId("context-and-problem-statement-textarea").fill(`Body mentioning ${tag} for indexing.`);
+  await page.getByTestId("decision-outcome-textarea").fill("Proceed.");
   await page.getByTestId("save-button").click();
   await expect(page.getByTestId("save-success-message")).toBeVisible();
 

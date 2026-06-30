@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import type { Adr, AdrRelation, AdrStatus, RelationType } from "@adr/shared";
+import type { Adr, AdrRelation, AdrSections, AdrStatus, RelationType } from "@adr/shared";
+import { MADR_SECTIONS } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
 import { StatusBadge } from "../../components/StatusBadge.js";
 import { MonoChip } from "../../components/MonoChip.js";
 import { RelationChip } from "../../components/RelationChip.js";
 
-const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded"];
+const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
 const RELATION_TYPES: RelationType[] = [
   "supersedes",
   "superseded-by",
@@ -35,6 +36,24 @@ function splitCsv(value: string): string[] {
     .filter((part) => part.length > 0);
 }
 
+/** camelCase section key -> kebab-case testid segment, e.g. "contextAndProblemStatement" -> "context-and-problem-statement". */
+function toKebabCase(key: string): string {
+  return key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+function emptySections(): AdrSections {
+  return {
+    contextAndProblemStatement: "",
+    decisionDrivers: "",
+    consideredOptions: "",
+    decisionOutcome: "",
+    consequences: "",
+    confirmation: "",
+    prosAndConsOfTheOptions: "",
+    moreInformation: "",
+  };
+}
+
 export function AdrEditor(props: AdrEditorProps) {
   if (props.adrId === null) {
     return <CreateAdrForm folder={props.folder} authorName={props.authorName} apiClient={props.apiClient} onAdrSaved={props.onAdrSaved} />;
@@ -59,10 +78,20 @@ interface CreateAdrFormProps {
 
 function CreateAdrForm({ folder, authorName, apiClient, onAdrSaved }: CreateAdrFormProps) {
   const [title, setTitle] = useState("");
+  const [decisionMakers, setDecisionMakers] = useState("");
+  const [consulted, setConsulted] = useState("");
+  const [informed, setInformed] = useState("");
   const [missingFields, setMissingFields] = useState<string[] | null>(null);
 
   async function handleCreate() {
-    const result = await apiClient.createAdr({ title, folder: folder ?? ".", author: authorName });
+    const result = await apiClient.createAdr({
+      title,
+      folder: folder ?? ".",
+      author: authorName,
+      decisionMakers: splitCsv(decisionMakers),
+      consulted: splitCsv(consulted),
+      informed: splitCsv(informed),
+    });
     if (result.ok) {
       setMissingFields(null);
       onAdrSaved(result.adr);
@@ -87,6 +116,45 @@ function CreateAdrForm({ folder, authorName, apiClient, onAdrSaved }: CreateAdrF
             type="text"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-decision-makers-input">
+            Decision Makers
+          </label>
+          <input
+            id="adr-editor-decision-makers-input"
+            data-testid="decision-makers-input"
+            className="field__input"
+            type="text"
+            value={decisionMakers}
+            onChange={(event) => setDecisionMakers(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-consulted-input">
+            Consulted
+          </label>
+          <input
+            id="adr-editor-consulted-input"
+            data-testid="consulted-input"
+            className="field__input"
+            type="text"
+            value={consulted}
+            onChange={(event) => setConsulted(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-informed-input">
+            Informed
+          </label>
+          <input
+            id="adr-editor-informed-input"
+            data-testid="informed-input"
+            className="field__input"
+            type="text"
+            value={informed}
+            onChange={(event) => setInformed(event.target.value)}
           />
         </div>
         <div className="card__footer">
@@ -125,9 +193,12 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<AdrStatus>("proposed");
   const [date, setDate] = useState("");
-  const [deciders, setDeciders] = useState("");
+  const [decisionMakers, setDecisionMakers] = useState("");
+  const [consulted, setConsulted] = useState("");
+  const [informed, setInformed] = useState("");
   const [tags, setTags] = useState("");
-  const [body, setBody] = useState("");
+  const [sections, setSections] = useState<AdrSections>(emptySections());
+  const [additionalContent, setAdditionalContent] = useState("");
   const [relations, setRelations] = useState<AdrRelation[]>([]);
 
   const [relationType, setRelationType] = useState<RelationType>(RELATION_TYPES[0]);
@@ -142,9 +213,21 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     setTitle(adr.title);
     setStatus(adr.status);
     setDate(adr.date);
-    setDeciders((adr.deciders ?? []).join(", "));
+    setDecisionMakers((adr.decisionMakers ?? []).join(", "));
+    setConsulted((adr.consulted ?? []).join(", "));
+    setInformed((adr.informed ?? []).join(", "));
     setTags((adr.tags ?? []).join(", "));
-    setBody(adr.body);
+    setSections({
+      contextAndProblemStatement: adr.contextAndProblemStatement,
+      decisionDrivers: adr.decisionDrivers,
+      consideredOptions: adr.consideredOptions,
+      decisionOutcome: adr.decisionOutcome,
+      consequences: adr.consequences,
+      confirmation: adr.confirmation,
+      prosAndConsOfTheOptions: adr.prosAndConsOfTheOptions,
+      moreInformation: adr.moreInformation,
+    });
+    setAdditionalContent(adr.additionalContent);
     setRelations(adr.relations ?? []);
     setBaseBlobSha(adr.blobSha);
   }
@@ -181,6 +264,10 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adrId]);
 
+  function handleSectionChange(key: keyof AdrSections, value: string) {
+    setSections((current) => ({ ...current, [key]: value }));
+  }
+
   function handleAddRelation() {
     if (!relationTarget) return;
     setRelations((current) => [...current, { type: relationType, target: relationTarget }]);
@@ -196,10 +283,13 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
       title,
       status,
       date,
-      deciders: splitCsv(deciders),
+      decisionMakers: splitCsv(decisionMakers),
+      consulted: splitCsv(consulted),
+      informed: splitCsv(informed),
       tags: splitCsv(tags),
       relations,
-      body,
+      ...sections,
+      additionalContent,
       author: authorName,
       baseBlobSha,
     });
@@ -325,16 +415,44 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
         </div>
 
         <div className="field">
-          <label className="field__label" htmlFor="adr-editor-deciders-input">
-            Deciders
+          <label className="field__label" htmlFor="adr-editor-decision-makers-input">
+            Decision Makers
           </label>
           <input
-            id="adr-editor-deciders-input"
-            data-testid="deciders-input"
+            id="adr-editor-decision-makers-input"
+            data-testid="decision-makers-input"
             className="field__input"
             type="text"
-            value={deciders}
-            onChange={(event) => setDeciders(event.target.value)}
+            value={decisionMakers}
+            onChange={(event) => setDecisionMakers(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-consulted-input">
+            Consulted
+          </label>
+          <input
+            id="adr-editor-consulted-input"
+            data-testid="consulted-input"
+            className="field__input"
+            type="text"
+            value={consulted}
+            onChange={(event) => setConsulted(event.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="adr-editor-informed-input">
+            Informed
+          </label>
+          <input
+            id="adr-editor-informed-input"
+            data-testid="informed-input"
+            className="field__input"
+            type="text"
+            value={informed}
+            onChange={(event) => setInformed(event.target.value)}
           />
         </div>
 
@@ -352,16 +470,35 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
           />
         </div>
 
+        {MADR_SECTIONS.map((meta) => {
+          const testId = `${toKebabCase(meta.key)}-textarea`;
+          const inputId = `adr-editor-${testId}`;
+          return (
+            <div className="field" key={meta.key}>
+              <label className="field__label" htmlFor={inputId}>
+                {meta.heading} {meta.required ? "(required)" : "(optional)"}
+              </label>
+              <textarea
+                id={inputId}
+                data-testid={testId}
+                className="field__input"
+                value={sections[meta.key]}
+                onChange={(event) => handleSectionChange(meta.key, event.target.value)}
+              />
+            </div>
+          );
+        })}
+
         <div className="field">
-          <label className="field__label" htmlFor="adr-editor-body-textarea">
-            Body
+          <label className="field__label" htmlFor="adr-editor-additional-content-textarea">
+            Additional Content (optional)
           </label>
           <textarea
-            id="adr-editor-body-textarea"
-            data-testid="body-textarea"
+            id="adr-editor-additional-content-textarea"
+            data-testid="additional-content-textarea"
             className="field__input"
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
+            value={additionalContent}
+            onChange={(event) => setAdditionalContent(event.target.value)}
           />
         </div>
 

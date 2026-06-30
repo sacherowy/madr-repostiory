@@ -9,6 +9,26 @@ import { adrRoutes } from "./adrs.js";
 
 const AUTHOR = "Test Author <test@example.com>";
 
+/**
+ * `UpdateAdrRequest` requires all 6 optional-content MADR sections plus
+ * `additionalContent` as non-optional `string` fields (only
+ * `contextAndProblemStatement`/`decisionOutcome` are validated as non-empty
+ * by `AdrEditingService.save`) — omitting them from a PUT payload leaves
+ * them `undefined` in-memory, which `serializeAdr`/`joinSections` then
+ * stringifies into the literal text "undefined" in the committed file. Every
+ * PUT payload below spreads this default so that real bug isn't exercised
+ * by these fixtures.
+ */
+const OPTIONAL_SECTIONS = {
+  decisionDrivers: "",
+  consideredOptions: "",
+  consequences: "",
+  confirmation: "",
+  prosAndConsOfTheOptions: "",
+  moreInformation: "",
+  additionalContent: "",
+};
+
 async function initRepo(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "adr-routes-"));
   const git = simpleGit(dir);
@@ -73,6 +93,59 @@ describe("adrRoutes", () => {
     expect(getRes.json()).toEqual(created);
   });
 
+  it("creates an ADR with decisionMakers/consulted/informed and returns them, and a subsequent GET reflects them", async () => {
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/adrs",
+      payload: {
+        title: "Use Postgres",
+        folder: "decisions",
+        author: AUTHOR,
+        decisionMakers: ["alice"],
+        consulted: ["bob"],
+        informed: ["carol"],
+      },
+    });
+
+    expect(createRes.statusCode).toBe(201);
+    const created = createRes.json();
+    expect(created.decisionMakers).toEqual(["alice"]);
+    expect(created.consulted).toEqual(["bob"]);
+    expect(created.informed).toEqual(["carol"]);
+
+    const getRes = await app.inject({
+      method: "GET",
+      url: `/api/adrs/${created.id}`,
+    });
+
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json()).toEqual(created);
+  });
+
+  it("returns the body-derived title via GET when the file has no frontmatter title, only a body heading", async () => {
+    const raw = [
+      "---",
+      "id: raw-1",
+      "status: proposed",
+      "date: 2026-01-01",
+      "---",
+      "",
+      "# Title From Body",
+      "",
+      "## Context and Problem Statement",
+      "",
+    ].join("\n");
+    await container.git.writeAndCommit("decisions/raw-1.md", raw, "seed raw adr", AUTHOR);
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/adrs/raw-1",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().title).toBe("Title From Body");
+  });
+
   it("rejects POST /api/adrs missing title with 400 naming the missing field", async () => {
     const res = await app.inject({
       method: "POST",
@@ -119,7 +192,9 @@ describe("adrRoutes", () => {
         title: "Use Postgres for storage",
         status: "accepted",
         date: "2026-01-01",
-        body: "We will use Postgres.",
+        contextAndProblemStatement: "We will use Postgres.",
+        decisionOutcome: "We will use Postgres.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
@@ -129,8 +204,47 @@ describe("adrRoutes", () => {
     const saved = putRes.json();
     expect(saved.title).toBe("Use Postgres for storage");
     expect(saved.status).toBe("accepted");
-    expect(saved.body).toBe("We will use Postgres.");
+    expect(saved.contextAndProblemStatement).toBe("We will use Postgres.");
     expect(saved.blobSha).not.toBe(created.blobSha);
+
+    const getRes = await app.inject({
+      method: "GET",
+      url: `/api/adrs/${created.id}`,
+    });
+    expect(getRes.json()).toEqual(saved);
+  });
+
+  it("saves an ADR with decisionMakers/consulted/informed via PUT, returns them, and a subsequent GET reflects them", async () => {
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/adrs",
+      payload: { title: "Use Postgres", folder: "decisions", author: AUTHOR },
+    });
+    const created = createRes.json();
+
+    const putRes = await app.inject({
+      method: "PUT",
+      url: `/api/adrs/${created.id}`,
+      payload: {
+        title: "Use Postgres for storage",
+        status: "accepted",
+        date: "2026-01-01",
+        contextAndProblemStatement: "We will use Postgres.",
+        decisionOutcome: "We will use Postgres.",
+        ...OPTIONAL_SECTIONS,
+        decisionMakers: ["alice", "dave"],
+        consulted: ["bob"],
+        informed: ["carol"],
+        author: AUTHOR,
+        baseBlobSha: created.blobSha,
+      },
+    });
+
+    expect(putRes.statusCode).toBe(200);
+    const saved = putRes.json();
+    expect(saved.decisionMakers).toEqual(["alice", "dave"]);
+    expect(saved.consulted).toEqual(["bob"]);
+    expect(saved.informed).toEqual(["carol"]);
 
     const getRes = await app.inject({
       method: "GET",
@@ -154,14 +268,15 @@ describe("adrRoutes", () => {
         title: "",
         status: "accepted",
         date: "2026-01-01",
-        body: "",
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
     });
 
     expect(putRes.statusCode).toBe(400);
-    expect(putRes.json().missingFields).toEqual(expect.arrayContaining(["title", "body"]));
+    expect(putRes.json().missingFields).toEqual(
+      expect.arrayContaining(["title", "contextAndProblemStatement", "decisionOutcome"])
+    );
   });
 
   it("rejects PUT /api/adrs/:id with a stale baseBlobSha with 409 and the actual latest ADR", async () => {
@@ -179,7 +294,9 @@ describe("adrRoutes", () => {
         title: "First save",
         status: "accepted",
         date: "2026-01-01",
-        body: "First body.",
+        contextAndProblemStatement: "First body.",
+        decisionOutcome: "First body.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
@@ -195,7 +312,9 @@ describe("adrRoutes", () => {
         title: "Second save attempt",
         status: "accepted",
         date: "2026-01-02",
-        body: "Second body.",
+        contextAndProblemStatement: "Second body.",
+        decisionOutcome: "Second body.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: created.blobSha,
       },
@@ -220,7 +339,9 @@ describe("adrRoutes", () => {
         title: "Use Postgres for storage",
         status: "accepted",
         date: "2026-01-01",
-        body: "We will use Postgres.",
+        contextAndProblemStatement: "We will use Postgres.",
+        decisionOutcome: "We will use Postgres.",
+        ...OPTIONAL_SECTIONS,
         relations: [{ type: "relates-to", target: "adr-9999" }],
         author: AUTHOR,
         baseBlobSha: created.blobSha,
@@ -239,7 +360,9 @@ describe("adrRoutes", () => {
         title: "Whatever",
         status: "accepted",
         date: "2026-01-01",
-        body: "Body.",
+        contextAndProblemStatement: "Body.",
+        decisionOutcome: "Body.",
+        ...OPTIONAL_SECTIONS,
         author: AUTHOR,
         baseBlobSha: "deadbeef",
       },
@@ -264,7 +387,9 @@ describe("adrRoutes", () => {
           title: "Save A",
           status: "accepted",
           date: "2026-01-01",
-          body: "Body A.",
+          contextAndProblemStatement: "Body A.",
+          decisionOutcome: "Body A.",
+          ...OPTIONAL_SECTIONS,
           author: AUTHOR,
           baseBlobSha: created.blobSha,
         },
@@ -276,7 +401,9 @@ describe("adrRoutes", () => {
           title: "Save B",
           status: "accepted",
           date: "2026-01-02",
-          body: "Body B.",
+          contextAndProblemStatement: "Body B.",
+          decisionOutcome: "Body B.",
+          ...OPTIONAL_SECTIONS,
           author: AUTHOR,
           baseBlobSha: created.blobSha,
         },

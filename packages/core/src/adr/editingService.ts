@@ -3,6 +3,7 @@ import type { GitPort } from "../ports/git.js";
 import type { SearchIndex } from "../ports/search.js";
 import { RelationGraphService } from "../relations/relationGraphService.js";
 import { parseAdr, serializeAdr } from "./parse.js";
+import { combinedSectionText } from "./sections.js";
 
 /**
  * `UpdateAdrRequest` bundles `author`/`baseBlobSha` into the same object, but
@@ -52,10 +53,12 @@ export class AdrEditingService {
 
   /**
    * Generates the next sequential id (repo-wide scan, gap-not-filled — see
-   * nextId), commits an empty-body ADR pre-filled with status "proposed" and
-   * today's date, and returns it with the genuine post-commit blob sha. Never
-   * touches SearchIndex: an empty-body ADR has nothing meaningful to index
-   * yet (it becomes searchable once the user saves real content via save()).
+   * nextId), commits an ADR pre-filled with status "proposed", today's date,
+   * and every MADR section field (plus additionalContent) left empty for the
+   * author to fill in, and returns it with the genuine post-commit blob sha.
+   * Never touches SearchIndex: a freshly created ADR has nothing meaningful
+   * to index yet (it becomes searchable once the user saves real content via
+   * save()).
    */
   async create(input: CreateAdrRequest, author: string): Promise<Adr> {
     const id = await this.nextId();
@@ -63,12 +66,25 @@ export class AdrEditingService {
     const date = new Date().toISOString().slice(0, 10);
 
     const adr: Adr = {
-      ...withoutUndefined({ deciders: input.deciders, tags: input.tags }),
+      ...withoutUndefined({
+        decisionMakers: input.decisionMakers,
+        consulted: input.consulted,
+        informed: input.informed,
+        tags: input.tags,
+      }),
       id,
       title: input.title,
       status: "proposed",
       date,
-      body: "",
+      contextAndProblemStatement: "",
+      decisionDrivers: "",
+      consideredOptions: "",
+      decisionOutcome: "",
+      consequences: "",
+      confirmation: "",
+      prosAndConsOfTheOptions: "",
+      moreInformation: "",
+      additionalContent: "",
       path,
       blobSha: "",
     };
@@ -96,7 +112,8 @@ export class AdrEditingService {
   ): Promise<SaveResult> {
     const missingFields: string[] = [];
     if (!input.title) missingFields.push("title");
-    if (!input.body) missingFields.push("body");
+    if (!input.contextAndProblemStatement) missingFields.push("contextAndProblemStatement");
+    if (!input.decisionOutcome) missingFields.push("decisionOutcome");
     if (missingFields.length > 0) return { kind: "invalid", missingFields };
 
     const found = await this.findAdrById(id);
@@ -117,7 +134,9 @@ export class AdrEditingService {
 
     const adr: Adr = {
       ...withoutUndefined({
-        deciders: input.deciders,
+        decisionMakers: input.decisionMakers,
+        consulted: input.consulted,
+        informed: input.informed,
         tags: input.tags,
         relations: input.relations,
       }),
@@ -125,7 +144,15 @@ export class AdrEditingService {
       title: input.title,
       status: input.status,
       date: input.date,
-      body: input.body,
+      contextAndProblemStatement: input.contextAndProblemStatement,
+      decisionDrivers: input.decisionDrivers,
+      consideredOptions: input.consideredOptions,
+      decisionOutcome: input.decisionOutcome,
+      consequences: input.consequences,
+      confirmation: input.confirmation,
+      prosAndConsOfTheOptions: input.prosAndConsOfTheOptions,
+      moreInformation: input.moreInformation,
+      additionalContent: input.additionalContent,
       path: found.path,
       blobSha: "",
     };
@@ -138,7 +165,7 @@ export class AdrEditingService {
       this.searchIndex.upsert({
         id,
         title: input.title,
-        body: input.body,
+        body: combinedSectionText(input, input.additionalContent),
         tags: input.tags ?? [],
       });
     } catch {

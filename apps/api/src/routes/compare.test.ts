@@ -66,7 +66,12 @@ describe("compareRoutes", () => {
   async function saveAdr(
     id: string,
     baseBlobSha: string,
-    overrides: Partial<{ title: string; status: string; date: string; body: string }> = {}
+    overrides: Partial<{
+      title: string;
+      status: string;
+      date: string;
+      contextAndProblemStatement: string;
+    }> = {}
   ): Promise<{ blobSha: string }> {
     const res = await app.inject({
       method: "PUT",
@@ -75,7 +80,8 @@ describe("compareRoutes", () => {
         title: overrides.title ?? "Saved title",
         status: overrides.status ?? "accepted",
         date: overrides.date ?? "2026-01-01",
-        body: overrides.body ?? "Saved body.",
+        contextAndProblemStatement: overrides.contextAndProblemStatement ?? "Saved body.",
+        decisionOutcome: "Saved outcome.",
         author: AUTHOR,
         baseBlobSha,
       },
@@ -85,23 +91,25 @@ describe("compareRoutes", () => {
   }
 
   describe("GET /api/compare", () => {
-    it("returns 200 with an AdrCompareView containing 6 fields with correct differs flags for two distinct ADRs", async () => {
+    it("returns 200 with an AdrCompareView containing 16 fields with correct differs flags for two distinct ADRs", async () => {
       const a = await createAdr("ADR A title");
       const b = await createAdr("ADR B title");
 
-      // Make both ADRs share the same status/date but differ in title/body,
-      // so we can assert both differs:true and differs:false outcomes.
+      // Make both ADRs share the same status/date but differ in
+      // title/contextAndProblemStatement, so we can assert both
+      // differs:true and differs:false outcomes -- including that the
+      // single changed section field is detected individually (3.10).
       await saveAdr(a.id, a.blobSha, {
         title: "ADR A title",
         status: "accepted",
         date: "2026-01-01",
-        body: "Body A.",
+        contextAndProblemStatement: "Body A.",
       });
       await saveAdr(b.id, b.blobSha, {
         title: "ADR B title",
         status: "accepted",
         date: "2026-01-01",
-        body: "Body B.",
+        contextAndProblemStatement: "Body B.",
       });
 
       const res = await app.inject({
@@ -113,14 +121,18 @@ describe("compareRoutes", () => {
       const view = res.json();
       expect(view.a.id).toBe(a.id);
       expect(view.b.id).toBe(b.id);
-      expect(view.fields).toHaveLength(6);
+      expect(view.fields).toHaveLength(16);
 
       const byField = (name: string) => view.fields.find((f: { field: string }) => f.field === name);
       expect(byField("title").differs).toBe(true);
-      expect(byField("body").differs).toBe(true);
+      expect(byField("contextAndProblemStatement").differs).toBe(true);
       // status and date were set identically on both ADRs.
       expect(byField("status").differs).toBe(false);
       expect(byField("date").differs).toBe(false);
+      // decisionOutcome was set identically ("Saved outcome.") on both ADRs
+      // via saveAdr's default, confirming an unrelated section field does
+      // not falsely report a difference when only one other section changed.
+      expect(byField("decisionOutcome").differs).toBe(false);
     });
 
     it("includes at least one field with differs:false when some fields are identical (requirement 8.2)", async () => {

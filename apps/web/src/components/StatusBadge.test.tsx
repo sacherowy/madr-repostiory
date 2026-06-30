@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import type { AdrStatus } from "@adr/shared";
 import { StatusBadge } from "./StatusBadge.js";
 
-const KNOWN_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded"];
+const KNOWN_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
 const ALL_MODIFIERS = KNOWN_STATUSES.map((s) => `badge--${s}`);
 
 function getBadge() {

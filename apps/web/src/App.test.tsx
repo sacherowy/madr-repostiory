@@ -269,9 +269,17 @@ describe("App", () => {
         title: newAdr.adr.title,
         status: newAdr.adr.status,
         date: newAdr.adr.date,
-        deciders: newAdr.adr.deciders,
+        decisionMakers: newAdr.adr.decisionMakers,
         tags: newAdr.adr.tags,
-        body: "Replaces the old decision.",
+        contextAndProblemStatement: "Replaces the old decision.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         relations: [{ type: "supersedes", target: oldAdr.adr.id }],
         author: AUTHOR,
         baseBlobSha: newAdr.adr.blobSha,
@@ -304,9 +312,17 @@ describe("App", () => {
         title: "Tracked decision (updated)",
         status: created.adr.status,
         date: created.adr.date,
-        deciders: created.adr.deciders,
+        decisionMakers: created.adr.decisionMakers,
         tags: created.adr.tags,
-        body: "Updated body.",
+        contextAndProblemStatement: "Updated body.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: AUTHOR,
         baseBlobSha: created.adr.blobSha,
       });
@@ -355,9 +371,17 @@ describe("App", () => {
         title: "Zzsearchkeywordone topic",
         status: created.adr.status,
         date: created.adr.date,
-        deciders: created.adr.deciders,
+        decisionMakers: created.adr.decisionMakers,
         tags: created.adr.tags,
-        body: "Body mentioning zzsearchkeywordone for indexing.",
+        contextAndProblemStatement: "Body mentioning zzsearchkeywordone for indexing.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: AUTHOR,
         baseBlobSha: created.adr.blobSha,
       });
@@ -386,9 +410,17 @@ describe("App", () => {
         title: "Zzsearchkeywordtwo topic",
         status: created.adr.status,
         date: created.adr.date,
-        deciders: created.adr.deciders,
+        decisionMakers: created.adr.decisionMakers,
         tags: created.adr.tags,
-        body: "Body mentioning zzsearchkeywordtwo for indexing.",
+        contextAndProblemStatement: "Body mentioning zzsearchkeywordtwo for indexing.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: AUTHOR,
         baseBlobSha: created.adr.blobSha,
       });
@@ -422,9 +454,17 @@ describe("App", () => {
         title: "Zzsearchkeywordthree topic",
         status: first.adr.status,
         date: first.adr.date,
-        deciders: first.adr.deciders,
+        decisionMakers: first.adr.decisionMakers,
         tags: first.adr.tags,
-        body: "Body mentioning zzsearchkeywordthree for indexing.",
+        contextAndProblemStatement: "Body mentioning zzsearchkeywordthree for indexing.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: AUTHOR,
         baseBlobSha: first.adr.blobSha,
       });
@@ -437,9 +477,17 @@ describe("App", () => {
         title: "Zzsearchkeywordfour topic",
         status: second.adr.status,
         date: second.adr.date,
-        deciders: second.adr.deciders,
+        decisionMakers: second.adr.decisionMakers,
         tags: second.adr.tags,
-        body: "Body mentioning zzsearchkeywordfour for indexing.",
+        contextAndProblemStatement: "Body mentioning zzsearchkeywordfour for indexing.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: AUTHOR,
         baseBlobSha: second.adr.blobSha,
       });
@@ -492,9 +540,17 @@ describe("App", () => {
         title: "Zzsearchkeywordfive topic",
         status: first.adr.status,
         date: first.adr.date,
-        deciders: first.adr.deciders,
+        decisionMakers: first.adr.decisionMakers,
         tags: first.adr.tags,
-        body: "Body mentioning zzsearchkeywordfive for indexing.",
+        contextAndProblemStatement: "Body mentioning zzsearchkeywordfive for indexing.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: AUTHOR,
         baseBlobSha: first.adr.blobSha,
       });
@@ -557,8 +613,13 @@ describe("App", () => {
       expect(screen.getByTestId("title-input")).toHaveValue("End To End Flow ADR");
 
       // 2. Edit the body and save — the ordinary, non-conflicting save path.
-      fireEvent.change(screen.getByTestId("body-textarea"), {
+      // Both required MADR sections (contextAndProblemStatement, decisionOutcome)
+      // must be non-empty for save() to pass its missing-fields validation.
+      fireEvent.change(screen.getByTestId("context-and-problem-statement-textarea"), {
         target: { value: "First real edit from the UI." },
+      });
+      fireEvent.change(screen.getByTestId("decision-outcome-textarea"), {
+        target: { value: "Proceed." },
       });
       fireEvent.click(screen.getByTestId("save-button"));
 
@@ -585,10 +646,18 @@ describe("App", () => {
         title: afterFirstSave.adr.title,
         status: afterFirstSave.adr.status,
         date: afterFirstSave.adr.date,
-        deciders: afterFirstSave.adr.deciders,
+        decisionMakers: afterFirstSave.adr.decisionMakers,
         tags: afterFirstSave.adr.tags,
         relations: afterFirstSave.adr.relations,
-        body: "Concurrent writer's content.",
+        contextAndProblemStatement: "Concurrent writer's content.",
+        decisionOutcome: "Proceed.",
+        decisionDrivers: "",
+        consideredOptions: "",
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
         author: "Other Author <other@example.com>",
         baseBlobSha: blobShaAfterFirstSave,
       });
@@ -598,7 +667,7 @@ describe("App", () => {
 
       // 4. Edit the body again in the UI and save again — now stale, so it must
       // surface the real conflict, not a success.
-      fireEvent.change(screen.getByTestId("body-textarea"), {
+      fireEvent.change(screen.getByTestId("context-and-problem-statement-textarea"), {
         target: { value: "Second local edit, now stale." },
       });
       fireEvent.click(screen.getByTestId("save-button"));
@@ -611,7 +680,9 @@ describe("App", () => {
       fireEvent.click(screen.getByTestId("reload-latest-button"));
 
       await waitFor(() =>
-        expect(screen.getByTestId("body-textarea")).toHaveValue("Concurrent writer's content.")
+        expect(screen.getByTestId("context-and-problem-statement-textarea")).toHaveValue(
+          "Concurrent writer's content."
+        )
       );
 
       // 6. Save once more now that the form holds the fresh baseBlobSha from

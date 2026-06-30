@@ -152,7 +152,7 @@ describe("HistoryService", () => {
       expect(result.id).toBe("adr-0001");
       expect(result.path).toBe("0001-first.md");
       expect(result.blobSha).toBe("sha-old");
-      expect(result.body).toBe("Body for adr-0001.");
+      expect(result.additionalContent).toBe("Body for adr-0001.");
     });
 
     it("throws a clear Error for an unknown ADR id", async () => {
