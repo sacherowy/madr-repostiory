@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Adr, AdrRelation, AdrStatus, RelationType } from "@adr/shared";
+import type { Adr, AdrRelation, AdrSections, AdrStatus, RelationType } from "@adr/shared";
+import { MADR_SECTIONS } from "@adr/shared";
 import type { ApiClient } from "../../api/client.js";
 import { StatusBadge } from "../../components/StatusBadge.js";
 import { MonoChip } from "../../components/MonoChip.js";
@@ -33,6 +34,24 @@ function splitCsv(value: string): string[] {
     .split(",")
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
+}
+
+/** camelCase section key -> kebab-case testid segment, e.g. "contextAndProblemStatement" -> "context-and-problem-statement". */
+function toKebabCase(key: string): string {
+  return key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+function emptySections(): AdrSections {
+  return {
+    contextAndProblemStatement: "",
+    decisionDrivers: "",
+    consideredOptions: "",
+    decisionOutcome: "",
+    consequences: "",
+    confirmation: "",
+    prosAndConsOfTheOptions: "",
+    moreInformation: "",
+  };
 }
 
 export function AdrEditor(props: AdrEditorProps) {
@@ -178,7 +197,8 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   const [consulted, setConsulted] = useState("");
   const [informed, setInformed] = useState("");
   const [tags, setTags] = useState("");
-  const [body, setBody] = useState("");
+  const [sections, setSections] = useState<AdrSections>(emptySections());
+  const [additionalContent, setAdditionalContent] = useState("");
   const [relations, setRelations] = useState<AdrRelation[]>([]);
 
   const [relationType, setRelationType] = useState<RelationType>(RELATION_TYPES[0]);
@@ -197,7 +217,17 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     setConsulted((adr.consulted ?? []).join(", "));
     setInformed((adr.informed ?? []).join(", "));
     setTags((adr.tags ?? []).join(", "));
-    setBody(adr.body);
+    setSections({
+      contextAndProblemStatement: adr.contextAndProblemStatement,
+      decisionDrivers: adr.decisionDrivers,
+      consideredOptions: adr.consideredOptions,
+      decisionOutcome: adr.decisionOutcome,
+      consequences: adr.consequences,
+      confirmation: adr.confirmation,
+      prosAndConsOfTheOptions: adr.prosAndConsOfTheOptions,
+      moreInformation: adr.moreInformation,
+    });
+    setAdditionalContent(adr.additionalContent);
     setRelations(adr.relations ?? []);
     setBaseBlobSha(adr.blobSha);
   }
@@ -234,6 +264,10 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adrId]);
 
+  function handleSectionChange(key: keyof AdrSections, value: string) {
+    setSections((current) => ({ ...current, [key]: value }));
+  }
+
   function handleAddRelation() {
     if (!relationTarget) return;
     setRelations((current) => [...current, { type: relationType, target: relationTarget }]);
@@ -254,7 +288,8 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
       informed: splitCsv(informed),
       tags: splitCsv(tags),
       relations,
-      body,
+      ...sections,
+      additionalContent,
       author: authorName,
       baseBlobSha,
     });
@@ -435,16 +470,35 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
           />
         </div>
 
+        {MADR_SECTIONS.map((meta) => {
+          const testId = `${toKebabCase(meta.key)}-textarea`;
+          const inputId = `adr-editor-${testId}`;
+          return (
+            <div className="field" key={meta.key}>
+              <label className="field__label" htmlFor={inputId}>
+                {meta.heading} {meta.required ? "(required)" : "(optional)"}
+              </label>
+              <textarea
+                id={inputId}
+                data-testid={testId}
+                className="field__input"
+                value={sections[meta.key]}
+                onChange={(event) => handleSectionChange(meta.key, event.target.value)}
+              />
+            </div>
+          );
+        })}
+
         <div className="field">
-          <label className="field__label" htmlFor="adr-editor-body-textarea">
-            Body
+          <label className="field__label" htmlFor="adr-editor-additional-content-textarea">
+            Additional Content (optional)
           </label>
           <textarea
-            id="adr-editor-body-textarea"
-            data-testid="body-textarea"
+            id="adr-editor-additional-content-textarea"
+            data-testid="additional-content-textarea"
             className="field__input"
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
+            value={additionalContent}
+            onChange={(event) => setAdditionalContent(event.target.value)}
           />
         </div>
 

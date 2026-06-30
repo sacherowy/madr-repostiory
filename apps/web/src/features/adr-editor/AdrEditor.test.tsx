@@ -121,6 +121,20 @@ describe("AdrEditor", () => {
   });
 
   describe("edit mode (adrId is a string)", () => {
+    function sectionsPayload(contextAndProblemStatement: string, decisionOutcome: string) {
+      return {
+        contextAndProblemStatement,
+        decisionDrivers: "",
+        consideredOptions: "",
+        decisionOutcome,
+        consequences: "",
+        confirmation: "",
+        prosAndConsOfTheOptions: "",
+        moreInformation: "",
+        additionalContent: "",
+      };
+    }
+
     async function seedAdr(title: string, body: string): Promise<{ id: string; blobSha: string }> {
       const created = await client.createAdr({ title, folder: "decisions", author: AUTHOR });
       if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
@@ -128,7 +142,7 @@ describe("AdrEditor", () => {
         title,
         status: "accepted",
         date: "2026-01-01",
-        body,
+        ...sectionsPayload(body, "Seed decision outcome."),
         author: AUTHOR,
         baseBlobSha: created.adr.blobSha,
       });
@@ -136,8 +150,8 @@ describe("AdrEditor", () => {
       return { id: saved.adr.id, blobSha: saved.adr.blobSha };
     }
 
-    it("loads and displays the real saved title/status/date/body", async () => {
-      const { id } = await seedAdr("Loadable ADR", "Original body content.");
+    it("loads and displays the real saved title/status/date/sections", async () => {
+      const { id } = await seedAdr("Loadable ADR", "Original context content.");
 
       render(
         <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
@@ -149,7 +163,85 @@ describe("AdrEditor", () => {
       expect(screen.getByTestId("title-input")).toHaveValue("Loadable ADR");
       expect(screen.getByTestId("status-select")).toHaveValue("accepted");
       expect(screen.getByTestId("date-input")).toHaveValue("2026-01-01");
-      expect(screen.getByTestId("body-textarea")).toHaveValue("Original body content.");
+      expect(screen.getByTestId("context-and-problem-statement-textarea")).toHaveValue(
+        "Original context content."
+      );
+    });
+
+    it("renders all eight MADR section textareas in canonical order plus the additional-content textarea, with required ones marked", async () => {
+      const { id } = await seedAdr("Sectioned ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      const expectedOrder = [
+        "context-and-problem-statement-textarea",
+        "decision-drivers-textarea",
+        "considered-options-textarea",
+        "decision-outcome-textarea",
+        "consequences-textarea",
+        "confirmation-textarea",
+        "pros-and-cons-of-the-options-textarea",
+        "more-information-textarea",
+      ];
+      for (const testId of expectedOrder) {
+        expect(screen.getByTestId(testId)).toBeInTheDocument();
+      }
+      expect(screen.getByTestId("additional-content-textarea")).toBeInTheDocument();
+
+      // canonical order: each subsequent testid appears later in the DOM than the previous one
+      const positions = expectedOrder.map(
+        (testId) => document.body.innerHTML.indexOf(`data-testid="${testId}"`)
+      );
+      for (let i = 1; i < positions.length; i++) {
+        expect(positions[i]).toBeGreaterThan(positions[i - 1]);
+      }
+      const additionalContentPosition = document.body.innerHTML.indexOf(
+        'data-testid="additional-content-textarea"'
+      );
+      expect(additionalContentPosition).toBeGreaterThan(positions[positions.length - 1]);
+
+      // Required sections (contextAndProblemStatement, decisionOutcome) are marked distinguishably.
+      const requiredLabel = screen
+        .getByTestId("context-and-problem-statement-textarea")
+        .closest(".field")
+        ?.querySelector(".field__label");
+      expect(requiredLabel?.textContent).toMatch(/required/i);
+      const optionalLabel = screen
+        .getByTestId("decision-drivers-textarea")
+        .closest(".field")
+        ?.querySelector(".field__label");
+      expect(optionalLabel?.textContent).toMatch(/optional/i);
+    });
+
+    it("saves a change to one section independently of the others, persisting all nine fields", async () => {
+      const { id } = await seedAdr("Independent Save ADR", "Original context.");
+      const onAdrSaved = vi.fn();
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      fireEvent.change(screen.getByTestId("decision-outcome-textarea"), {
+        target: { value: "We decided X." },
+      });
+      fireEvent.change(screen.getByTestId("additional-content-textarea"), {
+        target: { value: "Leftover legacy text." },
+      });
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      const savedAdr = onAdrSaved.mock.calls[0][0];
+      expect(savedAdr.contextAndProblemStatement).toBe("Original context.");
+      expect(savedAdr.decisionOutcome).toBe("We decided X.");
+      expect(savedAdr.additionalContent).toBe("Leftover legacy text.");
+      expect(screen.getByTestId("decision-outcome-textarea")).toHaveValue("We decided X.");
+      expect(screen.getByTestId("context-and-problem-statement-textarea")).toHaveValue(
+        "Original context."
+      );
     });
 
     it("renders adr-editor-not-found when the load fails", async () => {
@@ -158,23 +250,6 @@ describe("AdrEditor", () => {
       );
 
       await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
-    });
-
-    it("saves successfully, calls onAdrSaved, and shows the new body in the form", async () => {
-      const { id } = await seedAdr("Editable ADR", "Body before edit.");
-      const onAdrSaved = vi.fn();
-
-      render(
-        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
-      );
-      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
-
-      fireEvent.change(screen.getByTestId("body-textarea"), { target: { value: "Body after edit." } });
-      fireEvent.click(screen.getByTestId("save-button"));
-
-      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
-      expect(onAdrSaved.mock.calls[0][0].body).toBe("Body after edit.");
-      expect(screen.getByTestId("body-textarea")).toHaveValue("Body after edit.");
     });
 
     it("loads and displays the real saved decisionMakers/consulted/informed values", async () => {
@@ -191,7 +266,7 @@ describe("AdrEditor", () => {
         decisionMakers: ["Alice", "Bob"],
         consulted: ["Carol"],
         informed: ["Dave", "Erin"],
-        body: "Body content.",
+        ...sectionsPayload("Body content.", "Seed decision outcome."),
         author: AUTHOR,
         baseBlobSha: created.adr.blobSha,
       });
@@ -242,8 +317,8 @@ describe("AdrEditor", () => {
       expect(refetched.adr.informed).toEqual(["Dave", "Erin"]);
     });
 
-    it("shows missing-fields-message when body is cleared, without discarding the draft", async () => {
-      const { id } = await seedAdr("Invalid Save ADR", "Has a body.");
+    it("shows missing-fields-message when a required section is cleared, without discarding the draft", async () => {
+      const { id } = await seedAdr("Invalid Save ADR", "Has a context.");
       const onAdrSaved = vi.fn();
 
       render(
@@ -251,7 +326,9 @@ describe("AdrEditor", () => {
       );
       await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
 
-      fireEvent.change(screen.getByTestId("body-textarea"), { target: { value: "" } });
+      fireEvent.change(screen.getByTestId("context-and-problem-statement-textarea"), {
+        target: { value: "" },
+      });
       fireEvent.change(screen.getByTestId("title-input"), { target: { value: "Still draft title" } });
       fireEvent.click(screen.getByTestId("save-button"));
 
@@ -314,13 +391,15 @@ describe("AdrEditor", () => {
         title: "Conflict ADR",
         status: "deprecated",
         date: "2026-02-02",
-        body: "Someone else's content.",
+        ...sectionsPayload("Someone else's content.", "Seed decision outcome."),
         author: "Other Author <other@example.com>",
         baseBlobSha: blobSha,
       });
       if (!otherWriterSave.ok) throw new Error("fixture setup: concurrent save unexpectedly failed");
 
-      fireEvent.change(screen.getByTestId("body-textarea"), { target: { value: "My local edit." } });
+      fireEvent.change(screen.getByTestId("context-and-problem-statement-textarea"), {
+        target: { value: "My local edit." },
+      });
       fireEvent.click(screen.getByTestId("save-button"));
 
       await waitFor(() => expect(screen.getByTestId("conflict-message")).toBeInTheDocument());
@@ -330,7 +409,11 @@ describe("AdrEditor", () => {
 
       fireEvent.click(screen.getByTestId("reload-latest-button"));
 
-      await waitFor(() => expect(screen.getByTestId("body-textarea")).toHaveValue("Someone else's content."));
+      await waitFor(() =>
+        expect(screen.getByTestId("context-and-problem-statement-textarea")).toHaveValue(
+          "Someone else's content."
+        )
+      );
       expect(screen.getByTestId("status-select")).toHaveValue("deprecated");
     });
 
