@@ -11,7 +11,7 @@ import { SimpleGitAdapter } from "../infrastructure/git/simpleGitAdapter.js";
 import { SqliteEmbeddingStore } from "../infrastructure/persistence/sqlite.js";
 import { SqliteSearchIndex } from "../infrastructure/persistence/sqliteSearchIndex.js";
 import { GeminiEmbeddingProvider } from "../infrastructure/embeddings/gemini.js";
-import { parseAdr } from "@adr/core";
+import { parseAdr, combinedSectionText } from "@adr/core";
 
 export async function main(cfg: {
   repoPath: string;
@@ -33,13 +33,15 @@ export async function main(cfg: {
 
   for (const f of missing) {
     const adr = adrs.find((a) => a.blobSha === f.blobSha)!;
-    const [vec] = await embedder.embed([`${adr.title}\n\n${adr.body}`]);
+    const combinedText = combinedSectionText(adr, adr.additionalContent);
+    const [vec] = await embedder.embed([`${adr.title}\n\n${combinedText}`]);
     store.set(f.blobSha, vec);
     console.log(`  + ${f.path}`);
   }
 
   for (const adr of adrs) {
-    searchIndex.upsert({ id: adr.id, title: adr.title, body: adr.body, tags: adr.tags ?? [] });
+    const combinedText = combinedSectionText(adr, adr.additionalContent);
+    searchIndex.upsert({ id: adr.id, title: adr.title, body: combinedText, tags: adr.tags ?? [] });
   }
 
   const currentIds = new Set(adrs.map((adr) => adr.id));

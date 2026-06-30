@@ -31,7 +31,15 @@ function fixture(overrides: Partial<Adr> = {}): Adr {
     title: "Use Postgres",
     status: "accepted",
     date: "2026-01-01",
-    body: "We decided to use Postgres for persistence.",
+    contextAndProblemStatement: "We decided to use Postgres for persistence.",
+    decisionDrivers: "",
+    consideredOptions: "",
+    decisionOutcome: "",
+    consequences: "",
+    confirmation: "",
+    prosAndConsOfTheOptions: "",
+    moreInformation: "",
+    additionalContent: "",
     path: "decisions/adr-0001.md",
     blobSha: "",
     ...overrides,
@@ -79,7 +87,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0001",
         title: "Use Postgres",
-        body: "We decided to use Postgres for persistence.",
+        contextAndProblemStatement: "We decided to use Postgres for persistence.",
         path: "decisions/adr-0001.md",
       })
     );
@@ -87,7 +95,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0002",
         title: "Adopt kubernetes",
-        body: "We will run all services on a managed cluster.",
+        contextAndProblemStatement: "We will run all services on a managed cluster.",
         path: "decisions/adr-0002.md",
       })
     );
@@ -95,7 +103,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0003",
         title: "Choose a frontend framework",
-        body: "We evaluated React, Vue and Svelte for the frontend.",
+        contextAndProblemStatement: "We evaluated React, Vue and Svelte for the frontend.",
         path: "decisions/adr-0003.md",
       })
     );
@@ -113,7 +121,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0001",
         title: "Use Postgres",
-        body: "We decided to use Postgres for persistence.",
+        contextAndProblemStatement: "We decided to use Postgres for persistence.",
         path: "decisions/adr-0001.md",
       })
     );
@@ -121,7 +129,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0002",
         title: "Adopt kubernetes",
-        body: "We will run all services on a managed cluster.",
+        contextAndProblemStatement: "We will run all services on a managed cluster.",
         path: "decisions/adr-0002.md",
       })
     );
@@ -144,7 +152,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0001",
         title: "Use Postgres",
-        body: "We decided to use Postgres for persistence, mentioning zzunique-marker.",
+        contextAndProblemStatement: "We decided to use Postgres for persistence, mentioning zzunique-marker.",
         path: "decisions/adr-0001.md",
       })
     );
@@ -152,7 +160,7 @@ describe("reindex main()", () => {
       fixture({
         id: "adr-0002",
         title: "Adopt kubernetes",
-        body: "We will run all services on a managed cluster.",
+        contextAndProblemStatement: "We will run all services on a managed cluster.",
         path: "decisions/adr-0002.md",
       })
     );
@@ -241,12 +249,47 @@ describe("reindex main()", () => {
     expect(searchIndex.search("zzzlegacytag").map((h) => h.id)).toEqual(["adr-legacy"]);
   });
 
+  it("indexes content spread across multiple MADR section fields, not just contextAndProblemStatement (Req 3.11, 6.3)", async () => {
+    await commitAdr(
+      fixture({
+        id: "adr-0001",
+        title: "Use Postgres",
+        contextAndProblemStatement: "Marker contextzzzalpha needs a persistence decision.",
+        decisionDrivers: "Marker driverzzzbeta requires high availability.",
+        consideredOptions: "Marker optionzzzgamma considered Postgres and MySQL.",
+        decisionOutcome: "Marker outcomezzzdelta chosen: Postgres.",
+        consequences: "Marker consequencezzzepsilon: operational overhead.",
+        confirmation: "Marker confirmationzzzzeta via load testing.",
+        prosAndConsOfTheOptions: "Marker proszzzeta has strong tooling.",
+        moreInformation: "Marker morezzztheta links to the proposal doc.",
+        additionalContent: "Marker additionalzzziota leftover legacy notes.",
+        path: "decisions/adr-0001.md",
+      })
+    );
+
+    await main(cfg);
+
+    const searchIndex = new SqliteSearchIndex(sqlitePath);
+    // Every one of the 8 section fields plus additionalContent must be
+    // searchable -- proving the index/embedding text is built from the
+    // combined section content, not a single body field.
+    expect(searchIndex.search("contextzzzalpha").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("driverzzzbeta").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("optionzzzgamma").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("outcomezzzdelta").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("consequencezzzepsilon").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("confirmationzzzzeta").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("proszzzeta").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("morezzztheta").map((h) => h.id)).toContain("adr-0001");
+    expect(searchIndex.search("additionalzzziota").map((h) => h.id)).toContain("adr-0001");
+  });
+
   it("completes without throwing when every blob sha is pre-seeded (embedding cache-hit path, no network call attempted)", async () => {
     await commitAdr(
       fixture({
         id: "adr-0001",
         title: "Use Postgres",
-        body: "We decided to use Postgres for persistence.",
+        contextAndProblemStatement: "We decided to use Postgres for persistence.",
         path: "decisions/adr-0001.md",
       })
     );

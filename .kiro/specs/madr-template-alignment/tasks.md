@@ -190,7 +190,7 @@
 
 - [ ] 15. Integration: embedding and reindex text construction
 
-- [ ] 15.1 (P) Build reindex embedding/index text from the combined section content instead of the single body field
+- [x] 15.1 (P) Build reindex embedding/index text from the combined section content instead of the single body field
   - When the standalone reindex script builds the text it embeds and indexes for an ADR, use the combined content of all nine fields instead of the single body value
   - Observable: rebuilding the index from a fixture with content spread across multiple sections produces index/embedding text containing all of that content
   - _Requirements: 3.11, 6.3_
