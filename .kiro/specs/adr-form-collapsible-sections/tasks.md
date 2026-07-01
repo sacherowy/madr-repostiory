@@ -1,7 +1,7 @@
 # Implementation Plan
 
-- [ ] 1. Foundation: CollapsibleSection component and styles
-- [ ] 1.1 (P) Create the CollapsibleSection presentational component
+- [x] 1. Foundation: CollapsibleSection component and styles
+- [x] 1.1 (P) Create the CollapsibleSection presentational component
   - Create `apps/web/src/features/adr-editor/CollapsibleSection.tsx`
   - Define `CollapsibleSectionProps` interface: `sectionKey`, `title`, `required`, `isOpen`, `onToggle`, `preview`, `children`
   - Render a `<button>` header with `data-testid="section-toggle-{sectionKey}"` and `aria-expanded={isOpen}`
@@ -13,7 +13,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3_
   - _Boundary: CollapsibleSection component_
 
-- [ ] 1.2 (P) Add collapsible section CSS styles to soft-ui.css
+- [x] 1.2 (P) Add collapsible section CSS styles to soft-ui.css
   - Add `.collapsible-section` wrapper rules (margin replacing `.field` rhythm)
   - `.collapsible-section__header`: full-width button reset, flex row, cursor pointer, padding matching existing field spacing
   - `.collapsible-section--required`: 3 px solid left border using the existing teal color token
@@ -25,8 +25,8 @@
   - _Requirements: 2.3, 2.4, 2.5, 3.1, 3.4, 4.1, 4.2_
   - _Boundary: CSS styles (soft-ui.css)_
 
-- [ ] 2. Core: EditAdrForm state and preview utility
-- [ ] 2.1 Add open-section state and firstLine utility to EditAdrForm
+- [x] 2. Core: EditAdrForm state and preview utility
+- [x] 2.1 Add open-section state and firstLine utility to EditAdrForm
   - Add `firstLine(value: string): string` pure function: returns the first non-blank line of a string, truncated to 80 characters with `…` appended when over limit; returns `""` for empty input
   - Add `openSections` state as `ReadonlySet<string>` initialised from `MADR_SECTIONS.filter(m => m.required).map(m => m.key)` plus `"people"`
   - Add `toggleSection(key: string): void` that creates a new Set with the key added or removed, then calls `setOpenSections`
@@ -35,8 +35,8 @@
   - _Boundary: EditAdrForm state_
   - _Depends: 1.1_
 
-- [ ] 3. Integration: wire layout changes in EditAdrForm
-- [ ] 3.1 Replace MADR section textareas with CollapsibleSection wrappers
+- [x] 3. Integration: wire layout changes in EditAdrForm
+- [x] 3.1 Replace MADR section textareas with CollapsibleSection wrappers
   - Import `CollapsibleSection` from the new file
   - Update `MADR_SECTIONS.map()`: wrap each section in `<CollapsibleSection sectionKey={meta.key} title={meta.heading} required={meta.required} isOpen={openSections.has(meta.key)} onToggle={() => toggleSection(meta.key)} preview={firstLine(sections[meta.key])}>`
   - Wrap the Additional Content textarea in `<CollapsibleSection sectionKey="additionalContent" required={false} title="Additional Content" ...>`
@@ -47,7 +47,7 @@
   - _Boundary: EditAdrForm layout_
   - _Depends: 2.1_
 
-- [ ] 3.2 Relocate Tags and introduce People collapsible section
+- [x] 3.2 Relocate Tags and introduce People collapsible section
   - Move the Tags `<div className="field">` to immediately follow the Date input, above the section accordion list
   - Wrap Decision Makers, Consulted, and Informed inside `<CollapsibleSection sectionKey="people" title="People" required={false} isOpen={openSections.has("people")} onToggle={() => toggleSection("people")} preview={peoplePreview}>`
   - Derive `peoplePreview` as non-empty values from `decisionMakers`, `consulted`, `informed` joined with `" · "`, falling back to `""` (CollapsibleSection then shows `"— empty"`)
@@ -56,8 +56,8 @@
   - _Boundary: EditAdrForm layout_
   - _Depends: 1.1_
 
-- [ ] 4. Validation
-- [ ] 4.1 (P) Add unit tests for CollapsibleSection, firstLine, and EditAdrForm initial state
+- [x] 4. Validation
+- [x] 4.1 (P) Add unit tests for CollapsibleSection, firstLine, and EditAdrForm initial state
   - `CollapsibleSection` `isOpen=true`: body visible (`hidden` absent), chevron open class applied, preview text not rendered
   - `CollapsibleSection` `isOpen=false` with non-empty `preview`: body hidden (`hidden` present), preview text visible in header
   - `CollapsibleSection` `isOpen=false` with `preview=""`: `"— empty"` text shown in header
@@ -68,7 +68,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3_
   - _Boundary: Unit tests (apps/web/src)_
 
-- [ ] 4.2 (P) Update adr-lifecycle.spec.ts E2E assertions for the new layout
+- [x] 4.2 (P) Update adr-lifecycle.spec.ts E2E assertions for the new layout
   - Replace `label[for="adr-editor-{testId}"]` contains `"required"` assertions with `getByTestId("section-toggle-{key}")` `toContainText("*")` for required section keys
   - Replace `label[for="adr-editor-{testId}"]` contains `"optional"` assertions with a `not.toContainText("*")` check on the corresponding toggle header
   - Add `page.getByTestId("section-toggle-decisionDrivers").click()` (and any other collapsed optional section) before the corresponding `.fill()` call

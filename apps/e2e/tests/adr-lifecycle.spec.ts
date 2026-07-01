@@ -41,6 +41,18 @@ const SECTION_TEXTAREAS = [
 /** The two sections the MADR template marks as required. */
 const REQUIRED_SECTION_TEXTAREAS = ["context-and-problem-statement-textarea", "decision-outcome-textarea"];
 
+/** Maps textarea testid → camelCase sectionKey used in section-toggle-{key} testids. */
+const SECTION_KEY_BY_TEXTAREA: Record<string, string> = {
+  "context-and-problem-statement-textarea": "contextAndProblemStatement",
+  "decision-drivers-textarea": "decisionDrivers",
+  "considered-options-textarea": "consideredOptions",
+  "decision-outcome-textarea": "decisionOutcome",
+  "consequences-textarea": "consequences",
+  "confirmation-textarea": "confirmation",
+  "pros-and-cons-of-the-options-textarea": "prosAndConsOfTheOptions",
+  "more-information-textarea": "moreInformation",
+};
+
 /** A full nine-field-plus-frontmatter payload for the raw API PUT used to force a conflict. */
 function sectionsPayload(contextAndProblemStatement: string) {
   return {
@@ -86,12 +98,12 @@ test("creates, edits and saves an ADR, then recovers from a save conflict", asyn
     await expect(page.getByTestId(testId)).toHaveValue("");
   }
   for (const testId of REQUIRED_SECTION_TEXTAREAS) {
-    const label = page.locator(`label[for="adr-editor-${testId}"]`);
-    await expect(label).toContainText(/required/i);
+    const sectionKey = SECTION_KEY_BY_TEXTAREA[testId];
+    await expect(page.getByTestId(`section-toggle-${sectionKey}`)).toContainText("*");
   }
   for (const testId of SECTION_TEXTAREAS.filter((id) => !REQUIRED_SECTION_TEXTAREAS.includes(id))) {
-    const label = page.locator(`label[for="adr-editor-${testId}"]`);
-    await expect(label).toContainText(/optional/i);
+    const sectionKey = SECTION_KEY_BY_TEXTAREA[testId];
+    await expect(page.getByTestId(`section-toggle-${sectionKey}`)).not.toContainText("*");
   }
   // The catch-all additional-content field also renders empty.
   await expect(page.getByTestId("additional-content-textarea")).toHaveValue("");
@@ -109,8 +121,12 @@ test("creates, edits and saves an ADR, then recovers from a save conflict", asyn
   // informed, and select status "rejected" — saveable with no relation added
   // (Req 2.2, 2.4).
   await page.getByTestId("context-and-problem-statement-textarea").fill("First real edit from the UI.");
+  // decision-drivers is optional (collapsed by default) — expand before filling
+  await page.getByTestId("section-toggle-decisionDrivers").click();
   await page.getByTestId("decision-drivers-textarea").fill("Driver: must ship by Friday.");
   await page.getByTestId("decision-outcome-textarea").fill("We will go with option A.");
+  // additional-content is optional (collapsed by default) — expand before filling
+  await page.getByTestId("section-toggle-additionalContent").click();
   await page.getByTestId("additional-content-textarea").fill("Leftover content outside the eight sections.");
   await page.getByTestId("decision-makers-input").fill("Alice, Erin");
   await page.getByTestId("consulted-input").fill("Frank");
