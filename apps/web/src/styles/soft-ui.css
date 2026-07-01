@@ -128,3 +128,91 @@
     transform: none !important;
   }
 }
+
+/* -------------------------------------------------------------------------
+   Collapsible section accordion (adr-form-collapsible-sections).
+   Provides expand/collapse behaviour for ADR edit form sections. Uses
+   existing tokens for colour, spacing and typography — no new design tokens
+   are introduced. The .collapsible-section replaces the .field margin rhythm
+   for section groupings; inner fields keep their own .field margins.
+   ------------------------------------------------------------------------- */
+
+/* Outer wrapper — replaces .field margin rhythm for grouped sections. */
+.collapsible-section {
+  margin-bottom: 16px;
+}
+
+/* Required sections get a 3 px teal left border accent (Req 3.1). */
+.collapsible-section--required {
+  border-left: 3px solid var(--teal-500);
+  padding-left: 12px;
+}
+
+/* Header: full-width button reset, flex row, cursor pointer.
+   Padding matches the existing field spacing (8px 12px). */
+.collapsible-section__header {
+  /* Button reset */
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  /* Layout */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Title: bold, matching .field__label color (var(--ink-700), font-weight 600). */
+.collapsible-section__title {
+  font-weight: 600;
+  color: var(--ink-700);
+  flex-shrink: 0;
+}
+
+/* Preview: single-line truncation, muted color; grows to fill remaining space. */
+.collapsible-section__preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-300);
+  font-size: 0.875rem;
+}
+
+/* Chevron: 16×16, muted color, sits at end of the flex row. */
+.collapsible-section__chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--ink-300);
+  transition: transform 0.18s ease;
+}
+
+/* Rotated chevron when section is open (Req 2.4). */
+.collapsible-section__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Body: padding consistent with .field spacing; hidden attribute handled natively. */
+.collapsible-section__body {
+  padding: 8px 12px;
+}
+
+/* Remove top margin for the first .field inside the body to avoid double spacing. */
+.collapsible-section__body .field:first-child {
+  margin-top: 0;
+}
+
+/* Suppress chevron rotation motion for users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-section__chevron {
+    transition: none;
+  }
+}
