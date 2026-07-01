@@ -1,16 +1,16 @@
 {
   "feature_name": "adr-form-structured-input",
   "created_at": "2026-07-01T08:02:28Z",
-  "updated_at": "2026-07-01T11:05:00Z",
+  "updated_at": "2026-07-01T11:20:00Z",
   "language": "en",
-  "phase": "requirements-generated",
+  "phase": "design-generated",
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "tasks": {
