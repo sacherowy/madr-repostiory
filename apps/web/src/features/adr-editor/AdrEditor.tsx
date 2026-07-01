@@ -5,6 +5,7 @@ import type { ApiClient } from "../../api/client.js";
 import { StatusBadge } from "../../components/StatusBadge.js";
 import { MonoChip } from "../../components/MonoChip.js";
 import { RelationChip } from "../../components/RelationChip.js";
+import { CollapsibleSection } from "./CollapsibleSection.js";
 
 const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
 const RELATION_TYPES: RelationType[] = [
@@ -39,6 +40,12 @@ function splitCsv(value: string): string[] {
 /** camelCase section key -> kebab-case testid segment, e.g. "contextAndProblemStatement" -> "context-and-problem-statement". */
 function toKebabCase(key: string): string {
   return key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+/** Returns the first non-blank line of value, truncated to 80 characters with … when over limit. */
+export function firstLine(value: string): string {
+  const line = value.split("\n").find((l) => l.trim().length > 0) ?? "";
+  return line.length > 80 ? `${line.slice(0, 77)}…` : line;
 }
 
 function emptySections(): AdrSections {
@@ -209,6 +216,19 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   const [conflictLatest, setConflictLatest] = useState<Adr | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const [openSections, setOpenSections] = useState<ReadonlySet<string>>(
+    () => new Set(MADR_SECTIONS.filter((m) => m.required).map((m) => m.key).concat(["people"]))
+  );
+
+  function toggleSection(key: string): void {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   function applyLoadedAdr(adr: Adr) {
     setTitle(adr.title);
     setStatus(adr.status);
@@ -338,6 +358,11 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     setConflictLatest(null);
   }
 
+  const peoplePreview = [decisionMakers, consulted, informed]
+    .filter((v) => v.trim().length > 0)
+    .map((v) => v.trim())
+    .join(" · ");
+
   if (loadState.kind === "loading") {
     return (
       <div data-testid="adr-editor-loading" className="state state--loading">
@@ -415,48 +440,6 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
         </div>
 
         <div className="field">
-          <label className="field__label" htmlFor="adr-editor-decision-makers-input">
-            Decision Makers
-          </label>
-          <input
-            id="adr-editor-decision-makers-input"
-            data-testid="decision-makers-input"
-            className="field__input"
-            type="text"
-            value={decisionMakers}
-            onChange={(event) => setDecisionMakers(event.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <label className="field__label" htmlFor="adr-editor-consulted-input">
-            Consulted
-          </label>
-          <input
-            id="adr-editor-consulted-input"
-            data-testid="consulted-input"
-            className="field__input"
-            type="text"
-            value={consulted}
-            onChange={(event) => setConsulted(event.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <label className="field__label" htmlFor="adr-editor-informed-input">
-            Informed
-          </label>
-          <input
-            id="adr-editor-informed-input"
-            data-testid="informed-input"
-            className="field__input"
-            type="text"
-            value={informed}
-            onChange={(event) => setInformed(event.target.value)}
-          />
-        </div>
-
-        <div className="field">
           <label className="field__label" htmlFor="adr-editor-tags-input">
             Tags
           </label>
@@ -474,33 +457,95 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
           const testId = `${toKebabCase(meta.key)}-textarea`;
           const inputId = `adr-editor-${testId}`;
           return (
-            <div className="field" key={meta.key}>
-              <label className="field__label" htmlFor={inputId}>
-                {meta.heading} {meta.required ? "(required)" : "(optional)"}
-              </label>
+            <CollapsibleSection
+              key={meta.key}
+              sectionKey={meta.key}
+              title={meta.heading}
+              required={meta.required}
+              isOpen={openSections.has(meta.key)}
+              onToggle={() => toggleSection(meta.key)}
+              preview={firstLine(sections[meta.key])}
+            >
               <textarea
                 id={inputId}
                 data-testid={testId}
+                aria-labelledby={`section-title-${meta.key}`}
                 className="field__input"
                 value={sections[meta.key]}
                 onChange={(event) => handleSectionChange(meta.key, event.target.value)}
               />
-            </div>
+            </CollapsibleSection>
           );
         })}
 
-        <div className="field">
-          <label className="field__label" htmlFor="adr-editor-additional-content-textarea">
-            Additional Content (optional)
-          </label>
+        <CollapsibleSection
+          sectionKey="additionalContent"
+          title="Additional Content"
+          required={false}
+          isOpen={openSections.has("additionalContent")}
+          onToggle={() => toggleSection("additionalContent")}
+          preview={firstLine(additionalContent)}
+        >
           <textarea
             id="adr-editor-additional-content-textarea"
             data-testid="additional-content-textarea"
+            aria-labelledby="section-title-additionalContent"
             className="field__input"
             value={additionalContent}
             onChange={(event) => setAdditionalContent(event.target.value)}
           />
-        </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          sectionKey="people"
+          title="People"
+          required={false}
+          isOpen={openSections.has("people")}
+          onToggle={() => toggleSection("people")}
+          preview={peoplePreview}
+        >
+          <div className="field">
+            <label className="field__label" htmlFor="adr-editor-decision-makers-input">
+              Decision Makers
+            </label>
+            <input
+              id="adr-editor-decision-makers-input"
+              data-testid="decision-makers-input"
+              className="field__input"
+              type="text"
+              value={decisionMakers}
+              onChange={(event) => setDecisionMakers(event.target.value)}
+            />
+          </div>
+
+          <div className="field">
+            <label className="field__label" htmlFor="adr-editor-consulted-input">
+              Consulted
+            </label>
+            <input
+              id="adr-editor-consulted-input"
+              data-testid="consulted-input"
+              className="field__input"
+              type="text"
+              value={consulted}
+              onChange={(event) => setConsulted(event.target.value)}
+            />
+          </div>
+
+          <div className="field">
+            <label className="field__label" htmlFor="adr-editor-informed-input">
+              Informed
+            </label>
+            <input
+              id="adr-editor-informed-input"
+              data-testid="informed-input"
+              className="field__input"
+              type="text"
+              value={informed}
+              onChange={(event) => setInformed(event.target.value)}
+            />
+          </div>
+        </CollapsibleSection>
 
         <div data-testid="relations-editor" className="field">
           <span className="field__label">Relations</span>
