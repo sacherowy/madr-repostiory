@@ -237,9 +237,9 @@ export function serializeOptions(
   rows: readonly OptionRow[],
 ): { consideredOptions: string; prosAndConsOfTheOptions: string };
 ```
-- Preconditions: none; both input strings may be empty.
-- Postconditions: `parseOptions` pairs `consideredOptions` bullets with `prosAndConsOfTheOptions` `###` blocks positionally (index `i` from each list forms row `i`); when one list is longer, the extra entries become rows with the missing side's fields empty. `serializeOptions` emits rows in array order, in the grammar above, joining per-option blocks in `prosAndConsOfTheOptions` with a blank line.
-- Invariants: `parseOptions(serializeOptions(rows))` reproduces `rows` exactly for any `rows` produced by this UI (round-trips cleanly); only externally hand-edited content that violates the grammar is subject to lossy degradation (3.7).
+- Preconditions: `description` contains no newline characters — enforced by `OptionsEditor` rendering `description` as a single-line input (see UI Layer below), since `consideredOptions`'s one-bullet-per-line format requires it. `pros`/`cons` may be multi-line. Both input strings to `parseOptions` may be empty.
+- Postconditions: `parseOptions` pairs `consideredOptions` bullets with `prosAndConsOfTheOptions` `###` blocks positionally (index `i` from each list forms row `i`); when one list is longer, the extra entries become rows with the missing side's fields empty. `serializeOptions` emits rows in array order, in the grammar above, joining per-option blocks in `prosAndConsOfTheOptions` with a blank line. If a `description` somehow contains a newline (defensive case only — the UI does not permit entering one), `serializeOptions` replaces it with a space before emitting the bullet, preserving the one-bullet-per-option invariant.
+- Invariants: `parseOptions(serializeOptions(rows))` reproduces `rows` exactly for any `rows` produced by this UI (round-trips cleanly), because `description` is guaranteed single-line by construction; only externally hand-edited content that violates the grammar is subject to lossy degradation (3.7).
 
 ### UI Layer
 
@@ -281,6 +281,7 @@ export interface OptionsEditorProps {
   rows: OptionRow[];
   onAddRow: () => void;
   onRemoveRow: (id: string) => void;
+  /** value is guaranteed single-line: the input element is a text input, not a textarea. */
   onDescriptionChange: (id: string, value: string) => void;
   onProsChange: (id: string, value: string) => void;
   onConsChange: (id: string, value: string) => void;
@@ -289,7 +290,7 @@ export interface OptionsEditorProps {
 
 **Implementation Notes**
 - Integration: Rendered inside a `CollapsibleSection sectionKey="options" title="Considered Options" required={false}`, positioned per 4.2, replacing the two former standalone sections.
-- Validation: None at this layer — blank-row filtering happens in `options.ts` at save time.
+- Validation: None at this layer — blank-row filtering happens in `options.ts` at save time. `description` is rendered as `<input type="text">` (not a textarea) specifically so it cannot contain a newline, protecting the one-bullet-per-option invariant `options.ts` relies on; `pros`/`cons` are `<textarea>`s.
 - Risks: Testids per row: `option-description-input-{id}`, `option-pros-textarea-{id}`, `option-cons-textarea-{id}`, `remove-option-button-{id}`; `add-option-button` for the add control.
 
 #### EditAdrForm (modified)
@@ -301,7 +302,8 @@ export interface OptionsEditorProps {
 
 **State Management**
 - `peopleRows: PersonRow[]` replaces the three `decisionMakers`/`consulted`/`informed` `string` states within `EditAdrForm`.
-- `optionRows: OptionRow[]` is derived on load via `parseOptions` and serialized back via `serializeOptions` on save; the two raw string fields remain part of the `AdrSections`-typed `sections` state only as pass-through save payload, not as directly-edited fields.
+- `optionRows: OptionRow[]` is the *sole* client-side source of truth for considered-options/pros-and-cons content. The `sections` state is retyped to `Omit<AdrSections, "consideredOptions" | "prosAndConsOfTheOptions">` — those two keys are removed from `sections` entirely rather than kept as a second, parallel copy that must be remembered to override at save time. `applyLoadedAdr` seeds `optionRows` via `parseOptions(adr.consideredOptions, adr.prosAndConsOfTheOptions)` and does not write those two keys into `sections`.
+- `handleSave` builds the request as `{ ...sections, ...serializeOptions(optionRows), ... }` — with only one place these two fields can come from, there is no stale-value ordering hazard to get wrong.
 - `openSections` default set drops `"people"` (no longer collapsible) and does not add `"options"` (optional, collapsed by default like its two predecessors).
 
 **JSX order (top to bottom)**, per 4.1–4.4:
@@ -310,7 +312,7 @@ export interface OptionsEditorProps {
 3. Context and Problem Statement `CollapsibleSection`.
 4. Decision Drivers `CollapsibleSection`.
 5. Options `CollapsibleSection` containing `OptionsEditor`.
-6. Decision Outcome `CollapsibleSection`, body containing the Decision Outcome textarea followed by the Consequences and Confirmation fields.
+6. Decision Outcome `CollapsibleSection`, body containing the Decision Outcome textarea followed by the Consequences and Confirmation fields, each preceded by its own visible label (`<span id="section-title-consequences">Consequences</span>` / `<span id="section-title-confirmation">Confirmation</span>`) so the two fields remain distinguishable and their `aria-labelledby` references resolve to a real element.
 7. More Information `CollapsibleSection`.
 8. Additional Content `CollapsibleSection` (unchanged).
 9. Relations editor, Save footer (unchanged).
@@ -318,7 +320,7 @@ export interface OptionsEditorProps {
 **Implementation Notes**
 - Integration: `handleSave` computes `stakeholdersFromRows(peopleRows)` and `serializeOptions(optionRows)` immediately before building the `updateAdr` request, replacing the current `splitCsv(decisionMakers)`-style calls for People (Tags keeps its existing `splitCsv` — out of scope).
 - Validation: Unchanged — existing `missingFields`/`missingTargets`/conflict handling is untouched; this feature does not add new save-time validation rules.
-- Risks: `consequences`/`confirmation` keep their existing textarea testids and `aria-labelledby` wiring exactly as today, just relocated in JSX to inside the Decision Outcome `CollapsibleSection`'s children.
+- Risks: `consequences`/`confirmation` keep their existing textarea testids exactly as today. Their `aria-labelledby="section-title-{key}"` attribute previously resolved to the header span of each field's *own* `CollapsibleSection` — once nested, that `CollapsibleSection` no longer exists for either field, so each nested field must get its own replacement label element carrying the matching `id` (see JSX order item 6) rather than keeping the attribute pointed at a now-nonexistent node.
 
 ## Data Models
 

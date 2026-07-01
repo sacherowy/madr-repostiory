@@ -50,6 +50,21 @@
 - **Selected Approach**: A person row is blank (excluded) when `name.trim() === ""`. An option row is blank (excluded) when `description`, `pros`, and `cons` are all empty after trimming.
 - **Rationale**: Consistent with the existing `splitCsv` blank-filtering precedent for People; option rows use an all-fields-empty rule since a row with only pros/cons but no description is still meaningful content worth keeping.
 
+### Decision: Explicit label elements for nested Consequences/Confirmation
+- **Context**: `/kiro-validate-design` review found that the initial design left `consequences-textarea`/`confirmation-textarea`'s `aria-labelledby="section-title-{key}"` pointed at a header span that only exists today because each field renders inside its own `CollapsibleSection`. Nesting them inside Decision Outcome's `CollapsibleSection` removes that per-field header entirely.
+- **Selected Approach**: Render an explicit label span with the matching `id` (`section-title-consequences` / `section-title-confirmation`) directly above each nested field, so the field keeps a visible heading and the existing `aria-labelledby` attribute keeps resolving.
+- **Rationale**: Fixes a dangling-reference accessibility regression at zero cost — this is the same visible-heading role the removed `CollapsibleSection` used to provide, just without the collapse control.
+
+### Decision: `optionRows` as sole source of truth for option content
+- **Context**: Review found that keeping `consideredOptions`/`prosAndConsOfTheOptions` inside the `sections` state *and* deriving the save payload from `optionRows` created two competing sources of truth, risking a stale save if the merge order in `handleSave` weren't exactly right.
+- **Selected Approach**: Retype `sections` to `Omit<AdrSections, "consideredOptions" | "prosAndConsOfTheOptions">`; those two fields exist only as `optionRows`, computed into the save payload via `serializeOptions`.
+- **Rationale**: Removes the ordering hazard by removing the duplicate state entirely, rather than documenting a merge-order rule an implementer could still get wrong.
+
+### Decision: `description` is single-line by construction
+- **Context**: `parseOptions` counts `* {description}` bullets per line; an embedded newline in `description` would break that count and contradict the round-trip invariant `options.ts` claims for UI-produced rows.
+- **Selected Approach**: `OptionsEditor` renders `description` as `<input type="text">` (not a textarea), so the UI cannot produce a multi-line value. `serializeOptions` additionally collapses any newline to a space defensively.
+- **Rationale**: Makes the invariant actually hold by construction instead of by convention.
+
 ## Risks & Mitigations
 - **Risk**: Hand-edited or legacy `consideredOptions`/`prosAndConsOfTheOptions` content that doesn't follow the new grammar fails to parse into rows. **Mitigation**: `parseOptions` never throws; unrecognized lines are simply not represented as rows (Requirement 3.7); the raw fields are never discarded from the ADR, only from the structured-editor's view of them until the user re-saves.
 - **Risk**: Removing `consequences-textarea`/`confirmation-textarea`/`considered-options-textarea`/`pros-and-cons-of-the-options-textarea` as standalone `CollapsibleSection`s breaks existing E2E assertions that toggle and fill them individually. **Mitigation**: `apps/e2e/tests/adr-lifecycle.spec.ts` is in this feature's boundary and must be rewritten for the new nesting/merge (tracked in File Structure Plan).
