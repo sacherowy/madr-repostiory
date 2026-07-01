@@ -11,7 +11,7 @@ import type { FastifyInstance } from "fastify";
 import { buildContainer, type Container } from "../../../../api/src/container.js";
 import { buildServer } from "../../../../api/src/server.js";
 import { createApiClient, type ApiClient } from "../../api/client.js";
-import { AdrEditor } from "./AdrEditor.js";
+import { AdrEditor, firstLine } from "./AdrEditor.js";
 
 const AUTHOR = "Test Author <test@example.com>";
 
@@ -203,17 +203,11 @@ describe("AdrEditor", () => {
       );
       expect(additionalContentPosition).toBeGreaterThan(positions[positions.length - 1]);
 
-      // Required sections (contextAndProblemStatement, decisionOutcome) are marked distinguishably.
-      const requiredLabel = screen
-        .getByTestId("context-and-problem-statement-textarea")
-        .closest(".field")
-        ?.querySelector(".field__label");
-      expect(requiredLabel?.textContent).toMatch(/required/i);
-      const optionalLabel = screen
-        .getByTestId("decision-drivers-textarea")
-        .closest(".field")
-        ?.querySelector(".field__label");
-      expect(optionalLabel?.textContent).toMatch(/optional/i);
+      // Required sections (contextAndProblemStatement, decisionOutcome) are marked with "*".
+      const requiredToggle = screen.getByTestId("section-toggle-contextAndProblemStatement");
+      expect(requiredToggle.textContent).toContain("*");
+      const optionalToggle = screen.getByTestId("section-toggle-decisionDrivers");
+      expect(optionalToggle.textContent).not.toContain("*");
     });
 
     it("saves a change to one section independently of the others, persisting all nine fields", async () => {
@@ -451,6 +445,36 @@ describe("AdrEditor", () => {
       expect(screen.getByTestId("save-success-message")).toBeInTheDocument();
     });
 
+    it("optional sections start collapsed and required sections start expanded", async () => {
+      const { id } = await seedAdr("Initial State ADR", "Some context.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // Required sections are expanded (aria-expanded="true")
+      expect(screen.getByTestId("section-toggle-contextAndProblemStatement")).toHaveAttribute(
+        "aria-expanded",
+        "true"
+      );
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute(
+        "aria-expanded",
+        "true"
+      );
+      // People section starts expanded
+      expect(screen.getByTestId("section-toggle-people")).toHaveAttribute("aria-expanded", "true");
+      // Optional sections start collapsed
+      expect(screen.getByTestId("section-toggle-decisionDrivers")).toHaveAttribute(
+        "aria-expanded",
+        "false"
+      );
+      expect(screen.getByTestId("section-toggle-consideredOptions")).toHaveAttribute(
+        "aria-expanded",
+        "false"
+      );
+    });
+
     it("relation-type select offers exactly the five RelationType values", async () => {
       const { id } = await seedAdr("Relation Options ADR", "Body.");
 
@@ -506,5 +530,39 @@ describe("AdrEditor", () => {
       if (!refetched.ok) throw new Error("expected getAdr to succeed");
       expect(refetched.adr.relations ?? []).toEqual([{ type: "depends-on", target: targetB.id }]);
     });
+  });
+});
+
+describe("firstLine", () => {
+  it("returns empty string for empty input", () => {
+    expect(firstLine("")).toBe("");
+  });
+
+  it("returns empty string for whitespace-only input", () => {
+    expect(firstLine("   \n  \n")).toBe("");
+  });
+
+  it("returns the first non-blank line of multi-line input", () => {
+    expect(firstLine("\n\nSecond non-blank line\nAnother line")).toBe("Second non-blank line");
+  });
+
+  it("returns the first line when it is non-blank", () => {
+    expect(firstLine("First line\nSecond line")).toBe("First line");
+  });
+
+  it("returns the full line when it is exactly 80 characters", () => {
+    const exactly80 = "a".repeat(80);
+    expect(firstLine(exactly80)).toBe(exactly80);
+  });
+
+  it("truncates with … when the line exceeds 80 characters", () => {
+    const long = "a".repeat(100);
+    const result = firstLine(long);
+    expect(result).toBe("a".repeat(77) + "…");
+    expect(result.length).toBe(78);
+  });
+
+  it("skips leading blank lines to find the first non-blank line", () => {
+    expect(firstLine("\n\n  \nActual content")).toBe("Actual content");
   });
 });
