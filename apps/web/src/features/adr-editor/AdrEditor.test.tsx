@@ -315,6 +315,90 @@ describe("AdrEditor", () => {
       expect(optionalToggle.textContent).not.toContain("*");
     });
 
+    it("renders Consequences and Confirmation inside the Decision Outcome section's body, each with its own visible label, instead of as independent top-level sections", async () => {
+      const { id } = await seedAdr("Nested Decision Outcome ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // No independent top-level toggle buttons for Consequences/Confirmation.
+      expect(screen.queryByTestId("section-toggle-consequences")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("section-toggle-confirmation")).not.toBeInTheDocument();
+
+      // Existing testids and aria-labelledby attribute values are unchanged.
+      const consequencesTextarea = screen.getByTestId("consequences-textarea");
+      const confirmationTextarea = screen.getByTestId("confirmation-textarea");
+      expect(consequencesTextarea).toHaveAttribute("aria-labelledby", "section-title-consequences");
+      expect(confirmationTextarea).toHaveAttribute("aria-labelledby", "section-title-confirmation");
+
+      // The aria-labelledby references resolve to a real element carrying the matching label text.
+      const consequencesLabel = document.getElementById("section-title-consequences");
+      const confirmationLabel = document.getElementById("section-title-confirmation");
+      expect(consequencesLabel).not.toBeNull();
+      expect(consequencesLabel?.textContent).toBe("Consequences");
+      expect(confirmationLabel).not.toBeNull();
+      expect(confirmationLabel?.textContent).toBe("Confirmation");
+
+      // Both fields live inside the same Decision Outcome collapsible body as the
+      // Decision Outcome textarea itself, forming one uninterrupted group.
+      const decisionOutcomeBody = screen
+        .getByTestId("decision-outcome-textarea")
+        .closest(".collapsible-section__body");
+      expect(decisionOutcomeBody).not.toBeNull();
+      expect(decisionOutcomeBody).toContainElement(consequencesTextarea);
+      expect(decisionOutcomeBody).toContainElement(confirmationTextarea);
+      expect(decisionOutcomeBody).toContainElement(consequencesLabel);
+      expect(decisionOutcomeBody).toContainElement(confirmationLabel);
+    });
+
+    it("hides Consequences and Confirmation together with Decision Outcome when it is collapsed, and shows all three when it is expanded", async () => {
+      const { id } = await seedAdr("Collapsible Nested Decision Outcome ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // Decision Outcome is required, so it starts expanded; all three fields are visible together.
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute("aria-expanded", "true");
+      const decisionOutcomeBody = screen
+        .getByTestId("decision-outcome-textarea")
+        .closest(".collapsible-section__body");
+      expect(decisionOutcomeBody).not.toBeNull();
+      expect(decisionOutcomeBody).not.toHaveAttribute("hidden");
+      // Consequences/Confirmation share the *same* body element as Decision Outcome
+      // (rather than each having their own, independently toggleable body).
+      expect(screen.getByTestId("consequences-textarea").closest(".collapsible-section__body")).toBe(
+        decisionOutcomeBody
+      );
+      expect(screen.getByTestId("confirmation-textarea").closest(".collapsible-section__body")).toBe(
+        decisionOutcomeBody
+      );
+
+      fireEvent.click(screen.getByTestId("section-toggle-decisionOutcome"));
+
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute("aria-expanded", "false");
+      expect(decisionOutcomeBody).toHaveAttribute("hidden");
+      // The Consequences/Confirmation fields are still in the DOM (hidden, not removed),
+      // matching CollapsibleSection's existing hidden-not-removed contract, and their
+      // shared ancestor (the Decision Outcome body) carries the hidden attribute.
+      expect(screen.getByTestId("consequences-textarea")).toBeInTheDocument();
+      expect(screen.getByTestId("confirmation-textarea")).toBeInTheDocument();
+      expect(screen.getByTestId("consequences-textarea").closest(".collapsible-section__body")).toHaveAttribute(
+        "hidden"
+      );
+      expect(screen.getByTestId("confirmation-textarea").closest(".collapsible-section__body")).toHaveAttribute(
+        "hidden"
+      );
+
+      fireEvent.click(screen.getByTestId("section-toggle-decisionOutcome"));
+
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute("aria-expanded", "true");
+      expect(decisionOutcomeBody).not.toHaveAttribute("hidden");
+    });
+
     it("saves a change to one section independently of the others, persisting all nine fields", async () => {
       const { id } = await seedAdr("Independent Save ADR", "Original context.");
       const onAdrSaved = vi.fn();

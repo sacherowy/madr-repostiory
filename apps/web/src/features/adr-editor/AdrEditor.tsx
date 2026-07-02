@@ -459,12 +459,19 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   // consideredOptions/prosAndConsOfTheOptions are excluded from the generic loop —
   // they're rendered as the structured OptionsEditor instead, positioned (per
   // design.md JSX order item 5) immediately after Decision Drivers and before
-  // Decision Outcome. consequences/confirmation stay top-level for now (nesting
-  // them inside Decision Outcome is task 4.3, not this task).
+  // Decision Outcome. consequences/confirmation are also excluded from the
+  // generic loop: they're rendered manually inside Decision Outcome's own
+  // CollapsibleSection body (task 4.3 / design.md JSX order item 6), each
+  // preceded by its own visible label so their aria-labelledby references
+  // keep resolving now that they no longer have their own CollapsibleSection
+  // header to supply that id.
   const editableSections = MADR_SECTIONS.filter(isEditableSection);
   const decisionOutcomeIndex = editableSections.findIndex((meta) => meta.key === "decisionOutcome");
+  const decisionOutcomeMeta = editableSections[decisionOutcomeIndex];
   const sectionsBeforeOptions = editableSections.slice(0, decisionOutcomeIndex);
-  const sectionsFromDecisionOutcome = editableSections.slice(decisionOutcomeIndex);
+  const sectionsAfterDecisionOutcome = editableSections
+    .slice(decisionOutcomeIndex + 1)
+    .filter((meta) => meta.key !== "consequences" && meta.key !== "confirmation");
   const optionsPreview = optionRows.find((row) => row.description.trim() !== "")?.description ?? "";
 
   return (
@@ -568,7 +575,47 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
           />
         </CollapsibleSection>
 
-        {sectionsFromDecisionOutcome.map(renderSectionField)}
+        <CollapsibleSection
+          sectionKey={decisionOutcomeMeta.key}
+          title={decisionOutcomeMeta.heading}
+          required={decisionOutcomeMeta.required}
+          isOpen={openSections.has(decisionOutcomeMeta.key)}
+          onToggle={() => toggleSection(decisionOutcomeMeta.key)}
+          preview={firstLine(sections.decisionOutcome)}
+        >
+          <textarea
+            id="adr-editor-decision-outcome-textarea"
+            data-testid="decision-outcome-textarea"
+            aria-labelledby="section-title-decisionOutcome"
+            className="field__input"
+            value={sections.decisionOutcome}
+            onChange={(event) => handleSectionChange("decisionOutcome", event.target.value)}
+          />
+          <span id="section-title-consequences" className="field__label">
+            Consequences
+          </span>
+          <textarea
+            id="adr-editor-consequences-textarea"
+            data-testid="consequences-textarea"
+            aria-labelledby="section-title-consequences"
+            className="field__input"
+            value={sections.consequences}
+            onChange={(event) => handleSectionChange("consequences", event.target.value)}
+          />
+          <span id="section-title-confirmation" className="field__label">
+            Confirmation
+          </span>
+          <textarea
+            id="adr-editor-confirmation-textarea"
+            data-testid="confirmation-textarea"
+            aria-labelledby="section-title-confirmation"
+            className="field__input"
+            value={sections.confirmation}
+            onChange={(event) => handleSectionChange("confirmation", event.target.value)}
+          />
+        </CollapsibleSection>
+
+        {sectionsAfterDecisionOutcome.map(renderSectionField)}
 
         <CollapsibleSection
           sectionKey="additionalContent"
