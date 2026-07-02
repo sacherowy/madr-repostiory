@@ -66,7 +66,7 @@
   - _Boundary: EditAdrForm_
   - _Depends: 2.1, 2.2_
 
-- [ ] 4.3 Nest Consequences and Confirmation inside Decision Outcome
+- [x] 4.3 Nest Consequences and Confirmation inside Decision Outcome
   - Render the Consequences and Confirmation fields inside the Decision Outcome section's body instead of as their own top-level sections, each with its own visible label
   - Remove Consequences and Confirmation as independent collapsible sections
   - Update the existing edit-form test suite: assert both fields are hidden/shown together with Decision Outcome and keep their existing testids
