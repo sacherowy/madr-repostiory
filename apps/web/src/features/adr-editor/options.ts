@@ -5,9 +5,10 @@
  *
  * Mirrors the no-throw, direct-cast style of
  * `packages/core/src/adr/sections.ts`: no React dependency, no side effects.
- * The markdown grammar owned here (bullet + heading shape) is defined and
- * scoped entirely to `apps/web` -- see `research.md`'s "Structured option
- * markdown grammar" design decision.
+ * The markdown grammar owned here (bullet + bold-text block shape) is
+ * defined and scoped entirely to `apps/web` -- see `research.md`'s
+ * "Structured option markdown grammar" design decision and its amendment
+ * replacing the per-option ATX heading with bold text.
  */
 
 export interface OptionRow {
@@ -18,7 +19,7 @@ export interface OptionRow {
 }
 
 const CONSIDERED_OPTION_BULLET_PATTERN = /^\* (.*)$/;
-const OPTION_HEADING_PATTERN = /^### (.*)$/;
+const OPTION_BOLD_TEXT_PATTERN = /^\*\*(.*)\*\*$/;
 const GOOD_BULLET_PATTERN = /^\* Good, because (.*)$/;
 const BAD_BULLET_PATTERN = /^\* Bad, because (.*)$/;
 
@@ -30,11 +31,11 @@ interface ParsedBlock {
 
 /**
  * Parses `consideredOptions` (one `* {description}` bullet per row) and
- * `prosAndConsOfTheOptions` (one `### {description}` block per row, followed
- * by `* Good, because {line}` / `* Bad, because {line}` bullets) into rows,
+ * `prosAndConsOfTheOptions` (one `**{description}**` bold-text block per row,
+ * followed by `* Good, because {line}` / `* Bad, because {line}` bullets) into rows,
  * pairing the two lists positionally by index. Never throws: content that
- * doesn't match the grammar is simply not recognized as a bullet/heading and
- * is ignored, degrading to a best-effort row set (Requirement 3.7).
+ * doesn't match the grammar is simply not recognized as a bullet/bold-text
+ * line and is ignored, degrading to a best-effort row set (Requirement 3.7).
  */
 export function parseOptions(consideredOptions: string, prosAndConsOfTheOptions: string): OptionRow[] {
   const descriptions = parseConsideredOptionBullets(consideredOptions);
@@ -76,9 +77,9 @@ function parseOptionBlocks(prosAndConsOfTheOptions: string): ParsedBlock[] {
   let currentBlock: ParsedBlock | undefined;
 
   for (const line of prosAndConsOfTheOptions.split("\n")) {
-    const headingMatch = OPTION_HEADING_PATTERN.exec(line);
-    if (headingMatch) {
-      currentBlock = { description: headingMatch[1], pros: [], cons: [] };
+    const boldTextMatch = OPTION_BOLD_TEXT_PATTERN.exec(line);
+    if (boldTextMatch) {
+      currentBlock = { description: boldTextMatch[1], pros: [], cons: [] };
       blocks.push(currentBlock);
       continue;
     }
@@ -108,7 +109,7 @@ function parseOptionBlocks(prosAndConsOfTheOptions: string): ParsedBlock[] {
  * `cons` are all empty after trimming are excluded (Requirement 3.6). A
  * `description` containing a newline (defensive case only; the paired UI
  * enforces single-line entry) has the newline replaced with a space so the
- * one-bullet/one-heading-per-option invariant holds.
+ * one-bullet/one-bold-text-line-per-option invariant holds.
  */
 export function serializeOptions(rows: readonly OptionRow[]): {
   consideredOptions: string;
@@ -132,7 +133,7 @@ function sanitizeDescription(description: string): string {
 }
 
 function serializeOptionBlock(row: OptionRow): string {
-  const lines = [`### ${sanitizeDescription(row.description)}`];
+  const lines = [`**${sanitizeDescription(row.description)}**`];
 
   for (const line of nonBlankLines(row.pros)) {
     lines.push(`* Good, because ${line}`);

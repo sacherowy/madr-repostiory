@@ -14,24 +14,24 @@ describe("serializeOptions", () => {
     expect(result.consideredOptions).toBe("* Use Postgres\n* Use SQLite");
     expect(result.prosAndConsOfTheOptions).toBe(
       [
-        "### Use Postgres",
+        "**Use Postgres**",
         "* Good, because Mature",
         "* Good, because Widely used",
         "* Bad, because Heavier ops",
         "",
-        "### Use SQLite",
+        "**Use SQLite**",
         "* Good, because Simple",
       ].join("\n"),
     );
   });
 
-  it("emits only the heading line when both pros and cons are empty", () => {
+  it("emits only the bold-text line when both pros and cons are empty", () => {
     const rows: OptionRow[] = [{ id: "1", description: "Use SQLite", pros: "", cons: "" }];
 
     const result = serializeOptions(rows);
 
     expect(result.consideredOptions).toBe("* Use SQLite");
-    expect(result.prosAndConsOfTheOptions).toBe("### Use SQLite");
+    expect(result.prosAndConsOfTheOptions).toBe("**Use SQLite**");
   });
 
   it("excludes a row whose description, pros, and cons are all blank after trimming", () => {
@@ -44,7 +44,7 @@ describe("serializeOptions", () => {
     const result = serializeOptions(rows);
 
     expect(result.consideredOptions).toBe("* Use Postgres\n* Use SQLite");
-    expect(result.prosAndConsOfTheOptions).toBe(["### Use Postgres", "* Good, because Mature", "", "### Use SQLite"].join("\n"));
+    expect(result.prosAndConsOfTheOptions).toBe(["**Use Postgres**", "* Good, because Mature", "", "**Use SQLite**"].join("\n"));
   });
 
   it("does not exclude a row that has a description but empty pros/cons", () => {
@@ -53,7 +53,7 @@ describe("serializeOptions", () => {
     const result = serializeOptions(rows);
 
     expect(result.consideredOptions).toBe("* Use SQLite");
-    expect(result.prosAndConsOfTheOptions).toBe("### Use SQLite");
+    expect(result.prosAndConsOfTheOptions).toBe("**Use SQLite**");
   });
 
   it("produces empty strings for zero rows", () => {
@@ -66,7 +66,7 @@ describe("serializeOptions", () => {
     const result = serializeOptions(rows);
 
     expect(result.consideredOptions).toBe("* Use Postgres");
-    expect(result.prosAndConsOfTheOptions).toBe("### Use Postgres");
+    expect(result.prosAndConsOfTheOptions).toBe("**Use Postgres**");
   });
 });
 
@@ -78,7 +78,7 @@ describe("parseOptions", () => {
   it("parses multi-line pros/cons into multiple bullets with prefixes stripped", () => {
     const consideredOptions = "* Use Postgres";
     const prosAndConsOfTheOptions = [
-      "### Use Postgres",
+      "**Use Postgres**",
       "* Good, because Mature",
       "* Good, because Widely used",
       "* Bad, because Heavier ops",
@@ -94,7 +94,7 @@ describe("parseOptions", () => {
   });
 
   it("assigns a stable, unique id string to every row", () => {
-    const rows = parseOptions("* Use Postgres\n* Use SQLite", "### Use Postgres\n\n### Use SQLite");
+    const rows = parseOptions("* Use Postgres\n* Use SQLite", "**Use Postgres**\n\n**Use SQLite**");
 
     const ids = rows.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -106,7 +106,7 @@ describe("parseOptions", () => {
 
   it("degrades gracefully without throwing when there are more considered-options bullets than pros-and-cons blocks", () => {
     const consideredOptions = "* Use Postgres\n* Use SQLite";
-    const prosAndConsOfTheOptions = "### Use Postgres\n* Good, because Mature";
+    const prosAndConsOfTheOptions = "**Use Postgres**\n* Good, because Mature";
 
     let rows: OptionRow[] = [];
     expect(() => {
@@ -120,7 +120,7 @@ describe("parseOptions", () => {
 
   it("degrades gracefully without throwing when there are more pros-and-cons blocks than considered-options bullets", () => {
     const consideredOptions = "* Use Postgres";
-    const prosAndConsOfTheOptions = ["### Use Postgres", "* Good, because Mature", "", "### Use SQLite", "* Good, because Simple"].join(
+    const prosAndConsOfTheOptions = ["**Use Postgres**", "* Good, because Mature", "", "**Use SQLite**", "* Good, because Simple"].join(
       "\n",
     );
 
@@ -146,14 +146,32 @@ describe("parseOptions", () => {
     expect(rows).toEqual([]);
   });
 
-  it("ignores non-bullet lines within consideredOptions and non-heading lines outside a block", () => {
+  it("ignores non-bullet lines within consideredOptions and non-bold-text lines outside a block", () => {
     const consideredOptions = "Some preamble\n* Use Postgres\nRandom trailing line";
-    const prosAndConsOfTheOptions = "Preamble not under a heading\n### Use Postgres\n* Good, because Mature\nNot a bullet line";
+    const prosAndConsOfTheOptions = "Preamble not under a bold-text line\n**Use Postgres**\n* Good, because Mature\nNot a bullet line";
 
     const rows = parseOptions(consideredOptions, prosAndConsOfTheOptions);
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ description: "Use Postgres", pros: "Mature", cons: "" });
+  });
+
+  it("does not treat a pros/cons bullet line that itself starts with ** as a new block-start line", () => {
+    const consideredOptions = "* Use Postgres";
+    const prosAndConsOfTheOptions = [
+      "**Use Postgres**",
+      "* Good, because **fast** when tuned",
+      "* Bad, because **not** free",
+    ].join("\n");
+
+    const rows = parseOptions(consideredOptions, prosAndConsOfTheOptions);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      description: "Use Postgres",
+      pros: "**fast** when tuned",
+      cons: "**not** free",
+    });
   });
 });
 
@@ -184,5 +202,33 @@ describe("round trip", () => {
 
     expect(parsed).toHaveLength(1);
     expect(parsed[0]).toMatchObject({ description: "Use Postgres", pros: "Mature", cons: "" });
+  });
+
+  it("correctly recovers the second option's pros/cons content in a multi-row round trip (regression for the ### grammar bug)", () => {
+    const rows: OptionRow[] = [
+      { id: "a", description: "Option One", pros: "First pro", cons: "First con" },
+      { id: "b", description: "Option Two", pros: "Second pro A\nSecond pro B", cons: "Second con" },
+      { id: "c", description: "Option Three", pros: "Third pro", cons: "" },
+    ];
+
+    const serialized = serializeOptions(rows);
+
+    // The block-start line for every option (including the second and third)
+    // must be bold text, never an ATX heading, so a document-wide heading
+    // scanner (e.g. packages/core's splitSections) cannot mistake it for a
+    // top-level MADR section boundary.
+    for (const line of serialized.prosAndConsOfTheOptions.split("\n")) {
+      expect(line.startsWith("#")).toBe(false);
+    }
+
+    const parsed = parseOptions(serialized.consideredOptions, serialized.prosAndConsOfTheOptions);
+
+    expect(parsed).toHaveLength(3);
+    expect(parsed[1]).toMatchObject({
+      description: "Option Two",
+      pros: "Second pro A\nSecond pro B",
+      cons: "Second con",
+    });
+    expect(parsed[2]).toMatchObject({ description: "Option Three", pros: "Third pro", cons: "" });
   });
 });
