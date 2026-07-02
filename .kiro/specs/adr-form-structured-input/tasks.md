@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. People row editor
-- [ ] 1.1 (P) Implement stakeholder row mapping logic
+- [x] 1.1 (P) Implement stakeholder row mapping logic
   - Define the person-row shape and the fixed Decision Maker / Consulted / Informed role set
   - Implement the bidirectional mapping between rows and the existing decisionMakers/consulted/informed lists, including dropping rows with a blank name when converting back
   - Unit tests cover: a full round trip for populated lists, blank-name rows excluded on save, and empty lists producing zero rows
