@@ -57,7 +57,7 @@
   - _Boundary: EditAdrForm_
   - _Depends: 1.1, 1.2_
 
-- [ ] 4.2 Wire the structured options editor into the edit form
+- [x] 4.2 Wire the structured options editor into the edit form
   - Replace the separate Considered Options and Pros and Cons of the Options textareas with the structured options editor and its row state, removing those two fields from the form's other section-content state entirely so the row state is the only place that content lives client-side
   - Load existing considered-options/pros-and-cons content into rows when an ADR is opened, and serialize rows back into that content on save
   - Update the existing edit-form test suite: remove assertions on the two old textareas and add row-based equivalents
