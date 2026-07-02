@@ -214,7 +214,7 @@ export function stakeholdersFromRows(
 | Requirements | 3.4, 3.5, 3.6, 3.7 |
 
 **Responsibilities & Constraints**
-- Owns the markdown grammar described in `research.md` ("Structured option markdown grammar"): `consideredOptions` = one `* {description}` bullet per row; `prosAndConsOfTheOptions` = one `### {description}` block per row, followed by `* Good, because {line}` per non-blank `pros` line and `* Bad, because {line}` per non-blank `cons` line.
+- Owns the markdown grammar described in `research.md` ("Structured option markdown grammar" and its amendment): `consideredOptions` = one `* {description}` bullet per row; `prosAndConsOfTheOptions` = one `**{description}**` bold-text block per row, followed by `* Good, because {line}` per non-blank `pros` line and `* Bad, because {line}` per non-blank `cons` line. Bold text (not an ATX heading) is used deliberately so `packages/core`'s `splitSections` — which scans the whole document for any `#`-prefixed heading line regardless of nesting — does not misclassify a per-option marker as an unmatched heading and divert the rest of the section into `additionalContent`.
 - `parseOptions` never throws; content that doesn't match the grammar (non-bullet lines in `consideredOptions`, headings without a matching bullet or vice versa) degrades to best-effort row construction per the pairing rule below, never to a thrown error.
 - `serializeOptions` excludes rows where `description`, `pros`, and `cons` are all empty after trimming.
 
@@ -238,7 +238,7 @@ export function serializeOptions(
 ): { consideredOptions: string; prosAndConsOfTheOptions: string };
 ```
 - Preconditions: `description` contains no newline characters — enforced by `OptionsEditor` rendering `description` as a single-line input (see UI Layer below), since `consideredOptions`'s one-bullet-per-line format requires it. `pros`/`cons` may be multi-line. Both input strings to `parseOptions` may be empty.
-- Postconditions: `parseOptions` pairs `consideredOptions` bullets with `prosAndConsOfTheOptions` `###` blocks positionally (index `i` from each list forms row `i`); when one list is longer, the extra entries become rows with the missing side's fields empty. `serializeOptions` emits rows in array order, in the grammar above, joining per-option blocks in `prosAndConsOfTheOptions` with a blank line. If a `description` somehow contains a newline (defensive case only — the UI does not permit entering one), `serializeOptions` replaces it with a space before emitting the bullet, preserving the one-bullet-per-option invariant.
+- Postconditions: `parseOptions` pairs `consideredOptions` bullets with `prosAndConsOfTheOptions` `**bold**` blocks positionally (index `i` from each list forms row `i`); when one list is longer, the extra entries become rows with the missing side's fields empty. `serializeOptions` emits rows in array order, in the grammar above, joining per-option blocks in `prosAndConsOfTheOptions` with a blank line. If a `description` somehow contains a newline (defensive case only — the UI does not permit entering one), `serializeOptions` replaces it with a space before emitting the bullet/bold-text line, preserving the one-marker-per-option invariant.
 - Invariants: `parseOptions(serializeOptions(rows))` reproduces `rows` exactly for any `rows` produced by this UI (round-trips cleanly), because `description` is guaranteed single-line by construction; only externally hand-edited content that violates the grammar is subject to lossy degradation (3.7).
 
 ### UI Layer
@@ -331,7 +331,7 @@ export interface OptionsEditorProps {
 ### Data Contracts & Integration
 **Structured option markdown grammar** (full rationale in `research.md`):
 - `consideredOptions`: `* {description}` per row, newline-joined, in row order.
-- `prosAndConsOfTheOptions`: per row, `### {description}` followed by `* Good, because {line}` for each non-blank line of `pros` and `* Bad, because {line}` for each non-blank line of `cons`; blocks are joined with a blank line.
+- `prosAndConsOfTheOptions`: per row, `**{description}**` followed by `* Good, because {line}` for each non-blank line of `pros` and `* Bad, because {line}` for each non-blank line of `cons`; blocks are joined with a blank line. Bold text, not an ATX heading, deliberately avoids colliding with `packages/core`'s heading-based `splitSections` (see research.md amendment).
 - Both fields remain plain strings inside `AdrSections`; no schema or API change.
 
 ## Error Handling

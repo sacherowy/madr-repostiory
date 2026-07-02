@@ -89,3 +89,7 @@
   - Observable: the full lifecycle test suite passes end-to-end against the restructured form, including the conflict/recover path
   - _Requirements: 1.1, 1.3, 1.4, 2.1, 2.5, 2.6, 2.7, 3.4, 3.5, 3.6, 4.1, 4.2, 4.3, 4.4, 4.5_
   - _Boundary: apps/e2e/tests/adr-lifecycle.spec.ts_
+
+## Implementation Notes
+
+- **Task 4.2 discovered a real defect in the task 2.1 grammar**: the original `### {description}` per-option heading in `prosAndConsOfTheOptions` collides with `packages/core`'s `splitSections`, which scans the whole document for any ATX heading line regardless of nesting and diverts unrecognized ones (including `### Option Two`, etc.) into `additionalContent` on a real save→reload round trip. Fixed by revising the grammar to `**{description}**` (bold text, not a heading) — see `research.md`'s amendment to "Structured option markdown grammar". `options.ts`/`options.test.ts` (task 2.1) were revised and re-reviewed; `OptionRow`/`OptionsEditor`'s contract (task 2.2) was unaffected. If any later task hand-constructs `prosAndConsOfTheOptions` markdown for a test fixture, use `**{description}**`, not `### {description}`.
