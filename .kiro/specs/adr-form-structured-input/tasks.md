@@ -40,7 +40,7 @@
   - _Boundary: OptionsEditor_
   - _Depends: 2.1_
 
-- [ ] 3. Row layout styling for People and Options editors
+- [x] 3. Row layout styling for People and Options editors
   - Add row layout rules for both editors reusing existing field/button styling tokens, covering the name/role row and the description/pros/cons row
   - Observable: both editors render their rows in a legible, aligned layout matching the rest of the form's visual style, verified visually or via a snapshot/class-presence check
   - _Boundary: soft-ui.css (People/Options row styles)_
