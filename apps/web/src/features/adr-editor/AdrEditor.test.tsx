@@ -246,7 +246,7 @@ describe("AdrEditor", () => {
       await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
     });
 
-    it("loads and displays the real saved decisionMakers/consulted/informed values", async () => {
+    it("loads and displays the real saved decisionMakers/consulted/informed values as person rows", async () => {
       const created = await client.createAdr({
         title: "Participants ADR",
         folder: "decisions",
@@ -276,26 +276,69 @@ describe("AdrEditor", () => {
         />
       );
 
-      await waitFor(() => expect(screen.getByTestId("decision-makers-input")).toBeInTheDocument());
-      expect(screen.getByTestId("decision-makers-input")).toHaveValue("Alice, Bob");
-      expect(screen.getByTestId("consulted-input")).toHaveValue("Carol");
-      expect(screen.getByTestId("informed-input")).toHaveValue("Dave, Erin");
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="person-name-input-"]')
+        ).toHaveLength(5)
+      );
+
+      const nameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      const roleSelects = Array.from(
+        document.querySelectorAll('[data-testid^="person-role-select-"]')
+      ) as HTMLSelectElement[];
+
+      expect(nameInputs.map((input) => input.value)).toEqual([
+        "Alice",
+        "Bob",
+        "Carol",
+        "Dave",
+        "Erin",
+      ]);
+      expect(roleSelects.map((select) => select.value)).toEqual([
+        "Decision Maker",
+        "Decision Maker",
+        "Consulted",
+        "Informed",
+        "Informed",
+      ]);
     });
 
-    it("saves edited decisionMakers/consulted/informed and persists all three", async () => {
+    it("saves edited decisionMakers/consulted/informed rows and persists all three categories", async () => {
       const { id } = await seedAdr("Editable Participants ADR", "Body before edit.");
       const onAdrSaved = vi.fn();
 
       render(
         <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
       );
-      await waitFor(() => expect(screen.getByTestId("decision-makers-input")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId("add-person-button")).toBeInTheDocument());
 
-      fireEvent.change(screen.getByTestId("decision-makers-input"), {
-        target: { value: "Alice, Bob" },
+      const peopleToAdd = [
+        { name: "Alice", role: "Decision Maker" },
+        { name: "Bob", role: "Decision Maker" },
+        { name: "Carol", role: "Consulted" },
+        { name: "Dave", role: "Informed" },
+        { name: "Erin", role: "Informed" },
+      ];
+
+      for (let i = 0; i < peopleToAdd.length; i++) {
+        fireEvent.click(screen.getByTestId("add-person-button"));
+      }
+
+      const nameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      const roleSelects = Array.from(
+        document.querySelectorAll('[data-testid^="person-role-select-"]')
+      ) as HTMLSelectElement[];
+      expect(nameInputs).toHaveLength(5);
+
+      peopleToAdd.forEach((person, index) => {
+        fireEvent.change(nameInputs[index], { target: { value: person.name } });
+        fireEvent.change(roleSelects[index], { target: { value: person.role } });
       });
-      fireEvent.change(screen.getByTestId("consulted-input"), { target: { value: "Carol" } });
-      fireEvent.change(screen.getByTestId("informed-input"), { target: { value: "Dave, Erin" } });
+
       fireEvent.click(screen.getByTestId("save-button"));
 
       await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
@@ -309,6 +352,88 @@ describe("AdrEditor", () => {
       expect(refetched.adr.decisionMakers).toEqual(["Alice", "Bob"]);
       expect(refetched.adr.consulted).toEqual(["Carol"]);
       expect(refetched.adr.informed).toEqual(["Dave", "Erin"]);
+    });
+
+    it("excludes a blank-name person row from the saved stakeholder categories", async () => {
+      const { id } = await seedAdr("Blank Row ADR", "Body before edit.");
+      const onAdrSaved = vi.fn();
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
+      );
+      await waitFor(() => expect(screen.getByTestId("add-person-button")).toBeInTheDocument());
+
+      // Add one row with a name, and one blank row that should be excluded on save.
+      fireEvent.click(screen.getByTestId("add-person-button"));
+      fireEvent.click(screen.getByTestId("add-person-button"));
+
+      const nameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      expect(nameInputs).toHaveLength(2);
+      fireEvent.change(nameInputs[0], { target: { value: "Alice" } });
+      // nameInputs[1] is left blank on purpose.
+
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      const savedAdr = onAdrSaved.mock.calls[0][0];
+      expect(savedAdr.decisionMakers).toEqual(["Alice"]);
+      expect(savedAdr.consulted).toEqual([]);
+      expect(savedAdr.informed).toEqual([]);
+    });
+
+    it("removes a person row by id when its remove button is clicked", async () => {
+      const created = await client.createAdr({
+        title: "Removable Participants ADR",
+        folder: "decisions",
+        author: AUTHOR,
+      });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+      const saved = await client.updateAdr(created.adr.id, {
+        title: "Removable Participants ADR",
+        status: "accepted",
+        date: "2026-01-01",
+        decisionMakers: ["Alice", "Bob"],
+        consulted: [],
+        informed: [],
+        ...sectionsPayload("Body content.", "Seed decision outcome."),
+        author: AUTHOR,
+        baseBlobSha: created.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(
+        <AdrEditor
+          adrId={saved.adr.id}
+          folder={null}
+          authorName={AUTHOR}
+          apiClient={client}
+          onAdrSaved={vi.fn()}
+        />
+      );
+
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="person-name-input-"]')
+        ).toHaveLength(2)
+      );
+
+      const removeButtons = Array.from(
+        document.querySelectorAll('[data-testid^="remove-person-button-"]')
+      ) as HTMLButtonElement[];
+      expect(removeButtons).toHaveLength(2);
+      fireEvent.click(removeButtons[0]);
+
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="person-name-input-"]')
+        ).toHaveLength(1)
+      );
+      const remainingNameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      expect(remainingNameInputs[0]).toHaveValue("Bob");
     });
 
     it("shows missing-fields-message when a required section is cleared, without discarding the draft", async () => {
@@ -462,8 +587,9 @@ describe("AdrEditor", () => {
         "aria-expanded",
         "true"
       );
-      // People section starts expanded
-      expect(screen.getByTestId("section-toggle-people")).toHaveAttribute("aria-expanded", "true");
+      // People is always visible, with no collapse/expand toggle at all.
+      expect(screen.queryByTestId("section-toggle-people")).not.toBeInTheDocument();
+      expect(screen.getByTestId("add-person-button")).toBeInTheDocument();
       // Optional sections start collapsed
       expect(screen.getByTestId("section-toggle-decisionDrivers")).toHaveAttribute(
         "aria-expanded",

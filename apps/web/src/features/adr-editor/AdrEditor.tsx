@@ -6,6 +6,8 @@ import { StatusBadge } from "../../components/StatusBadge.js";
 import { MonoChip } from "../../components/MonoChip.js";
 import { RelationChip } from "../../components/RelationChip.js";
 import { CollapsibleSection } from "./CollapsibleSection.js";
+import { PeopleEditor } from "./PeopleEditor.js";
+import { rowsFromStakeholders, stakeholdersFromRows, type PersonRow, type StakeholderRole } from "./people.js";
 
 const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
 const RELATION_TYPES: RelationType[] = [
@@ -200,9 +202,7 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<AdrStatus>("proposed");
   const [date, setDate] = useState("");
-  const [decisionMakers, setDecisionMakers] = useState("");
-  const [consulted, setConsulted] = useState("");
-  const [informed, setInformed] = useState("");
+  const [peopleRows, setPeopleRows] = useState<PersonRow[]>([]);
   const [tags, setTags] = useState("");
   const [sections, setSections] = useState<AdrSections>(emptySections());
   const [additionalContent, setAdditionalContent] = useState("");
@@ -217,7 +217,7 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const [openSections, setOpenSections] = useState<ReadonlySet<string>>(
-    () => new Set(MADR_SECTIONS.filter((m) => m.required).map((m) => m.key).concat(["people"]))
+    () => new Set(MADR_SECTIONS.filter((m) => m.required).map((m) => m.key))
   );
 
   function toggleSection(key: string): void {
@@ -233,9 +233,7 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     setTitle(adr.title);
     setStatus(adr.status);
     setDate(adr.date);
-    setDecisionMakers((adr.decisionMakers ?? []).join(", "));
-    setConsulted((adr.consulted ?? []).join(", "));
-    setInformed((adr.informed ?? []).join(", "));
+    setPeopleRows(rowsFromStakeholders(adr.decisionMakers ?? [], adr.consulted ?? [], adr.informed ?? []));
     setTags((adr.tags ?? []).join(", "));
     setSections({
       contextAndProblemStatement: adr.contextAndProblemStatement,
@@ -298,14 +296,31 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     setRelations((current) => current.filter((_, i) => i !== index));
   }
 
+  function handleAddPersonRow() {
+    setPeopleRows((current) => [
+      ...current,
+      { id: crypto.randomUUID(), name: "", role: "Decision Maker" },
+    ]);
+  }
+
+  function handleRemovePersonRow(id: string) {
+    setPeopleRows((current) => current.filter((row) => row.id !== id));
+  }
+
+  function handlePersonNameChange(id: string, name: string) {
+    setPeopleRows((current) => current.map((row) => (row.id === id ? { ...row, name } : row)));
+  }
+
+  function handlePersonRoleChange(id: string, role: StakeholderRole) {
+    setPeopleRows((current) => current.map((row) => (row.id === id ? { ...row, role } : row)));
+  }
+
   async function handleSave() {
     const result = await apiClient.updateAdr(adrId, {
       title,
       status,
       date,
-      decisionMakers: splitCsv(decisionMakers),
-      consulted: splitCsv(consulted),
-      informed: splitCsv(informed),
+      ...stakeholdersFromRows(peopleRows),
       tags: splitCsv(tags),
       relations,
       ...sections,
@@ -357,11 +372,6 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
     applyLoadedAdr(conflictLatest);
     setConflictLatest(null);
   }
-
-  const peoplePreview = [decisionMakers, consulted, informed]
-    .filter((v) => v.trim().length > 0)
-    .map((v) => v.trim())
-    .join(" · ");
 
   if (loadState.kind === "loading") {
     return (
@@ -453,6 +463,14 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
           />
         </div>
 
+        <PeopleEditor
+          rows={peopleRows}
+          onAddRow={handleAddPersonRow}
+          onRemoveRow={handleRemovePersonRow}
+          onNameChange={handlePersonNameChange}
+          onRoleChange={handlePersonRoleChange}
+        />
+
         {MADR_SECTIONS.map((meta) => {
           const testId = `${toKebabCase(meta.key)}-textarea`;
           const inputId = `adr-editor-${testId}`;
@@ -494,57 +512,6 @@ function EditAdrForm({ adrId, authorName, apiClient, onAdrSaved }: EditAdrFormPr
             value={additionalContent}
             onChange={(event) => setAdditionalContent(event.target.value)}
           />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          sectionKey="people"
-          title="People"
-          required={false}
-          isOpen={openSections.has("people")}
-          onToggle={() => toggleSection("people")}
-          preview={peoplePreview}
-        >
-          <div className="field">
-            <label className="field__label" htmlFor="adr-editor-decision-makers-input">
-              Decision Makers
-            </label>
-            <input
-              id="adr-editor-decision-makers-input"
-              data-testid="decision-makers-input"
-              className="field__input"
-              type="text"
-              value={decisionMakers}
-              onChange={(event) => setDecisionMakers(event.target.value)}
-            />
-          </div>
-
-          <div className="field">
-            <label className="field__label" htmlFor="adr-editor-consulted-input">
-              Consulted
-            </label>
-            <input
-              id="adr-editor-consulted-input"
-              data-testid="consulted-input"
-              className="field__input"
-              type="text"
-              value={consulted}
-              onChange={(event) => setConsulted(event.target.value)}
-            />
-          </div>
-
-          <div className="field">
-            <label className="field__label" htmlFor="adr-editor-informed-input">
-              Informed
-            </label>
-            <input
-              id="adr-editor-informed-input"
-              data-testid="informed-input"
-              className="field__input"
-              type="text"
-              value={informed}
-              onChange={(event) => setInformed(event.target.value)}
-            />
-          </div>
         </CollapsibleSection>
 
         <div data-testid="relations-editor" className="field">
