@@ -29,7 +29,7 @@
   - _Requirements: 3.4, 3.5, 3.6, 3.7_
   - _Boundary: options.ts_
 
-- [ ] 2.2 (P) Implement the structured options editor component
+- [x] 2.2 (P) Implement the structured options editor component
   - Render one row per option with description, pros, and cons fields
   - Support adding a new row and removing any existing row by its own identity
   - Render the description field so it cannot hold multi-line text, preserving the one-row-per-line markdown grammar
