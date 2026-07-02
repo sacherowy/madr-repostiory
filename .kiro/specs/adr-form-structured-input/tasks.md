@@ -47,7 +47,7 @@
   - _Depends: 1.2, 2.2_
 
 - [ ] 4. Edit form restructuring
-- [ ] 4.1 Wire the People editor into the edit form
+- [x] 4.1 Wire the People editor into the edit form
   - Replace the three Decision Makers/Consulted/Informed text inputs and their string state with the row-based People editor and its row state
   - Position the People editor as an always-visible block next to Title/Status/Date/Tags, with no collapse/expand control
   - Load existing decision makers, consulted parties, and informed parties into rows when an ADR is opened, and save rows back into those three categories on save, excluding blank-name rows
