@@ -82,7 +82,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1_
   - _Boundary: EditAdrForm_
 
-- [ ] 5. End-to-end journey validation
+- [x] 5. End-to-end journey validation
   - Update the create -> edit -> save lifecycle test to fill and assert the People rows and at least one structured option row instead of the old inputs/textareas
   - Update the Decision Outcome assertions to cover the nested Consequences/Confirmation fields inside it
   - Verify the existing save-conflict and reload-latest journey still passes with the updated form interactions
