@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { simpleGit } from "simple-git";
@@ -313,6 +313,43 @@ describe("AdrEditor", () => {
       expect(requiredToggle.textContent).toContain("*");
       const optionalToggle = screen.getByTestId("section-toggle-decisionDrivers");
       expect(optionalToggle.textContent).not.toContain("*");
+    });
+
+    it("renders the full narrative order end to end: Context and Problem Statement, then Decision Drivers, then the Options group, then Decision Outcome (with nested Consequences/Confirmation), then More Information, then Additional Content, then the Relations editor (4.1, 4.2, 4.3, 4.4)", async () => {
+      const { id } = await seedAdr("Full Narrative Order ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // A single ordered sequence spanning every remaining section group, proving
+      // the full relative order rather than just the pairwise pieces each prior
+      // task (4.1-4.3) verified in isolation.
+      const orderedTestIds = [
+        "context-and-problem-statement-textarea", // 4.1: Context and Problem Statement
+        "decision-drivers-textarea", // 4.1: Decision Drivers, immediately adjacent to Context
+        "section-toggle-options", // 4.2: structured Options group, its own cluster
+        "decision-outcome-textarea", // 4.3: Decision Outcome group begins
+        "consequences-textarea", // 4.3: nested inside the same Decision Outcome group
+        "confirmation-textarea", // 4.3: nested inside the same Decision Outcome group
+        "more-information-textarea", // 4.4: supplementary, after all three narrative groups
+        "additional-content-textarea", // 4.4: supplementary
+        "relations-editor", // 4.4: supplementary, last
+      ];
+
+      const positions = orderedTestIds.map((testId) =>
+        document.body.innerHTML.indexOf(`data-testid="${testId}"`)
+      );
+      positions.forEach((position, index) => {
+        expect(position, `expected "${orderedTestIds[index]}" to be present in the DOM`).toBeGreaterThanOrEqual(0);
+      });
+      for (let i = 1; i < positions.length; i++) {
+        expect(
+          positions[i],
+          `expected "${orderedTestIds[i]}" to appear after "${orderedTestIds[i - 1]}"`
+        ).toBeGreaterThan(positions[i - 1]);
+      }
     });
 
     it("renders Consequences and Confirmation inside the Decision Outcome section's body, each with its own visible label, instead of as independent top-level sections", async () => {
@@ -719,6 +756,96 @@ describe("AdrEditor", () => {
       expect(refetched.adr.prosAndConsOfTheOptions).toBe(
         "**Option One**\n* Good, because Fast\n* Bad, because Expensive\n\n**Option Two**\n* Good, because Cheap"
       );
+    });
+
+    it("preserves the canonical MADR section order in the saved file regardless of the on-screen fill order or the on-screen section order (4.5)", async () => {
+      const { id } = await seedAdr("Canonical Order ADR", "Original context.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+
+      // Deliberately fill fields through the UI out of both the on-screen visual
+      // order (Context, Drivers, Options, Decision Outcome, More Information) and
+      // the canonical MADR file order (Context, Drivers, Considered Options,
+      // Decision Outcome, Consequences, Confirmation, Pros and Cons of the
+      // Options, More Information) -- More Information and an option row's
+      // pros/cons (which serialize into a section canonically positioned *after*
+      // Confirmation) are filled in before the earlier canonical sections, to
+      // prove the saved order is driven by canonical MADR_SECTIONS metadata, not
+      // by fill order or DOM/render order.
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      fireEvent.change(screen.getByTestId("more-information-textarea"), {
+        target: { value: "More info filled first." },
+      });
+
+      fireEvent.click(screen.getByTestId("section-toggle-options"));
+      fireEvent.click(screen.getByTestId("add-option-button"));
+      const descriptionInput = document.querySelector(
+        '[data-testid^="option-description-input-"]'
+      ) as HTMLInputElement;
+      const prosTextarea = document.querySelector(
+        '[data-testid^="option-pros-textarea-"]'
+      ) as HTMLTextAreaElement;
+      fireEvent.change(descriptionInput, { target: { value: "Option One" } });
+      fireEvent.change(prosTextarea, { target: { value: "Good stuff" } });
+
+      fireEvent.change(screen.getByTestId("confirmation-textarea"), {
+        target: { value: "Confirmed via review." },
+      });
+      fireEvent.change(screen.getByTestId("decision-outcome-textarea"), {
+        target: { value: "We decided Y." },
+      });
+      fireEvent.change(screen.getByTestId("decision-drivers-textarea"), {
+        target: { value: "Driver content." },
+      });
+      fireEvent.change(screen.getByTestId("context-and-problem-statement-textarea"), {
+        target: { value: "Filled last." },
+      });
+
+      fireEvent.click(screen.getByTestId("save-button"));
+      await waitFor(() => expect(screen.getByTestId("save-success-message")).toBeInTheDocument());
+
+      const refetched = await client.getAdr(id);
+      if (!refetched.ok) throw new Error("expected getAdr to succeed");
+
+      // Read the real saved markdown file straight off disk (bypassing the API's
+      // AdrSections-object response, which has no positional/ordering concept of
+      // its own) to verify the physical heading order in the persisted file.
+      const raw = await readFile(join(repoPath, refetched.adr.path), "utf8");
+
+      const canonicalHeadings = [
+        "## Context and Problem Statement",
+        "## Decision Drivers",
+        "## Considered Options",
+        "## Decision Outcome",
+        "### Consequences",
+        "### Confirmation",
+        "## Pros and Cons of the Options",
+        "## More Information",
+      ];
+      const headingPositions = canonicalHeadings.map((heading) => raw.indexOf(heading));
+      headingPositions.forEach((position, index) => {
+        expect(position, `expected to find heading "${canonicalHeadings[index]}" in the saved file`).toBeGreaterThanOrEqual(0);
+      });
+      for (let i = 1; i < headingPositions.length; i++) {
+        expect(
+          headingPositions[i],
+          `expected "${canonicalHeadings[i]}" to appear after "${canonicalHeadings[i - 1]}" in the saved file`
+        ).toBeGreaterThan(headingPositions[i - 1]);
+      }
+
+      // Spot-check the content itself round-tripped into the right sections,
+      // not just that the headings landed in the right order.
+      expect(raw).toContain("Filled last.");
+      expect(raw).toContain("Driver content.");
+      expect(raw).toContain("We decided Y.");
+      expect(raw).toContain("Confirmed via review.");
+      expect(raw).toContain("More info filled first.");
+      expect(raw).toContain("* Option One");
+      expect(raw).toContain("**Option One**");
+      expect(raw).toContain("* Good, because Good stuff");
     });
 
     it("shows missing-fields-message when a required section is cleared, without discarding the draft", async () => {
