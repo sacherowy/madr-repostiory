@@ -20,7 +20,7 @@
   - _Depends: 1.1_
 
 - [ ] 2. Structured options editor
-- [ ] 2.1 (P) Implement the option row markdown mapping
+- [x] 2.1 (P) Implement the option row markdown mapping
   - Define the option-row shape (description, pros, cons) and the bullet/heading markdown grammar for the two existing content fields
   - Implement parsing existing content into rows and serializing rows back into that markdown grammar, excluding rows that are entirely blank
   - Ensure parsing never throws on content that doesn't match the grammar, degrading to a best-effort row set instead
