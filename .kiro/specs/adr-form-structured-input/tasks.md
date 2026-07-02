@@ -74,7 +74,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 5.1_
   - _Boundary: EditAdrForm_
 
-- [ ] 4.4 Reorder the remaining sections into narrative groups
+- [x] 4.4 Reorder the remaining sections into narrative groups
   - Position Decision Drivers immediately adjacent to Context and Problem Statement, the structured Options group as its own cluster, the Decision Outcome group (with its nested content) as one uninterrupted cluster, and More Information/Additional Content/Relations last
   - Confirm the saved content's section order is unaffected by this on-screen reordering
   - Update the existing edit-form test suite for the new visual ordering where any layout-order assertions exist
