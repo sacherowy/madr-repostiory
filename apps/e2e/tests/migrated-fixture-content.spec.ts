@@ -37,6 +37,21 @@ const SECTION_TESTID_KEYS = [
 ];
 
 /**
+ * Editor-side subset of SECTION_TESTID_KEYS: excludes "considered-options"
+ * and "pros-and-cons-of-the-options", which (post adr-form-structured-input)
+ * no longer render as plain `${key}-textarea` fields in EditAdrForm -- they
+ * were replaced by the row-based OptionsEditor (a "Considered Options"
+ * CollapsibleSection containing zero-or-more option rows, each with its own
+ * description/pros/cons fields, rather than one flat textarea per key). The
+ * history-viewer loop below is unaffected and still checks all 8 keys, since
+ * HistoryTimeline still renders one `${key}-block` per canonical
+ * MADR_SECTIONS entry unconditionally.
+ */
+const EDITOR_SECTION_TESTID_KEYS = SECTION_TESTID_KEYS.filter(
+  (key) => key !== "considered-options" && key !== "pros-and-cons-of-the-options",
+);
+
+/**
  * Commit a raw, migrated-style ADR file directly into the shared e2e repo,
  * bypassing the API, whose body is the given raw Markdown content verbatim.
  * Mirrors migrated-fixture-title.spec.ts's commitMigratedFixture but accepts
@@ -102,9 +117,16 @@ test("displays the migrated example fixture's non-MADR content consistently as c
   await page.getByTestId(`adr-select-${migratedId}`).click();
   await expect(page.getByTestId("adr-editor-edit")).toBeVisible();
 
-  for (const key of SECTION_TESTID_KEYS) {
+  for (const key of EDITOR_SECTION_TESTID_KEYS) {
     await expect(page.getByTestId(`${key}-textarea`)).toHaveValue("");
   }
+
+  // Considered Options / Pros and Cons of the Options are excluded from the
+  // loop above -- they're no longer plain textareas, but the row-based
+  // OptionsEditor. Confirm equivalent coverage (Options-derived content is
+  // really empty in the editor UI) by asserting zero option rows are
+  // rendered when the ADR has no considered options.
+  await expect(page.locator('[data-testid^="option-description-input-"]')).toHaveCount(0);
 
   const editorAdditionalContent = await page
     .getByTestId("additional-content-textarea")
