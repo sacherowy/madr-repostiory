@@ -9,7 +9,7 @@
   - _Requirements: 2.5, 2.6, 2.7_
   - _Boundary: people.ts_
 
-- [ ] 1.2 (P) Implement the People row editor component
+- [x] 1.2 (P) Implement the People row editor component
   - Render one row per person with a name field and a role field restricted to the fixed role set
   - Support adding a new row and removing any existing row by its own identity (not position)
   - Assign stable, distinct identifiers to every row's fields and buttons for automated interaction
