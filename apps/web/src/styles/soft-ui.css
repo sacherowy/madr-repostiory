@@ -216,3 +216,64 @@
     transition: none;
   }
 }
+
+/* -------------------------------------------------------------------------
+   People / Options row editors (adr-form-structured-input).
+   Row layout for PeopleEditor's name+role rows and OptionsEditor's
+   description+pros+cons rows. Reuses the existing .field/.field__input/.btn
+   primitives from base.css and only the design tokens already defined in
+   tokens.css (--line, --surface, --r-md) — no new tokens are introduced.
+   Each row is grouped into a single bordered, surface-tinted unit (mirroring
+   the .card treatment) so the row reads as one aligned block rather than a
+   loose cluster of independent fields.
+   ------------------------------------------------------------------------- */
+
+/* Outer list wrapper — vertical rhythm between rows, matching the
+   .collapsible-section margin-bottom used for other top-level groups. */
+.people-editor,
+.options-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Row container — groups the row's fields and remove button into one
+   bordered, surface-tinted unit. Wraps on narrow viewports rather than
+   overflowing. */
+.people-editor__row,
+.options-editor__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+/* Fields inside a row grow/shrink evenly and lose the standalone .field
+   bottom margin, since row spacing is handled by the row's own gap. */
+.people-editor__row .field,
+.options-editor__row .field {
+  flex: 1 1 160px;
+  margin-bottom: 0;
+}
+
+/* Options rows hold multi-line pros/cons textareas alongside the single-line
+   description input, so their fields align to the top of the row instead of
+   the bottom (which would otherwise misalign against the taller textareas). */
+.options-editor__row {
+  align-items: flex-start;
+}
+
+/* Remove button stays pinned to its row, never stretching with the fields. */
+.people-editor__row .btn,
+.options-editor__row .btn {
+  flex-shrink: 0;
+}
+
+.options-editor__row .btn {
+  align-self: flex-start;
+}
