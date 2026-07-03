@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Concept A — Decision form + short-description generation</title>
+<style>
+:root{
+  --teal-50:#ECF8F5;--teal-100:#CFEDE7;--teal-200:#A3DCD2;--teal-300:#6AC6B8;
+  --teal-400:#2BAB9A;--teal-500:#0E9E8E;--teal-600:#0B8277;--teal-700:#0A6A61;--teal-800:#08534C;
+  --ink-900:#17211F;--ink-700:#36413E;--ink-500:#5E6A66;--ink-300:#9BA5A1;
+  --line:#E7EDEB;--line-strong:#D6DFDC;--surface:#F4FAF8;
+  --decided:#3A9D4A;--decided-bg:#E7F5E9;--discuss:#5063CE;--discuss-bg:#ECEEFB;
+  --retired:#C98410;--retired-bg:#FBEFD9;--replaced:#74807B;--replaced-bg:#EDF1EF;
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;--font-body:"Hanken Grotesk",system-ui,sans-serif;
+  --sh-card:0 1px 2px rgba(23,33,31,.05),0 16px 40px -24px rgba(6,60,55,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#DFE8E5;font-family:var(--font-body);color:var(--ink-900);padding:28px;display:flex;flex-direction:column;gap:34px;align-items:center}
+.caption{width:1280px;font-family:var(--font-display);font-weight:700;font-size:1rem;color:#33403C;margin-bottom:-22px}
+.caption small{display:block;font-family:var(--font-body);font-weight:400;color:#5E6A66;margin-top:3px}
+.screen{width:1280px;height:880px;border-radius:16px;overflow:hidden;background:#FBFDFC;box-shadow:0 24px 60px -28px rgba(6,60,55,.45);border:1px solid #cdd8d4;display:flex;flex-direction:column}
+
+/* top nav (same as concept A) */
+.nav{height:62px;flex:0 0 auto;display:flex;align-items:center;gap:26px;padding:0 30px;background:#fff;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--font-display);font-weight:800;font-size:1.12rem;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.brand .logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,var(--teal-400),var(--teal-700));display:grid;place-items:center;color:#fff;font-size:.85rem}
+.nav a{color:var(--ink-500);text-decoration:none;font-weight:600;font-size:.93rem}
+.spacer{flex:1}
+.ava{width:32px;height:32px;border-radius:999px;background:#E4EEF9;color:#3A5A80;display:grid;place-items:center;font-weight:700;font-size:.8rem;border:1px solid #cfdcea}
+.navnote{font-size:.83rem;color:var(--ink-300)}
+
+/* form layout */
+.wrap{flex:1;display:grid;grid-template-columns:1fr 340px;gap:0;overflow:hidden}
+.formcol{padding:26px 44px 0 54px;overflow:hidden}
+.crumbs{font-size:.85rem;color:var(--ink-300);margin-bottom:12px}
+.crumbs b{color:var(--teal-700);font-weight:600}
+.titlein{width:100%;border:none;background:transparent;font-family:var(--font-display);font-size:1.65rem;font-weight:800;letter-spacing:-.02em;color:var(--ink-900);padding:4px 0 10px;border-bottom:2px solid var(--line)}
+.titlein::placeholder{color:var(--ink-300);font-weight:700}
+.metarow{display:flex;align-items:center;gap:9px;margin:14px 0 20px;flex-wrap:wrap}
+.mpill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:6px 13px;font-size:.84rem;font-weight:600;color:var(--ink-700);cursor:pointer}
+.mpill small{color:var(--ink-300);font-weight:500}
+.mpill.ghost{border-style:dashed;color:var(--ink-300);background:transparent}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg span{padding:5px 13px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--ink-300);cursor:pointer}
+.seg span.on-dis{background:var(--discuss-bg);color:#3a40a0}
+.seg span.on-dec{background:var(--decided-bg);color:#1d6b2a}
+.face{width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;font-size:.58rem;font-weight:700;border:2px solid #fff}
+.f1{background:#E4EEF9;color:#3A5A80}.f2{background:#F9E9E4;color:#8a4a30;margin-left:-8px}
+
+/* prompt cards */
+.pcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(23,33,31,.04)}
+.pcard h3{margin:0 0 4px;font-family:var(--font-display);font-size:1rem;display:flex;align-items:center;gap:9px}
+.pcard h3 .madr{font-family:var(--font-body);font-weight:500;font-size:.7rem;color:var(--ink-300);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.pcard h3 .opt{margin-left:auto;font-size:.72rem;font-weight:600;color:var(--ink-300)}
+.pcard .hint{font-size:.83rem;color:var(--ink-500);margin:0 0 10px;line-height:1.4}
+.fake-ta{border:1px solid var(--line-strong);border-radius:10px;background:#FDFEFE;padding:11px 14px;font-size:.9rem;color:var(--ink-700);line-height:1.55;min-height:52px}
+.fake-ta.empty{color:var(--ink-300)}
+.driverline{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:.9rem;color:var(--ink-700)}
+.driverline .d{width:7px;height:7px;border-radius:99px;background:var(--teal-400);flex:0 0 auto}
+.adddrv{color:var(--teal-700);font-weight:700;font-size:.84rem;padding:4px 0}
+/* option editor cards */
+.optgrid{display:flex;gap:12px}
+.opted{flex:1;border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:#FDFEFE;font-size:.85rem}
+.opted.win{border-color:var(--teal-400);background:linear-gradient(180deg,#fff,var(--teal-50));box-shadow:0 10px 26px -16px rgba(14,158,142,.5)}
+.opted b{display:block;font-size:.92rem;margin-bottom:7px}
+.pcline{display:flex;gap:7px;color:var(--ink-500);line-height:1.4;margin:4px 0}
+.choose{margin-top:9px;display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:800;border-radius:999px;padding:4px 11px;cursor:pointer}
+.choose.on{background:var(--teal-600);color:#fff}
+.choose.off{background:#fff;border:1px solid var(--line-strong);color:var(--ink-500)}
+.addoptcard{border:2px dashed var(--line-strong);border-radius:12px;display:grid;place-items:center;color:var(--ink-300);font-weight:700;font-size:.84rem;min-width:120px}
+.outcome-helper{margin-top:9px;font-size:.78rem;color:var(--ink-300)}
+.outcome-helper b{color:var(--teal-700)}
+.formfoot{display:flex;align-items:center;gap:12px;padding:14px 0 20px}
+.btn{border-radius:12px;padding:11px 20px;font-weight:700;font-size:.92rem;cursor:pointer;border:1px solid transparent;font-family:var(--font-body)}
+.btn-pri{background:linear-gradient(180deg,var(--teal-400),var(--teal-600));color:#fff;box-shadow:0 8px 20px -8px rgba(14,158,142,.6)}
+.btn-ghost{background:#fff;border-color:var(--line-strong);color:var(--ink-700)}
+.savehint{margin-left:auto;font-size:.79rem;color:var(--ink-300)}
+
+/* right rail: live preview + summary */
+.prevrail{border-left:1px solid var(--line);background:#F7FBFA;padding:24px 22px;overflow:hidden}
+.prevrail h4{margin:0 0 10px;font-family:var(--font-display);font-size:.9rem}
+.prevrail .why{font-size:.78rem;color:var(--ink-500);line-height:1.5;margin:8px 0 18px}
+.feedprev{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 17px;box-shadow:var(--sh-card)}
+.cardtop{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.72rem;border-radius:999px;padding:2px 10px}
+.pill .dot{width:6px;height:6px;border-radius:999px}
+.p-dec{color:#1d6b2a;background:var(--decided-bg)}.p-dec .dot{background:var(--decided)}
+.p-dis{color:#3a40a0;background:var(--discuss-bg)}.p-dis .dot{background:var(--discuss)}
+.topic{font-size:.72rem;font-weight:600;color:var(--teal-700);background:var(--teal-50);border-radius:999px;padding:2px 9px}
+.feedprev h3{margin:0 0 6px;font-family:var(--font-display);font-size:.98rem;line-height:1.3}
+.feedprev p{margin:0;color:var(--ink-500);font-size:.83rem;line-height:1.45}
+.feedprev p b{color:var(--ink-700)}
+.feedprev .skel{height:10px;border-radius:6px;background:linear-gradient(90deg,var(--line),#F1F5F4,var(--line));margin:5px 0}
+.livechip{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:800;color:var(--teal-700);background:var(--teal-100);border-radius:999px;padding:3px 10px;margin-bottom:10px}
+/* summary control */
+.sumbox{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 17px}
+.sumbox h4{margin:0 0 8px}
+.sumsrc{display:flex;align-items:center;gap:7px;font-size:.72rem;font-weight:800;letter-spacing:.03em;color:#7a5c9e;background:#F1EAFA;border:1px solid #E2D4F5;border-radius:999px;padding:3px 10px;width:fit-content;margin-bottom:8px}
+.sumsrc.auto{color:var(--teal-700);background:var(--teal-50);border-color:var(--teal-200)}
+.sumtext{font-size:.86rem;color:var(--ink-700);line-height:1.5;border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;background:#FDFEFE}
+.sumbtns{display:flex;gap:8px;margin-top:10px}
+.sbtn{flex:1;text-align:center;border-radius:9px;padding:7px 0;font-weight:700;font-size:.79rem;cursor:pointer}
+.sbtn.pri{background:var(--teal-700);color:#fff}
+.sbtn.gho{background:#fff;border:1px solid var(--line-strong);color:var(--ink-700)}
+/* fallback ladder */
+.ladder{margin-top:18px;font-size:.78rem;color:var(--ink-500)}
+.ladder h5{margin:0 0 8px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-300)}
+.lrow{display:flex;gap:9px;padding:7px 10px;border-radius:9px;line-height:1.4;margin-bottom:5px;border:1px solid transparent}
+.lrow.on{background:#fff;border-color:var(--line);box-shadow:0 1px 2px rgba(23,33,31,.05)}
+.lrow .n{flex:0 0 18px;height:18px;border-radius:99px;background:var(--surface);border:1px solid var(--line-strong);display:grid;place-items:center;font-size:.66rem;font-weight:800;color:var(--ink-500)}
+.lrow b{color:var(--ink-700)}
+.lrow .tag{margin-left:auto;font-size:.66rem;font-weight:800;color:var(--ink-300);flex:0 0 auto}
+</style></head><body>
+
+<div class="caption">Concept A — starting a decision (empty form)
+  <small>Not a wizard: one friendly page in the article’s voice. Only the title and “why” are needed to publish an “In discussion” decision — every other section is optional and can grow over time. The right rail shows, live, how the card will appear on the feed.</small>
+</div>
+<div class="screen">
+  <div class="nav">
+    <div class="brand"><span class="logo">◆</span>Decisions</div>
+    <a href="#">Home</a><a href="#">Browse topics</a><a href="#">People</a>
+    <div class="spacer"></div><span class="navnote">Draft — only you can see it</span><div class="ava">MK</div>
+  </div>
+  <div class="wrap">
+    <div class="formcol">
+      <div class="crumbs">Home / <b>Start a decision</b></div>
+      <input class="titlein" placeholder="What are you deciding? — e.g. “Which CRM should replace the legacy one?”"/>
+      <div class="metarow">
+        <span class="mpill">🧩 Topic: <b>Integration</b> <small>▾</small></span>
+        <span class="seg"><span class="on-dis">In discussion</span><span>Decided</span><span>Retired</span></span>
+        <span class="mpill"><span class="face f1" style="margin-right:2px">MK</span>Owner: you</span>
+        <span class="mpill ghost">+ Ask people for input</span>
+        <span class="mpill ghost">+ Tags</span>
+      </div>
+      <div class="pcard">
+        <h3>Why does this need a decision? <span class="madr">saved as MADR: Context and Problem Statement</span></h3>
+        <p class="hint">Two or three sentences, in your own words. What’s the situation, and what breaks if we don’t decide?</p>
+        <div class="fake-ta empty">e.g. “Sales runs on a 2014 CRM that IT can no longer patch. Marketing wants automation it can’t do. We need to pick a way forward before the Q4 contract renewal…”</div>
+      </div>
+      <div class="pcard">
+        <h3>What matters in this decision? <span class="madr">MADR: Decision Drivers</span> <span class="opt">optional</span></h3>
+        <p class="hint">The yardsticks you’ll judge options by — cost, time, skills, compliance…</p>
+        <div class="driverline"><span class="d"></span>Must integrate with the billing platform</div>
+        <div class="adddrv">+ Add another thing that matters</div>
+      </div>
+      <div class="pcard">
+        <h3>Options on the table <span class="madr">MADR: Considered Options + Pros and Cons</span> <span class="opt">optional</span></h3>
+        <p class="hint">Add options as they come up — even ones you’ll probably reject. You can mark the winner later.</p>
+        <div class="optgrid">
+          <div class="opted"><b>Option 1 — give it a short name</b>
+            <div class="pcline">👍 <span style="color:var(--ink-300)">What speaks for it…</span></div>
+            <div class="pcline">👎 <span style="color:var(--ink-300)">What speaks against it…</span></div>
+            <span class="choose off">Mark as chosen</span>
+          </div>
+          <div class="addoptcard">+ Add an option</div>
+        </div>
+      </div>
+      <div class="pcard" style="opacity:.62">
+        <h3>What did you decide? <span class="madr">MADR: Decision Outcome</span></h3>
+        <p class="hint">Locked until you mark an option as chosen or switch the status to “Decided” — no pressure while the discussion is open.</p>
+      </div>
+      <div class="formfoot">
+        <button class="btn btn-pri">Publish to the feed</button>
+        <button class="btn btn-ghost">Keep as draft</button>
+        <span class="savehint">Autosaved just now · versions are kept for you — nothing is ever lost</span>
+      </div>
+    </div>
+    <div class="prevrail">
+      <h4>How it will appear on the feed</h4>
+      <span class="livechip">● LIVE PREVIEW — updates as you type</span>
+      <div class="feedprev">
+        <div class="cardtop"><span class="pill p-dis"><span class="dot"></span>In discussion</span><span class="topic">Integration</span></div>
+        <h3 style="color:var(--ink-300)">Your title will appear here</h3>
+        <div class="skel" style="width:92%"></div><div class="skel" style="width:70%"></div>
+      </div>
+      <p class="why">The <b>short description writes itself</b> — while the decision is in discussion it’s built from your options (“Weighing A against B…”); once you decide, it’s built from your outcome (“We chose X because…”). You can override it with your own wording at any time.</p>
+    </div>
+  </div>
+</div>
+
+<div class="caption" style="margin-top:6px">Concept A — editing a decided record + how the short description is made
+  <small>“Mark as chosen” unlocks and pre-fills the outcome; the right rail shows the summary control with its three sources: your own wording wins, otherwise it’s derived from the outcome, optionally polished by AI (suggestion only — never saved without your OK).</small>
+</div>
+<div class="screen">
+  <div class="nav">
+    <div class="brand"><span class="logo">◆</span>Decisions</div>
+    <a href="#">Home</a><a href="#">Browse topics</a><a href="#">People</a>
+    <div class="spacer"></div><span class="navnote">Editing · every save keeps the previous version</span><div class="ava">MK</div>
+  </div>
+  <div class="wrap">
+    <div class="formcol">
+      <div class="crumbs">Topics / <b>Data platform</b> / Editing</div>
+      <input class="titlein" value="Use PostgreSQL for the customer data platform"/>
+      <div class="metarow">
+        <span class="mpill">🗄️ Topic: <b>Data platform</b> <small>▾</small></span>
+        <span class="seg"><span>In discussion</span><span class="on-dec">Decided ✓</span><span>Retired</span></span>
+        <span class="mpill"><span class="face f1" style="margin-right:2px">MK</span>Owner: Marta</span>
+        <span class="mpill"><span class="face f2" style="margin-right:2px">JT</span>+1 gave input</span>
+        <span class="mpill">🏷️ databases · reporting</span>
+      </div>
+      <div class="pcard">
+        <h3>Options on the table <span class="madr">MADR: Considered Options + Pros and Cons</span></h3>
+        <div class="optgrid">
+          <div class="opted win"><b>PostgreSQL</b>
+            <div class="pcline">👍 Strong reporting, team knows it</div>
+            <div class="pcline">👍 Proven audit tooling</div>
+            <span class="choose on">✓ Chosen — fills in the outcome below</span>
+          </div>
+          <div class="opted"><b>MongoDB</b>
+            <div class="pcline">👍 Flexible schema</div>
+            <div class="pcline">👎 Weak cross-entity reporting</div>
+            <span class="choose off">Mark as chosen</span>
+          </div>
+          <div class="opted"><b>DynamoDB</b>
+            <div class="pcline">👍 Lowest ops burden</div>
+            <div class="pcline">👎 Locks reporting into exports</div>
+            <span class="choose off">Mark as chosen</span>
+          </div>
+        </div>
+      </div>
+      <div class="pcard">
+        <h3>What did you decide, and why? <span class="madr">MADR: Decision Outcome</span></h3>
+        <div class="fake-ta"><b>Chosen option: PostgreSQL</b>, because our reporting needs relational queries and we already have the skills in-house. MongoDB and DynamoDB are documented above for the record.</div>
+        <div class="outcome-helper">✍️ Pre-filled from <b>“✓ Chosen”</b> in the canonical MADR form (“Chosen option: …, because …”) — edit it freely; this exact text is what the short description is derived from.</div>
+      </div>
+      <div class="pcard">
+        <h3>What this means for us <span class="madr">MADR: Consequences</span> <span class="opt">optional</span></h3>
+        <div class="fake-ta">Good: reporting can self-serve; audit trail is straightforward. Watch out: activity events may outgrow a single instance — revisit archiving within 12 months.</div>
+      </div>
+      <div class="formfoot">
+        <button class="btn btn-pri">Save changes</button>
+        <button class="btn btn-ghost">Cancel</button>
+        <span class="savehint">Saving records who changed what — visible later in “The story so far”</span>
+      </div>
+    </div>
+    <div class="prevrail">
+      <h4>How it will appear on the feed</h4>
+      <span class="livechip">● LIVE PREVIEW</span>
+      <div class="feedprev">
+        <div class="cardtop"><span class="pill p-dec"><span class="dot"></span>Decided</span><span class="topic">Data platform</span></div>
+        <h3>Use PostgreSQL for the customer data platform</h3>
+        <p>We chose <b>PostgreSQL</b> over MongoDB and DynamoDB — mainly for reporting flexibility and in-house skills.</p>
+      </div>
+      <div class="sumbox">
+        <h4>Short description</h4>
+        <span class="sumsrc">✨ AI-polished from your outcome — suggestion only</span>
+        <div class="sumtext">We chose <b>PostgreSQL</b> over MongoDB and DynamoDB — mainly for reporting flexibility and in-house skills.</div>
+        <div class="sumbtns"><span class="sbtn pri">Use this</span><span class="sbtn gho">Write my own</span></div>
+      </div>
+      <div class="ladder">
+        <h5>Where it comes from — first match wins</h5>
+        <div class="lrow"><span class="n">1</span><div><b>Your own wording</b> — saved with the record, always wins</div><span class="tag">GIT</span></div>
+        <div class="lrow"><span class="n">2</span><div><b>Built from the record</b> — outcome’s “Chosen option …, because …”, or the options while in discussion</div><span class="tag">INSTANT</span></div>
+        <div class="lrow on"><span class="n">3</span><div><b>AI polish</b> (optional) — one sentence from title + context + outcome, cached per version, shown as ✨ suggestion</div><span class="tag">CACHED</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
