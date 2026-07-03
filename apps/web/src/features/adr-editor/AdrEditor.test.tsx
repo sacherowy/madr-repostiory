@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { simpleGit } from "simple-git";
@@ -8,12 +8,104 @@ import type { FastifyInstance } from "fastify";
 // Same relative-path device as apps/web/src/api/client.test.ts (task 4.1):
 // @adr/api has no exports field, so it's reached via a relative path into its
 // src/ rather than a bare specifier.
+import type { Adr, UpdateAdrRequest } from "@adr/shared";
 import { buildContainer, type Container } from "../../../../api/src/container.js";
 import { buildServer } from "../../../../api/src/server.js";
 import { createApiClient, type ApiClient } from "../../api/client.js";
 import { AdrEditor, firstLine } from "./AdrEditor.js";
 
 const AUTHOR = "Test Author <test@example.com>";
+
+function notImplemented(): never {
+  throw new Error("not implemented in this fake ApiClient");
+}
+
+/**
+ * Minimal in-memory `ApiClient` double, used only by the load test below.
+ * `options.ts` (out of this task's boundary) serializes
+ * `prosAndConsOfTheOptions` with a `**{description}**` bold-text line per
+ * option rather than an ATX heading, specifically so it does not collide
+ * with `packages/core`'s `splitSections` (see research.md's "`### {description}`
+ * heading replaced with `**{description}**` bold text" amendment) -- an
+ * earlier `### {description}` grammar used to get diverted into
+ * `additionalContent` by `splitSections`'s global heading scan on a real
+ * git-backed re-read. That collision is fixed now, but this fixture-based
+ * double is kept here too (independent of that fix) to isolate the load-only
+ * assertions below from needing a full seed-and-refetch round trip through
+ * the real backend, orthogonal to `EditAdrForm`'s own load/save row-wiring
+ * this task owns (Requirements 3.4, 3.5).
+ */
+function createFakeApiClient(initial: Adr): ApiClient {
+  let current = initial;
+  return {
+    createAdr: notImplemented,
+    async getAdr(id: string) {
+      if (id !== current.id) return { ok: false, status: 404 };
+      return { ok: true, adr: current };
+    },
+    async updateAdr(id: string, body: UpdateAdrRequest) {
+      if (id !== current.id) return { ok: false, status: 404, kind: "notFound" };
+      current = {
+        ...current,
+        title: body.title,
+        status: body.status,
+        date: body.date,
+        decisionMakers: body.decisionMakers,
+        consulted: body.consulted,
+        informed: body.informed,
+        tags: body.tags,
+        relations: body.relations,
+        contextAndProblemStatement: body.contextAndProblemStatement,
+        decisionDrivers: body.decisionDrivers,
+        consideredOptions: body.consideredOptions,
+        decisionOutcome: body.decisionOutcome,
+        consequences: body.consequences,
+        confirmation: body.confirmation,
+        prosAndConsOfTheOptions: body.prosAndConsOfTheOptions,
+        moreInformation: body.moreInformation,
+        additionalContent: body.additionalContent,
+        blobSha: `${current.blobSha}-1`,
+      };
+      return { ok: true, adr: current };
+    },
+    getRelations: notImplemented,
+    createFolder: notImplemented,
+    moveAdr: notImplemented,
+    getTree: notImplemented,
+    getHistory: notImplemented,
+    getVersionAt: notImplemented,
+    getVersionDiff: notImplemented,
+    compareAdrs: notImplemented,
+    search: notImplemented,
+    getSimilar: notImplemented,
+  };
+}
+
+function makeFakeAdrFixture(overrides: Partial<Adr>): Adr {
+  return {
+    id: "adr-fake-options",
+    title: "Options ADR",
+    status: "accepted",
+    date: "2026-01-01",
+    tags: [],
+    decisionMakers: [],
+    consulted: [],
+    informed: [],
+    relations: [],
+    contextAndProblemStatement: "Body content.",
+    decisionDrivers: "",
+    consideredOptions: "",
+    decisionOutcome: "Seed decision outcome.",
+    consequences: "",
+    confirmation: "",
+    prosAndConsOfTheOptions: "",
+    moreInformation: "",
+    additionalContent: "",
+    path: "decisions/adr-fake-options-adr.md",
+    blobSha: "fake-sha-0",
+    ...overrides,
+  };
+}
 
 async function initRepo(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "adr-editor-"));
@@ -168,7 +260,7 @@ describe("AdrEditor", () => {
       );
     });
 
-    it("renders all eight MADR section textareas in canonical order plus the additional-content textarea, with required ones marked", async () => {
+    it("renders the six remaining generic MADR section textareas in canonical order plus the additional-content textarea, with required ones marked", async () => {
       const { id } = await seedAdr("Sectioned ADR", "Context content.");
 
       render(
@@ -176,19 +268,21 @@ describe("AdrEditor", () => {
       );
       await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
 
+      // consideredOptions/prosAndConsOfTheOptions are no longer rendered as generic
+      // textareas — they're merged into the structured Options editor (asserted below).
       const expectedOrder = [
         "context-and-problem-statement-textarea",
         "decision-drivers-textarea",
-        "considered-options-textarea",
         "decision-outcome-textarea",
         "consequences-textarea",
         "confirmation-textarea",
-        "pros-and-cons-of-the-options-textarea",
         "more-information-textarea",
       ];
       for (const testId of expectedOrder) {
         expect(screen.getByTestId(testId)).toBeInTheDocument();
       }
+      expect(screen.queryByTestId("considered-options-textarea")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("pros-and-cons-of-the-options-textarea")).not.toBeInTheDocument();
       expect(screen.getByTestId("additional-content-textarea")).toBeInTheDocument();
 
       // canonical order: each subsequent testid appears later in the DOM than the previous one
@@ -203,11 +297,143 @@ describe("AdrEditor", () => {
       );
       expect(additionalContentPosition).toBeGreaterThan(positions[positions.length - 1]);
 
+      // The structured Options section sits between Decision Drivers and Decision Outcome.
+      const optionsTogglePosition = document.body.innerHTML.indexOf(
+        'data-testid="section-toggle-options"'
+      );
+      expect(optionsTogglePosition).toBeGreaterThan(
+        document.body.innerHTML.indexOf('data-testid="decision-drivers-textarea"')
+      );
+      expect(optionsTogglePosition).toBeLessThan(
+        document.body.innerHTML.indexOf('data-testid="decision-outcome-textarea"')
+      );
+
       // Required sections (contextAndProblemStatement, decisionOutcome) are marked with "*".
       const requiredToggle = screen.getByTestId("section-toggle-contextAndProblemStatement");
       expect(requiredToggle.textContent).toContain("*");
       const optionalToggle = screen.getByTestId("section-toggle-decisionDrivers");
       expect(optionalToggle.textContent).not.toContain("*");
+    });
+
+    it("renders the full narrative order end to end: Context and Problem Statement, then Decision Drivers, then the Options group, then Decision Outcome (with nested Consequences/Confirmation), then More Information, then Additional Content, then the Relations editor (4.1, 4.2, 4.3, 4.4)", async () => {
+      const { id } = await seedAdr("Full Narrative Order ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // A single ordered sequence spanning every remaining section group, proving
+      // the full relative order rather than just the pairwise pieces each prior
+      // task (4.1-4.3) verified in isolation.
+      const orderedTestIds = [
+        "context-and-problem-statement-textarea", // 4.1: Context and Problem Statement
+        "decision-drivers-textarea", // 4.1: Decision Drivers, immediately adjacent to Context
+        "section-toggle-options", // 4.2: structured Options group, its own cluster
+        "decision-outcome-textarea", // 4.3: Decision Outcome group begins
+        "consequences-textarea", // 4.3: nested inside the same Decision Outcome group
+        "confirmation-textarea", // 4.3: nested inside the same Decision Outcome group
+        "more-information-textarea", // 4.4: supplementary, after all three narrative groups
+        "additional-content-textarea", // 4.4: supplementary
+        "relations-editor", // 4.4: supplementary, last
+      ];
+
+      const positions = orderedTestIds.map((testId) =>
+        document.body.innerHTML.indexOf(`data-testid="${testId}"`)
+      );
+      positions.forEach((position, index) => {
+        expect(position, `expected "${orderedTestIds[index]}" to be present in the DOM`).toBeGreaterThanOrEqual(0);
+      });
+      for (let i = 1; i < positions.length; i++) {
+        expect(
+          positions[i],
+          `expected "${orderedTestIds[i]}" to appear after "${orderedTestIds[i - 1]}"`
+        ).toBeGreaterThan(positions[i - 1]);
+      }
+    });
+
+    it("renders Consequences and Confirmation inside the Decision Outcome section's body, each with its own visible label, instead of as independent top-level sections", async () => {
+      const { id } = await seedAdr("Nested Decision Outcome ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // No independent top-level toggle buttons for Consequences/Confirmation.
+      expect(screen.queryByTestId("section-toggle-consequences")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("section-toggle-confirmation")).not.toBeInTheDocument();
+
+      // Existing testids and aria-labelledby attribute values are unchanged.
+      const consequencesTextarea = screen.getByTestId("consequences-textarea");
+      const confirmationTextarea = screen.getByTestId("confirmation-textarea");
+      expect(consequencesTextarea).toHaveAttribute("aria-labelledby", "section-title-consequences");
+      expect(confirmationTextarea).toHaveAttribute("aria-labelledby", "section-title-confirmation");
+
+      // The aria-labelledby references resolve to a real element carrying the matching label text.
+      const consequencesLabel = document.getElementById("section-title-consequences");
+      const confirmationLabel = document.getElementById("section-title-confirmation");
+      expect(consequencesLabel).not.toBeNull();
+      expect(consequencesLabel?.textContent).toBe("Consequences");
+      expect(confirmationLabel).not.toBeNull();
+      expect(confirmationLabel?.textContent).toBe("Confirmation");
+
+      // Both fields live inside the same Decision Outcome collapsible body as the
+      // Decision Outcome textarea itself, forming one uninterrupted group.
+      const decisionOutcomeBody = screen
+        .getByTestId("decision-outcome-textarea")
+        .closest(".collapsible-section__body");
+      expect(decisionOutcomeBody).not.toBeNull();
+      expect(decisionOutcomeBody).toContainElement(consequencesTextarea);
+      expect(decisionOutcomeBody).toContainElement(confirmationTextarea);
+      expect(decisionOutcomeBody).toContainElement(consequencesLabel);
+      expect(decisionOutcomeBody).toContainElement(confirmationLabel);
+    });
+
+    it("hides Consequences and Confirmation together with Decision Outcome when it is collapsed, and shows all three when it is expanded", async () => {
+      const { id } = await seedAdr("Collapsible Nested Decision Outcome ADR", "Context content.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      // Decision Outcome is required, so it starts expanded; all three fields are visible together.
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute("aria-expanded", "true");
+      const decisionOutcomeBody = screen
+        .getByTestId("decision-outcome-textarea")
+        .closest(".collapsible-section__body");
+      expect(decisionOutcomeBody).not.toBeNull();
+      expect(decisionOutcomeBody).not.toHaveAttribute("hidden");
+      // Consequences/Confirmation share the *same* body element as Decision Outcome
+      // (rather than each having their own, independently toggleable body).
+      expect(screen.getByTestId("consequences-textarea").closest(".collapsible-section__body")).toBe(
+        decisionOutcomeBody
+      );
+      expect(screen.getByTestId("confirmation-textarea").closest(".collapsible-section__body")).toBe(
+        decisionOutcomeBody
+      );
+
+      fireEvent.click(screen.getByTestId("section-toggle-decisionOutcome"));
+
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute("aria-expanded", "false");
+      expect(decisionOutcomeBody).toHaveAttribute("hidden");
+      // The Consequences/Confirmation fields are still in the DOM (hidden, not removed),
+      // matching CollapsibleSection's existing hidden-not-removed contract, and their
+      // shared ancestor (the Decision Outcome body) carries the hidden attribute.
+      expect(screen.getByTestId("consequences-textarea")).toBeInTheDocument();
+      expect(screen.getByTestId("confirmation-textarea")).toBeInTheDocument();
+      expect(screen.getByTestId("consequences-textarea").closest(".collapsible-section__body")).toHaveAttribute(
+        "hidden"
+      );
+      expect(screen.getByTestId("confirmation-textarea").closest(".collapsible-section__body")).toHaveAttribute(
+        "hidden"
+      );
+
+      fireEvent.click(screen.getByTestId("section-toggle-decisionOutcome"));
+
+      expect(screen.getByTestId("section-toggle-decisionOutcome")).toHaveAttribute("aria-expanded", "true");
+      expect(decisionOutcomeBody).not.toHaveAttribute("hidden");
     });
 
     it("saves a change to one section independently of the others, persisting all nine fields", async () => {
@@ -246,7 +472,7 @@ describe("AdrEditor", () => {
       await waitFor(() => expect(screen.getByTestId("adr-editor-not-found")).toBeInTheDocument());
     });
 
-    it("loads and displays the real saved decisionMakers/consulted/informed values", async () => {
+    it("loads and displays the real saved decisionMakers/consulted/informed values as person rows", async () => {
       const created = await client.createAdr({
         title: "Participants ADR",
         folder: "decisions",
@@ -276,26 +502,69 @@ describe("AdrEditor", () => {
         />
       );
 
-      await waitFor(() => expect(screen.getByTestId("decision-makers-input")).toBeInTheDocument());
-      expect(screen.getByTestId("decision-makers-input")).toHaveValue("Alice, Bob");
-      expect(screen.getByTestId("consulted-input")).toHaveValue("Carol");
-      expect(screen.getByTestId("informed-input")).toHaveValue("Dave, Erin");
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="person-name-input-"]')
+        ).toHaveLength(5)
+      );
+
+      const nameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      const roleSelects = Array.from(
+        document.querySelectorAll('[data-testid^="person-role-select-"]')
+      ) as HTMLSelectElement[];
+
+      expect(nameInputs.map((input) => input.value)).toEqual([
+        "Alice",
+        "Bob",
+        "Carol",
+        "Dave",
+        "Erin",
+      ]);
+      expect(roleSelects.map((select) => select.value)).toEqual([
+        "Decision Maker",
+        "Decision Maker",
+        "Consulted",
+        "Informed",
+        "Informed",
+      ]);
     });
 
-    it("saves edited decisionMakers/consulted/informed and persists all three", async () => {
+    it("saves edited decisionMakers/consulted/informed rows and persists all three categories", async () => {
       const { id } = await seedAdr("Editable Participants ADR", "Body before edit.");
       const onAdrSaved = vi.fn();
 
       render(
         <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
       );
-      await waitFor(() => expect(screen.getByTestId("decision-makers-input")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId("add-person-button")).toBeInTheDocument());
 
-      fireEvent.change(screen.getByTestId("decision-makers-input"), {
-        target: { value: "Alice, Bob" },
+      const peopleToAdd = [
+        { name: "Alice", role: "Decision Maker" },
+        { name: "Bob", role: "Decision Maker" },
+        { name: "Carol", role: "Consulted" },
+        { name: "Dave", role: "Informed" },
+        { name: "Erin", role: "Informed" },
+      ];
+
+      for (let i = 0; i < peopleToAdd.length; i++) {
+        fireEvent.click(screen.getByTestId("add-person-button"));
+      }
+
+      const nameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      const roleSelects = Array.from(
+        document.querySelectorAll('[data-testid^="person-role-select-"]')
+      ) as HTMLSelectElement[];
+      expect(nameInputs).toHaveLength(5);
+
+      peopleToAdd.forEach((person, index) => {
+        fireEvent.change(nameInputs[index], { target: { value: person.name } });
+        fireEvent.change(roleSelects[index], { target: { value: person.role } });
       });
-      fireEvent.change(screen.getByTestId("consulted-input"), { target: { value: "Carol" } });
-      fireEvent.change(screen.getByTestId("informed-input"), { target: { value: "Dave, Erin" } });
+
       fireEvent.click(screen.getByTestId("save-button"));
 
       await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
@@ -309,6 +578,274 @@ describe("AdrEditor", () => {
       expect(refetched.adr.decisionMakers).toEqual(["Alice", "Bob"]);
       expect(refetched.adr.consulted).toEqual(["Carol"]);
       expect(refetched.adr.informed).toEqual(["Dave", "Erin"]);
+    });
+
+    it("excludes a blank-name person row from the saved stakeholder categories", async () => {
+      const { id } = await seedAdr("Blank Row ADR", "Body before edit.");
+      const onAdrSaved = vi.fn();
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
+      );
+      await waitFor(() => expect(screen.getByTestId("add-person-button")).toBeInTheDocument());
+
+      // Add one row with a name, and one blank row that should be excluded on save.
+      fireEvent.click(screen.getByTestId("add-person-button"));
+      fireEvent.click(screen.getByTestId("add-person-button"));
+
+      const nameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      expect(nameInputs).toHaveLength(2);
+      fireEvent.change(nameInputs[0], { target: { value: "Alice" } });
+      // nameInputs[1] is left blank on purpose.
+
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      const savedAdr = onAdrSaved.mock.calls[0][0];
+      expect(savedAdr.decisionMakers).toEqual(["Alice"]);
+      expect(savedAdr.consulted).toEqual([]);
+      expect(savedAdr.informed).toEqual([]);
+    });
+
+    it("removes a person row by id when its remove button is clicked", async () => {
+      const created = await client.createAdr({
+        title: "Removable Participants ADR",
+        folder: "decisions",
+        author: AUTHOR,
+      });
+      if (!created.ok) throw new Error("fixture setup: createAdr unexpectedly failed");
+      const saved = await client.updateAdr(created.adr.id, {
+        title: "Removable Participants ADR",
+        status: "accepted",
+        date: "2026-01-01",
+        decisionMakers: ["Alice", "Bob"],
+        consulted: [],
+        informed: [],
+        ...sectionsPayload("Body content.", "Seed decision outcome."),
+        author: AUTHOR,
+        baseBlobSha: created.adr.blobSha,
+      });
+      if (!saved.ok) throw new Error("fixture setup: updateAdr unexpectedly failed");
+
+      render(
+        <AdrEditor
+          adrId={saved.adr.id}
+          folder={null}
+          authorName={AUTHOR}
+          apiClient={client}
+          onAdrSaved={vi.fn()}
+        />
+      );
+
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="person-name-input-"]')
+        ).toHaveLength(2)
+      );
+
+      const removeButtons = Array.from(
+        document.querySelectorAll('[data-testid^="remove-person-button-"]')
+      ) as HTMLButtonElement[];
+      expect(removeButtons).toHaveLength(2);
+      fireEvent.click(removeButtons[0]);
+
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="person-name-input-"]')
+        ).toHaveLength(1)
+      );
+      const remainingNameInputs = Array.from(
+        document.querySelectorAll('[data-testid^="person-name-input-"]')
+      ) as HTMLInputElement[];
+      expect(remainingNameInputs[0]).toHaveValue("Bob");
+    });
+
+    it("loads and displays the real saved considered-options/pros-and-cons content as option rows", async () => {
+      const fixture = makeFakeAdrFixture({
+        consideredOptions: "* Option A\n* Option B",
+        prosAndConsOfTheOptions:
+          "**Option A**\n* Good, because Fast\n* Bad, because Costly\n\n**Option B**\n* Good, because Cheap",
+      });
+      const fakeClient = createFakeApiClient(fixture);
+
+      render(
+        <AdrEditor
+          adrId={fixture.id}
+          folder={null}
+          authorName={AUTHOR}
+          apiClient={fakeClient}
+          onAdrSaved={vi.fn()}
+        />
+      );
+
+      await waitFor(() => expect(screen.getByTestId("section-toggle-options")).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId("section-toggle-options"));
+
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll('[data-testid^="option-description-input-"]')
+        ).toHaveLength(2)
+      );
+
+      const descriptionInputs = Array.from(
+        document.querySelectorAll('[data-testid^="option-description-input-"]')
+      ) as HTMLInputElement[];
+      const prosTextareas = Array.from(
+        document.querySelectorAll('[data-testid^="option-pros-textarea-"]')
+      ) as HTMLTextAreaElement[];
+      const consTextareas = Array.from(
+        document.querySelectorAll('[data-testid^="option-cons-textarea-"]')
+      ) as HTMLTextAreaElement[];
+
+      expect(descriptionInputs.map((input) => input.value)).toEqual(["Option A", "Option B"]);
+      expect(prosTextareas.map((textarea) => textarea.value)).toEqual(["Fast", "Cheap"]);
+      expect(consTextareas.map((textarea) => textarea.value)).toEqual(["Costly", ""]);
+    });
+
+    it("saves edited option rows and calls the API with correctly re-serialized consideredOptions/prosAndConsOfTheOptions", async () => {
+      // Uses the real Fastify+git backend (like the rest of this describe block) --
+      // unlike the load test above, this one only asserts on the payload the API
+      // was called with (via onAdrSaved's immediate response), which does not
+      // round-trip prosAndConsOfTheOptions back through a fresh git read/parse, so
+      // it isn't affected by the out-of-boundary splitSections defect noted above.
+      const { id } = await seedAdr("Editable Options ADR", "Body before edit.");
+      const onAdrSaved = vi.fn();
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={onAdrSaved} />
+      );
+      await waitFor(() => expect(screen.getByTestId("section-toggle-options")).toBeInTheDocument());
+      fireEvent.click(screen.getByTestId("section-toggle-options"));
+
+      fireEvent.click(screen.getByTestId("add-option-button"));
+      fireEvent.click(screen.getByTestId("add-option-button"));
+
+      const descriptionInputs = Array.from(
+        document.querySelectorAll('[data-testid^="option-description-input-"]')
+      ) as HTMLInputElement[];
+      const prosTextareas = Array.from(
+        document.querySelectorAll('[data-testid^="option-pros-textarea-"]')
+      ) as HTMLTextAreaElement[];
+      const consTextareas = Array.from(
+        document.querySelectorAll('[data-testid^="option-cons-textarea-"]')
+      ) as HTMLTextAreaElement[];
+      expect(descriptionInputs).toHaveLength(2);
+
+      fireEvent.change(descriptionInputs[0], { target: { value: "Option One" } });
+      fireEvent.change(prosTextareas[0], { target: { value: "Fast" } });
+      fireEvent.change(consTextareas[0], { target: { value: "Expensive" } });
+
+      fireEvent.change(descriptionInputs[1], { target: { value: "Option Two" } });
+      fireEvent.change(prosTextareas[1], { target: { value: "Cheap" } });
+      // consTextareas[1] left blank on purpose.
+
+      fireEvent.click(screen.getByTestId("save-button"));
+
+      await waitFor(() => expect(onAdrSaved).toHaveBeenCalledTimes(1));
+      const savedAdr = onAdrSaved.mock.calls[0][0];
+      expect(savedAdr.consideredOptions).toBe("* Option One\n* Option Two");
+      expect(savedAdr.prosAndConsOfTheOptions).toBe(
+        "**Option One**\n* Good, because Fast\n* Bad, because Expensive\n\n**Option Two**\n* Good, because Cheap"
+      );
+
+      const refetched = await client.getAdr(id);
+      if (!refetched.ok) throw new Error("expected getAdr to succeed");
+      expect(refetched.adr.consideredOptions).toBe("* Option One\n* Option Two");
+      expect(refetched.adr.prosAndConsOfTheOptions).toBe(
+        "**Option One**\n* Good, because Fast\n* Bad, because Expensive\n\n**Option Two**\n* Good, because Cheap"
+      );
+    });
+
+    it("preserves the canonical MADR section order in the saved file regardless of the on-screen fill order or the on-screen section order (4.5)", async () => {
+      const { id } = await seedAdr("Canonical Order ADR", "Original context.");
+
+      render(
+        <AdrEditor adrId={id} folder={null} authorName={AUTHOR} apiClient={client} onAdrSaved={vi.fn()} />
+      );
+
+      // Deliberately fill fields through the UI out of both the on-screen visual
+      // order (Context, Drivers, Options, Decision Outcome, More Information) and
+      // the canonical MADR file order (Context, Drivers, Considered Options,
+      // Decision Outcome, Consequences, Confirmation, Pros and Cons of the
+      // Options, More Information) -- More Information and an option row's
+      // pros/cons (which serialize into a section canonically positioned *after*
+      // Confirmation) are filled in before the earlier canonical sections, to
+      // prove the saved order is driven by canonical MADR_SECTIONS metadata, not
+      // by fill order or DOM/render order.
+      await waitFor(() => expect(screen.getByTestId("title-input")).toBeInTheDocument());
+
+      fireEvent.change(screen.getByTestId("more-information-textarea"), {
+        target: { value: "More info filled first." },
+      });
+
+      fireEvent.click(screen.getByTestId("section-toggle-options"));
+      fireEvent.click(screen.getByTestId("add-option-button"));
+      const descriptionInput = document.querySelector(
+        '[data-testid^="option-description-input-"]'
+      ) as HTMLInputElement;
+      const prosTextarea = document.querySelector(
+        '[data-testid^="option-pros-textarea-"]'
+      ) as HTMLTextAreaElement;
+      fireEvent.change(descriptionInput, { target: { value: "Option One" } });
+      fireEvent.change(prosTextarea, { target: { value: "Good stuff" } });
+
+      fireEvent.change(screen.getByTestId("confirmation-textarea"), {
+        target: { value: "Confirmed via review." },
+      });
+      fireEvent.change(screen.getByTestId("decision-outcome-textarea"), {
+        target: { value: "We decided Y." },
+      });
+      fireEvent.change(screen.getByTestId("decision-drivers-textarea"), {
+        target: { value: "Driver content." },
+      });
+      fireEvent.change(screen.getByTestId("context-and-problem-statement-textarea"), {
+        target: { value: "Filled last." },
+      });
+
+      fireEvent.click(screen.getByTestId("save-button"));
+      await waitFor(() => expect(screen.getByTestId("save-success-message")).toBeInTheDocument());
+
+      const refetched = await client.getAdr(id);
+      if (!refetched.ok) throw new Error("expected getAdr to succeed");
+
+      // Read the real saved markdown file straight off disk (bypassing the API's
+      // AdrSections-object response, which has no positional/ordering concept of
+      // its own) to verify the physical heading order in the persisted file.
+      const raw = await readFile(join(repoPath, refetched.adr.path), "utf8");
+
+      const canonicalHeadings = [
+        "## Context and Problem Statement",
+        "## Decision Drivers",
+        "## Considered Options",
+        "## Decision Outcome",
+        "### Consequences",
+        "### Confirmation",
+        "## Pros and Cons of the Options",
+        "## More Information",
+      ];
+      const headingPositions = canonicalHeadings.map((heading) => raw.indexOf(heading));
+      headingPositions.forEach((position, index) => {
+        expect(position, `expected to find heading "${canonicalHeadings[index]}" in the saved file`).toBeGreaterThanOrEqual(0);
+      });
+      for (let i = 1; i < headingPositions.length; i++) {
+        expect(
+          headingPositions[i],
+          `expected "${canonicalHeadings[i]}" to appear after "${canonicalHeadings[i - 1]}" in the saved file`
+        ).toBeGreaterThan(headingPositions[i - 1]);
+      }
+
+      // Spot-check the content itself round-tripped into the right sections,
+      // not just that the headings landed in the right order.
+      expect(raw).toContain("Filled last.");
+      expect(raw).toContain("Driver content.");
+      expect(raw).toContain("We decided Y.");
+      expect(raw).toContain("Confirmed via review.");
+      expect(raw).toContain("More info filled first.");
+      expect(raw).toContain("* Option One");
+      expect(raw).toContain("**Option One**");
+      expect(raw).toContain("* Good, because Good stuff");
     });
 
     it("shows missing-fields-message when a required section is cleared, without discarding the draft", async () => {
@@ -462,14 +999,15 @@ describe("AdrEditor", () => {
         "aria-expanded",
         "true"
       );
-      // People section starts expanded
-      expect(screen.getByTestId("section-toggle-people")).toHaveAttribute("aria-expanded", "true");
+      // People is always visible, with no collapse/expand toggle at all.
+      expect(screen.queryByTestId("section-toggle-people")).not.toBeInTheDocument();
+      expect(screen.getByTestId("add-person-button")).toBeInTheDocument();
       // Optional sections start collapsed
       expect(screen.getByTestId("section-toggle-decisionDrivers")).toHaveAttribute(
         "aria-expanded",
         "false"
       );
-      expect(screen.getByTestId("section-toggle-consideredOptions")).toHaveAttribute(
+      expect(screen.getByTestId("section-toggle-options")).toHaveAttribute(
         "aria-expanded",
         "false"
       );
