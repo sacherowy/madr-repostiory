@@ -128,9 +128,70 @@ blocker (starting a decision from a blank MADR form). Concept A's outcome-first
 summary box and plain-sentence relations can be folded into the Hub's document
 renderer at near-zero extra cost. If a single concept must be chosen, choose C.
 
+## Concept A follow-up — short description & the decision form
+
+*Mockup: `concept-a-decision-form.html` / `.png`. Direction chosen by the product owner
+(2026-07-03); this section answers "where does the one-line description come from"
+and "what does creating/editing look like".*
+
+### Short description: a three-layer resolution, first match wins
+
+The feed card's one-liner is resolved per ADR, in this order:
+
+1. **Author's own wording** — a new optional `summary` field in the MADR frontmatter.
+   When present it always wins. It lives in the Markdown file, so it is versioned,
+   diffable and git-authoritative like everything else. Additive: existing ADRs
+   without the field stay valid.
+2. **Deterministic derivation** (instant, offline, no AI) — computed from data the
+   app already stores structurally:
+   - *Decided*: parse `decisionOutcome`, which the editor writes in canonical MADR
+     form ("**Chosen option: X**, because Y") — render as "We chose **X** — Y."
+     Fallback: first sentence of the outcome.
+   - *In discussion*: from the structured option rows
+     (`consideredOptions`/`prosAndConsOfTheOptions` already parse into
+     description+pros+cons) — "Weighing **A** against **B** (+1 more)", optionally
+     with the first decision driver appended as "Key concern: …".
+   - *Replaced / Retired*: from relations — "Replaced by *<target title>* on <date>."
+3. **AI polish (optional)** — one sentence generated from title + context + outcome
+   via the existing Gemini adapter, **cached in SQLite keyed by `blobSha`** — exactly
+   the embedding-cache pattern: a reproducible projection, never authoritative,
+   recreated by `reindex`, absent when offline or without an API key (the app then
+   simply shows layer 2). In the editor it appears as a "✨ suggestion" with
+   **Use this / Write my own** — accepting it copies it into the frontmatter
+   `summary` (layer 1); it is never committed without explicit acceptance.
+
+Consequences: the feed works fully offline and on day one with zero authoring effort
+(layer 2 covers every existing ADR), AI is an enhancement rather than a dependency,
+and whatever the author blesses becomes plain git-tracked frontmatter.
+
+### The decision form
+
+Not a wizard (that was Concept B) — one friendly page in the article's voice, shown
+in two states in the mockup:
+
+- **Starting a decision**: title as a big question, meta as pills (Topic, plain-word
+  status segment, Owner, "+ Ask people for input", "+ Tags"), then the MADR sections
+  as prompt cards — friendly heading, helper text, example placeholder, and the
+  canonical MADR heading kept as a small tag ("saved as MADR: Context and Problem
+  Statement"). Only title + context are needed to publish an "In discussion"
+  decision; Drivers and Options are explicitly optional, and **Decision Outcome is
+  locked** until an option is marked chosen or status flips to Decided — publishing
+  an open question is a first-class act, not an incomplete form.
+- **Editing a decided record**: options render as cards with **"Mark as chosen"**;
+  choosing one unlocks and pre-fills the outcome in canonical MADR phrasing, which
+  is exactly what layer 2 of the summary derives from. The right rail shows a
+  **live feed-card preview** ("this is how it will appear") plus the Short
+  description control with its source indicator and the visible three-layer ladder.
+
+The form maps 1:1 onto the existing `AdrEditor` capabilities (structured people
+fields, option rows, section textareas) — it is a re-skin plus three additions:
+`summary` frontmatter passthrough, the chosen-option → outcome prefill, and the
+live preview card.
+
 ## Files
 
 - `concept-a-decision-feed.html` + `.png` — editorial portal (Home + Decision page)
+- `concept-a-decision-form.html` + `.png` — Concept A create/edit form + summary control
 - `concept-b-guided-journey.html` + `.png` — board + wizard (Board + Step 3)
 - `concept-c-decision-hub.html` + `.png` — document workspace (Home + Document)
 
