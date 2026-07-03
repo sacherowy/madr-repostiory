@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Concept C — Decision Hub (document workspace)</title>
+<style>
+:root{
+  --teal-50:#ECF8F5;--teal-100:#CFEDE7;--teal-200:#A3DCD2;--teal-300:#6AC6B8;
+  --teal-400:#2BAB9A;--teal-500:#0E9E8E;--teal-600:#0B8277;--teal-700:#0A6A61;--teal-800:#08534C;
+  --ink-900:#17211F;--ink-700:#36413E;--ink-500:#5E6A66;--ink-300:#9BA5A1;
+  --line:#E7EDEB;--line-strong:#D6DFDC;--surface:#F4FAF8;
+  --decided:#3A9D4A;--decided-bg:#E7F5E9;--discuss:#5063CE;--discuss-bg:#ECEEFB;
+  --retired:#C98410;--retired-bg:#FBEFD9;--replaced:#74807B;--replaced-bg:#EDF1EF;
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;--font-body:"Hanken Grotesk",system-ui,sans-serif;
+  --sh-card:0 1px 2px rgba(23,33,31,.05),0 16px 40px -24px rgba(6,60,55,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#DFE8E5;font-family:var(--font-body);color:var(--ink-900);padding:28px;display:flex;flex-direction:column;gap:34px;align-items:center}
+.caption{width:1280px;font-family:var(--font-display);font-weight:700;font-size:1rem;color:#33403C;margin-bottom:-22px}
+.caption small{display:block;font-family:var(--font-body);font-weight:400;color:#5E6A66;margin-top:3px}
+.screen{width:1280px;height:820px;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 24px 60px -28px rgba(6,60,55,.45);border:1px solid #cdd8d4;display:flex}
+
+/* ===== left sidebar (shared) ===== */
+.side{width:250px;flex:0 0 auto;background:#F7FAF9;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 10px}
+.wsp{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;font-weight:700;font-size:.93rem}
+.wsp .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(160deg,var(--teal-400),var(--teal-700));display:grid;place-items:center;color:#fff;font-size:.78rem}
+.sidesearch{margin:10px 6px 14px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:7px 11px;color:var(--ink-300);font-size:.84rem}
+.slabel{padding:4px 12px 6px;font-size:.7rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-300)}
+.srow{display:flex;align-items:center;gap:9px;padding:7px 12px;border-radius:9px;font-size:.89rem;font-weight:600;color:var(--ink-700);cursor:pointer}
+.srow:hover{background:#EEF4F2}
+.srow.on{background:var(--teal-50);color:var(--teal-800)}
+.srow .n{margin-left:auto;font-size:.74rem;color:var(--ink-300);font-weight:600}
+.srow .em{width:18px;text-align:center}
+.newdoc{margin:14px 6px 4px;border:1px dashed var(--line-strong);border-radius:10px;padding:9px;text-align:center;color:var(--teal-700);font-weight:700;font-size:.86rem;background:#fff;cursor:pointer}
+.sidefoot{margin-top:auto;padding:10px 12px;display:flex;align-items:center;gap:9px;font-size:.83rem;color:var(--ink-500)}
+.ava{width:28px;height:28px;border-radius:999px;background:#E4EEF9;color:#3A5A80;display:grid;place-items:center;font-weight:700;font-size:.72rem;border:1px solid #cfdcea}
+
+/* ===== home main ===== */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.homepad{padding:38px 54px;overflow:hidden}
+.homepad h1{font-family:var(--font-display);font-size:1.55rem;letter-spacing:-.02em;margin:0 0 4px}
+.homepad .sub{color:var(--ink-500);font-size:.92rem;margin-bottom:26px}
+.h2row{display:flex;align-items:center;margin:22px 0 12px}
+.h2row h2{font-family:var(--font-display);font-size:1rem;margin:0}
+.h2row a{margin-left:auto;font-size:.83rem;color:var(--teal-700);font-weight:600;text-decoration:none}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.doc{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px 17px;box-shadow:0 1px 2px rgba(23,33,31,.04);cursor:pointer}
+.doc:hover{box-shadow:var(--sh-card)}
+.doc .em{font-size:1.15rem;margin-bottom:8px;display:block}
+.doc h3{margin:0 0 6px;font-size:.93rem;line-height:1.35}
+.doc .m{font-size:.78rem;color:var(--ink-300)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.72rem;border-radius:999px;padding:2px 10px;margin-bottom:8px}
+.pill .dot{width:6px;height:6px;border-radius:999px}
+.p-dec{color:#1d6b2a;background:var(--decided-bg)}.p-dec .dot{background:var(--decided)}
+.p-dis{color:#3a40a0;background:var(--discuss-bg)}.p-dis .dot{background:var(--discuss)}
+.p-rep{color:#5c6662;background:var(--replaced-bg)}.p-rep .dot{background:var(--replaced)}
+.spacecards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.space{border:1px solid var(--line);border-radius:13px;padding:16px;background:linear-gradient(180deg,#fff,#F7FBFA)}
+.space .em{font-size:1.3rem}
+.space h3{margin:8px 0 3px;font-size:.95rem}
+.space .m{font-size:.78rem;color:var(--ink-300)}
+
+/* ===== document page ===== */
+.dochead{display:flex;align-items:center;gap:10px;padding:12px 26px;border-bottom:1px solid var(--line);font-size:.85rem;color:var(--ink-500)}
+.dochead b{color:var(--ink-700)}
+.dochead .acts{margin-left:auto;display:flex;gap:8px;align-items:center}
+.chipbtn{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:6px 14px;font-weight:600;font-size:.83rem;color:var(--ink-700);cursor:pointer}
+.chipbtn.pri{background:var(--teal-700);border-color:var(--teal-700);color:#fff}
+.docbody{flex:1;display:flex;overflow:hidden}
+.docmain{flex:1;overflow:hidden;padding:34px 60px 0 68px}
+.docmain h1{font-family:var(--font-display);font-size:1.8rem;letter-spacing:-.02em;margin:0 0 18px;line-height:1.2}
+.props{display:grid;grid-template-columns:130px 1fr;row-gap:9px;column-gap:18px;padding:0 0 18px;border-bottom:1px solid var(--line);margin-bottom:22px;font-size:.88rem;max-width:560px}
+.props .k{color:var(--ink-300);display:flex;align-items:center;gap:7px}
+.props .v{color:var(--ink-700);font-weight:600;display:flex;align-items:center;gap:8px}
+.props .v .edit{opacity:.45;font-size:.75rem}
+.face{width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;font-size:.58rem;font-weight:700;border:2px solid #fff}
+.f1{background:#E4EEF9;color:#3A5A80}.f2{background:#F9E9E4;color:#8a4a30;margin-left:-8px}.f3{background:#EDE4F9;color:#5a3a80;margin-left:-8px}
+.prose h2{font-family:var(--font-display);font-size:1.08rem;margin:20px 0 8px;display:flex;align-items:center;gap:10px}
+.prose h2 .add{opacity:0;font-size:.72rem;color:var(--teal-700)}
+.prose h2:hover .add{opacity:1}
+.prose p{margin:0 0 8px;color:var(--ink-700);line-height:1.65;font-size:.95rem;max-width:660px}
+.prose p.hoveredit{outline:1px dashed var(--teal-300);outline-offset:6px;border-radius:4px;position:relative}
+.editbubble{position:absolute;top:-13px;right:-8px;background:var(--teal-700);color:#fff;font-size:.68rem;font-weight:700;border-radius:999px;padding:2px 10px}
+.callout{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0;max-width:660px;font-size:.9rem}
+.callout .k{font-weight:800;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:#8a5a09;background:var(--retired-bg);border-radius:999px;padding:3px 10px;flex:0 0 auto}
+.callout .k.teal{color:var(--teal-700);background:var(--teal-100)}
+.callout a{color:var(--teal-700);font-weight:700;text-decoration:none}
+.ul{margin:0 0 8px;padding-left:20px;color:var(--ink-700);line-height:1.65;font-size:.95rem}
+
+/* activity drawer */
+.drawer{width:300px;flex:0 0 auto;border-left:1px solid var(--line);background:#FAFCFB;display:flex;flex-direction:column;overflow:hidden}
+.dtabs{display:flex;gap:4px;padding:12px 14px 0}
+.dtab{flex:1;text-align:center;font-weight:700;font-size:.82rem;padding:8px 0;border-radius:9px 9px 0 0;color:var(--ink-300);cursor:pointer}
+.dtab.on{background:#fff;border:1px solid var(--line);border-bottom-color:#fff;color:var(--teal-800)}
+.dbody{background:#fff;border-top:1px solid var(--line);flex:1;padding:16px;overflow:hidden}
+.dayl{font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-300);margin:6px 0 8px}
+.ev{display:flex;gap:10px;padding:7px 0;font-size:.85rem;line-height:1.4;color:var(--ink-700)}
+.ev .face{flex:0 0 auto;margin-top:1px}
+.ev b{font-weight:700}
+.ev .t{display:block;font-size:.74rem;color:var(--ink-300);margin-top:1px}
+.restore{font-size:.76rem;color:var(--teal-700);font-weight:700}
+.dnote{margin:10px 14px 14px;font-size:.76rem;color:var(--ink-300);line-height:1.45}
+</style></head><body>
+
+<div class="caption">Concept C — “Decision Hub”: a calm document workspace (Notion/Confluence feel)
+  <small>View 1 of 2 — Home. A minimal sidebar with Spaces (= repo folders), and a personal landing page: pick up where you left off, browse spaces. No tree, no IDs, no rails.</small>
+</div>
+<div class="screen">
+  <div class="side">
+    <div class="wsp"><span class="logo">◆</span>Acme Decisions</div>
+    <div class="sidesearch">🔍 Search or jump to… <span style="margin-left:auto;font-size:.7rem;border:1px solid var(--line-strong);border-radius:5px;padding:1px 5px;background:#fff">⌘K</span></div>
+    <div class="slabel">My shortcuts</div>
+    <div class="srow"><span class="em">⭐</span>SSO through Azure AD</div>
+    <div class="srow"><span class="em">⭐</span>Billing ↔ CRM integration</div>
+    <div class="slabel" style="margin-top:10px">Spaces</div>
+    <div class="srow on"><span class="em">🗄️</span>Data platform<span class="n">24</span></div>
+    <div class="srow"><span class="em">🧩</span>Integration<span class="n">18</span></div>
+    <div class="srow"><span class="em">🔐</span>Security<span class="n">11</span></div>
+    <div class="srow"><span class="em">☁️</span>Cloud &amp; hosting<span class="n">31</span></div>
+    <div class="srow"><span class="em">🧭</span>Ways of working<span class="n">9</span></div>
+    <div class="newdoc">+ New decision</div>
+    <div class="sidefoot"><span class="ava">MK</span>Marta Kowalska</div>
+  </div>
+  <div class="main">
+    <div class="homepad">
+      <h1>Welcome back, Marta 👋</h1>
+      <div class="sub">Here’s what moved since you were last here.</div>
+      <div class="h2row"><h2>Jump back in</h2><a href="#">All recent →</a></div>
+      <div class="grid">
+        <div class="doc"><span class="pill p-dis"><span class="dot"></span>In discussion</span><h3>How should billing talk to the new CRM?</h3><div class="m">You’re a consulted stakeholder · updated 2 h ago</div></div>
+        <div class="doc"><span class="pill p-dec"><span class="dot"></span>Decided</span><h3>Use PostgreSQL for the customer data platform</h3><div class="m">You own this decision · decided May 12</div></div>
+        <div class="doc"><span class="pill p-dis"><span class="dot"></span>In discussion</span><h3>Which API gateway for partner access?</h3><div class="m">Adam asked for your view · updated yesterday</div></div>
+      </div>
+      <div class="h2row"><h2>Spaces</h2><a href="#">Manage →</a></div>
+      <div class="spacecards">
+        <div class="space"><span class="em">🗄️</span><h3>Data platform</h3><div class="m">24 decisions · 2 in discussion</div></div>
+        <div class="space"><span class="em">🧩</span><h3>Integration</h3><div class="m">18 decisions · 1 in discussion</div></div>
+        <div class="space"><span class="em">🔐</span><h3>Security</h3><div class="m">11 decisions · all settled</div></div>
+        <div class="space"><span class="em">☁️</span><h3>Cloud &amp; hosting</h3><div class="m">31 decisions · 1 retired this month</div></div>
+      </div>
+      <div class="h2row"><h2>Recently decided</h2><a href="#">See all →</a></div>
+      <div class="grid">
+        <div class="doc"><span class="pill p-dec"><span class="dot"></span>Decided</span><h3>Single sign-on through company Azure AD</h3><div class="m">Security · Apr 28</div></div>
+        <div class="doc"><span class="pill p-dec"><span class="dot"></span>Decided</span><h3>Host new workloads on AWS</h3><div class="m">Cloud &amp; hosting · Feb 10</div></div>
+        <div class="doc"><span class="pill p-rep"><span class="dot"></span>Replaced</span><h3>Point-to-point file transfers billing ↔ CRM</h3><div class="m">Integration · replaced May 12</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="caption" style="margin-top:6px">Concept C — “Decision Hub”: a calm document workspace (Notion/Confluence feel)
+  <small>View 2 of 2 — A decision as a living document. Properties on top, prose with hover “Edit section”, relations as inline callouts, history as a human “Activity” drawer. Saving quietly commits to git.</small>
+</div>
+<div class="screen">
+  <div class="side">
+    <div class="wsp"><span class="logo">◆</span>Acme Decisions</div>
+    <div class="sidesearch">🔍 Search or jump to… <span style="margin-left:auto;font-size:.7rem;border:1px solid var(--line-strong);border-radius:5px;padding:1px 5px;background:#fff">⌘K</span></div>
+    <div class="slabel">My shortcuts</div>
+    <div class="srow"><span class="em">⭐</span>SSO through Azure AD</div>
+    <div class="srow"><span class="em">⭐</span>Billing ↔ CRM integration</div>
+    <div class="slabel" style="margin-top:10px">Spaces</div>
+    <div class="srow on"><span class="em">🗄️</span>Data platform<span class="n">24</span></div>
+    <div class="srow"><span class="em">🧩</span>Integration<span class="n">18</span></div>
+    <div class="srow"><span class="em">🔐</span>Security<span class="n">11</span></div>
+    <div class="srow"><span class="em">☁️</span>Cloud &amp; hosting<span class="n">31</span></div>
+    <div class="srow"><span class="em">🧭</span>Ways of working<span class="n">9</span></div>
+    <div class="newdoc">+ New decision</div>
+    <div class="sidefoot"><span class="ava">MK</span>Marta Kowalska</div>
+  </div>
+  <div class="main">
+    <div class="dochead">🗄️ Data platform <span>/</span> <b>Use PostgreSQL for the customer data platform</b>
+      <div class="acts"><button class="chipbtn">Compare with…</button><button class="chipbtn">Share</button><button class="chipbtn pri">✎ Edit</button></div>
+    </div>
+    <div class="docbody">
+      <div class="docmain">
+        <h1>Use PostgreSQL for the customer data platform</h1>
+        <div class="props">
+          <div class="k">◐ Status</div><div class="v"><span class="pill p-dec" style="margin:0"><span class="dot"></span>Decided</span><span class="edit">change ▾</span></div>
+          <div class="k">📅 Decided on</div><div class="v">12 May 2026</div>
+          <div class="k">👤 Decision owner</div><div class="v"><span class="face f1" style="margin-right:2px">MK</span>Marta Kowalska</div>
+          <div class="k">💬 Input from</div><div class="v"><span class="face f2">JT</span><span class="face f3">AL</span><span style="font-weight:500;color:var(--ink-500)">Platform &amp; Reporting teams</span></div>
+          <div class="k">🏷️ Tags</div><div class="v" style="font-weight:500;color:var(--ink-500)">databases · customer-data · reporting</div>
+        </div>
+        <div class="callout"><span class="k">Replaces</span><div>This decision replaces <a href="#">Keep customer data in the CRM database (2024)</a> — that record now points here.</div></div>
+        <div class="prose">
+          <h2>Why we needed to decide <span class="add">✎ edit section</span></h2>
+          <p>The customer data platform must store profile, consent and activity data for around 4 million customers. Marketing and Support both need to query it directly, and the current exports-and-spreadsheets approach can’t keep up or pass audit.</p>
+          <h2>What mattered to us <span class="add">✎ edit section</span></h2>
+          <ul class="ul"><li>Reporting teams can answer their own questions without engineering help</li><li>We can show auditors where every field comes from</li><li>An operations team of two — keep the burden low</li></ul>
+          <h2>What we decided, and why <span class="add">✎ edit section</span></h2>
+          <p class="hoveredit">We will build the platform on <b>PostgreSQL</b>. It fits our reporting needs best, the team already knows it well, and its audit tooling is proven. MongoDB and DynamoDB were considered and are documented below.<span class="editbubble">✎ Edit section</span></p>
+          <div class="callout"><span class="k teal">Good to know</span><div>2 similar decisions exist in other spaces — <a href="#">see related reading</a> before extending this one.</div></div>
+        </div>
+      </div>
+      <div class="drawer">
+        <div class="dtabs"><div class="dtab on">Activity</div><div class="dtab">Connections</div><div class="dtab">Similar</div></div>
+        <div class="dbody">
+          <div class="dayl">May 12</div>
+          <div class="ev"><span class="face f1">MK</span><div><b>Marta</b> marked this <b>Decided</b> ✅<span class="t">2:14 pm · <span class="restore">view this version</span></span></div></div>
+          <div class="ev"><span class="face f1">MK</span><div><b>Marta</b> rewrote “What we decided, and why”<span class="t">1:58 pm</span></div></div>
+          <div class="dayl">May 8</div>
+          <div class="ev"><span class="face f2">JT</span><div><b>Jan</b> added the DynamoDB option after the cloud review<span class="t">10:22 am · <span class="restore">view this version</span></span></div></div>
+          <div class="dayl">Apr 30</div>
+          <div class="ev"><span class="face f1">MK</span><div><b>Marta</b> started this decision in <b>Data platform</b><span class="t">9:05 am</span></div></div>
+        </div>
+        <div class="dnote">Every entry is a git commit under the hood. “View this version” shows the document as it was — no git words anywhere in the UI.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Concept B — Guided Decision Journey (board + wizard)</title>
+<style>
+:root{
+  --teal-50:#ECF8F5;--teal-100:#CFEDE7;--teal-200:#A3DCD2;--teal-300:#6AC6B8;
+  --teal-400:#2BAB9A;--teal-500:#0E9E8E;--teal-600:#0B8277;--teal-700:#0A6A61;--teal-800:#08534C;
+  --ink-900:#17211F;--ink-700:#36413E;--ink-500:#5E6A66;--ink-300:#9BA5A1;
+  --line:#E7EDEB;--line-strong:#D6DFDC;--surface:#F4FAF8;
+  --decided:#3A9D4A;--decided-bg:#E7F5E9;--discuss:#5063CE;--discuss-bg:#ECEEFB;
+  --framing:#C98410;--framing-bg:#FBEFD9;--retired:#74807B;--retired-bg:#EDF1EF;
+  --font-display:"Bricolage Grotesque",system-ui,sans-serif;--font-body:"Hanken Grotesk",system-ui,sans-serif;
+  --sh-card:0 1px 2px rgba(23,33,31,.05),0 16px 40px -24px rgba(6,60,55,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#DFE8E5;font-family:var(--font-body);color:var(--ink-900);padding:28px;display:flex;flex-direction:column;gap:34px;align-items:center}
+.caption{width:1280px;font-family:var(--font-display);font-weight:700;font-size:1rem;color:#33403C;margin-bottom:-22px}
+.caption small{display:block;font-family:var(--font-body);font-weight:400;color:#5E6A66;margin-top:3px}
+.screen{width:1280px;height:820px;border-radius:16px;overflow:hidden;background:#F6FAF9;box-shadow:0 24px 60px -28px rgba(6,60,55,.45);border:1px solid #cdd8d4;display:flex;flex-direction:column}
+
+/* top bar */
+.nav{height:62px;display:flex;align-items:center;gap:16px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--font-display);font-weight:800;font-size:1.12rem;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.brand .logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(160deg,var(--teal-400),var(--teal-700));display:grid;place-items:center;color:#fff;font-size:.85rem}
+.scope{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 16px;font-weight:600;font-size:.88rem;color:var(--ink-700)}
+.scope small{color:var(--ink-300);font-weight:500}
+.search{flex:1;max-width:380px;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 16px;color:var(--ink-300);font-size:.88rem}
+.spacer{flex:1}
+.startbtn{background:linear-gradient(180deg,var(--teal-400),var(--teal-600));color:#fff;font-weight:700;font-size:.93rem;border:none;border-radius:999px;padding:10px 20px;box-shadow:0 8px 20px -8px rgba(14,158,142,.6);cursor:pointer}
+.ava{width:32px;height:32px;border-radius:999px;background:#E4EEF9;color:#3A5A80;display:grid;place-items:center;font-weight:700;font-size:.8rem;border:1px solid #cfdcea}
+
+/* greeting */
+.greet{padding:22px 30px 6px;display:flex;align-items:baseline;gap:14px}
+.greet h1{font-family:var(--font-display);font-size:1.4rem;letter-spacing:-.02em;margin:0}
+.greet span{color:var(--ink-500);font-size:.9rem}
+
+/* board */
+.board{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:16px 30px 26px;overflow:hidden}
+.col{background:#EEF4F2;border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.colhead{padding:14px 16px 10px;display:flex;align-items:center;gap:9px}
+.colhead .cd{width:10px;height:10px;border-radius:99px}
+.colhead h3{margin:0;font-family:var(--font-display);font-size:.95rem}
+.colhead .n{margin-left:auto;font-size:.78rem;font-weight:700;color:var(--ink-300);background:#fff;border-radius:999px;padding:2px 9px;border:1px solid var(--line)}
+.colhint{padding:0 16px 10px;font-size:.76rem;color:var(--ink-300);line-height:1.35}
+.cards{padding:0 10px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.kcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 1px 2px rgba(23,33,31,.05);cursor:grab}
+.kcard:hover{box-shadow:var(--sh-card)}
+.kcard h4{margin:0 0 6px;font-size:.9rem;line-height:1.3;font-weight:700}
+.kcard .sub{font-size:.79rem;color:var(--ink-500);line-height:1.35;margin-bottom:8px}
+.kfoot{display:flex;align-items:center;gap:6px}
+.face{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;font-size:.58rem;font-weight:700;border:2px solid #fff}
+.f1{background:#E4EEF9;color:#3A5A80}.f2{background:#F9E9E4;color:#8a4a30;margin-left:-8px}.f3{background:#EDE4F9;color:#5a3a80;margin-left:-8px}
+.kfoot span{font-size:.74rem;color:var(--ink-300);margin-left:4px}
+.ktag{font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;margin-left:auto}
+.t-int{color:var(--teal-700);background:var(--teal-50)}
+.t-sec{color:#3a40a0;background:var(--discuss-bg)}
+.t-dat{color:#8a5a09;background:var(--framing-bg)}
+.ghost{border:2px dashed var(--line-strong);border-radius:12px;padding:11px;text-align:center;color:var(--ink-300);font-size:.8rem;font-weight:600;background:transparent}
+.dragging{transform:rotate(-2deg);box-shadow:0 18px 40px -18px rgba(6,60,55,.45);border-color:var(--teal-300)}
+
+/* ===== wizard screen ===== */
+.wizwrap{flex:1;display:flex;flex-direction:column;align-items:center;overflow:hidden;background:
+  radial-gradient(900px 480px at 15% -10%,#E8F5F2,rgba(0,0,0,0) 55%),
+  radial-gradient(900px 480px at 110% 10%,#E4F3EF,rgba(0,0,0,0) 55%),#F6FAF9}
+.journey{width:860px;margin:26px 0 18px;display:flex;align-items:center}
+.jstep{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;position:relative}
+.jstep::before{content:"";position:absolute;top:15px;left:-50%;width:100%;height:3px;background:var(--teal-200);z-index:0}
+.jstep:first-child::before{display:none}
+.jdot{width:32px;height:32px;border-radius:999px;display:grid;place-items:center;font-weight:800;font-size:.82rem;z-index:1;background:#fff;border:2px solid var(--teal-200);color:var(--ink-300)}
+.jstep.done .jdot{background:var(--teal-500);border-color:var(--teal-500);color:#fff}
+.jstep.now .jdot{background:#fff;border-color:var(--teal-600);color:var(--teal-700);box-shadow:0 0 0 5px var(--teal-100)}
+.jstep .jl{font-size:.8rem;font-weight:700;color:var(--ink-300)}
+.jstep.done .jl,.jstep.now .jl{color:var(--teal-700)}
+.jstep .js{font-size:.7rem;color:var(--ink-300)}
+.wizcard{width:860px;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh-card);padding:34px 44px;display:flex;flex-direction:column;gap:18px}
+.wizcard .stepno{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-600)}
+.wizcard h1{font-family:var(--font-display);font-size:1.5rem;letter-spacing:-.02em;margin:0;line-height:1.25}
+.wizcard .help{color:var(--ink-500);font-size:.92rem;line-height:1.5;margin:-6px 0 4px}
+.optrow{display:flex;gap:14px}
+.optcard{flex:1;border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#FDFEFE}
+.optcard.pick{border-color:var(--teal-400);background:linear-gradient(180deg,#fff,var(--teal-50));box-shadow:0 12px 30px -18px rgba(14,158,142,.55)}
+.optcard h3{margin:0 0 8px;font-size:1rem;display:flex;align-items:center;gap:8px}
+.optcard h3 .pickmark{margin-left:auto;font-size:.72rem;font-weight:800;color:var(--teal-700);background:var(--teal-100);border-radius:999px;padding:3px 10px}
+.pc{display:flex;gap:8px;align-items:flex-start;font-size:.84rem;color:var(--ink-500);line-height:1.4;margin:5px 0}
+.pc .s{flex:0 0 auto;font-size:.8rem}
+.addopt{border:2px dashed var(--line-strong);border-radius:14px;display:grid;place-items:center;color:var(--ink-300);font-weight:700;font-size:.88rem;min-width:150px}
+.whymatter{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-size:.85rem;color:var(--ink-500)}
+.whymatter b{color:var(--ink-700)}
+.wizfoot{display:flex;align-items:center;gap:12px;margin-top:4px}
+.btn{border-radius:12px;padding:11px 20px;font-weight:700;font-size:.92rem;cursor:pointer;border:1px solid transparent;font-family:var(--font-body)}
+.btn-pri{background:linear-gradient(180deg,var(--teal-400),var(--teal-600));color:#fff;box-shadow:0 8px 20px -8px rgba(14,158,142,.6)}
+.btn-ghost{background:#fff;border-color:var(--line-strong);color:var(--ink-700)}
+.savehint{margin-left:auto;font-size:.8rem;color:var(--ink-300)}
+.madrnote{width:860px;margin-top:12px;font-size:.78rem;color:var(--ink-300);text-align:center}
+.madrnote b{color:var(--ink-500)}
+</style></head><body>
+
+<div class="caption">Concept B — “Guided Decision Journey”: a board of decisions + a step-by-step wizard
+  <small>View 1 of 2 — Home is a board. Lifecycle stages become columns (MADR statuses in plain words); moving a card = changing status. Feels like Trello, not like a repository.</small>
+</div>
+<div class="screen">
+  <div class="nav">
+    <div class="brand"><span class="logo">◆</span>Decisions</div>
+    <div class="scope">🗂️ All topics <small>▾</small></div>
+    <div class="search">🔍 Find a decision…</div>
+    <div class="spacer"></div>
+    <button class="startbtn">+ Start a decision</button>
+    <div class="ava">MK</div>
+  </div>
+  <div class="greet"><h1>Good morning, Marta</h1><span>2 decisions are waiting for your input</span></div>
+  <div class="board">
+    <div class="col">
+      <div class="colhead"><span class="cd" style="background:var(--framing)"></span><h3>Being framed</h3><span class="n">3</span></div>
+      <div class="colhint">The problem is being written down. Nothing is decided yet.</div>
+      <div class="cards">
+        <div class="kcard"><h4>Where should archived contracts live?</h4><div class="sub">Problem statement drafted, drivers still missing.</div>
+          <div class="kfoot"><span class="face f2">JT</span><span>started 3 d ago</span><span class="ktag t-dat">Data</span></div></div>
+        <div class="kcard"><h4>One CRM or one per brand?</h4><div class="sub">Framing workshop booked for Friday.</div>
+          <div class="kfoot"><span class="face f1">MK</span><span class="face f3">AL</span><span>2 people</span><span class="ktag t-int">Integration</span></div></div>
+        <div class="ghost">+ Frame a new decision</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="colhead"><span class="cd" style="background:var(--discuss)"></span><h3>In discussion</h3><span class="n">4</span></div>
+      <div class="colhint">Options are on the table and people are weighing in.</div>
+      <div class="cards">
+        <div class="kcard dragging"><h4>How should billing talk to the new CRM?</h4><div class="sub">2 options · leaning towards events · your input requested</div>
+          <div class="kfoot"><span class="face f1">MK</span><span class="face f2">JT</span><span class="face f3">AL</span><span>3 people</span><span class="ktag t-int">Integration</span></div></div>
+        <div class="kcard"><h4>Which API gateway for partner access?</h4><div class="sub">3 options · no owner yet — 3 weeks in discussion</div>
+          <div class="kfoot"><span class="face f3">AL</span><span>1 person</span><span class="ktag t-sec">Security</span></div></div>
+        <div class="kcard"><h4>Standard file format for data exchange</h4><div class="sub">2 options · waiting on legal review</div>
+          <div class="kfoot"><span class="face f2">JT</span><span>1 person</span><span class="ktag t-dat">Data</span></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="colhead"><span class="cd" style="background:var(--decided)"></span><h3>Decided</h3><span class="n">96</span></div>
+      <div class="colhint">The outcome is recorded and in force. Safe to rely on.</div>
+      <div class="cards">
+        <div class="kcard"><h4>Use PostgreSQL for the customer data platform</h4><div class="sub">Decided May 12 · replaces one earlier decision</div>
+          <div class="kfoot"><span class="face f1">MK</span><span>owner</span><span class="ktag t-dat">Data</span></div></div>
+        <div class="kcard"><h4>Single sign-on through company Azure AD</h4><div class="sub">Decided Apr 28 · affects all new tools</div>
+          <div class="kfoot"><span class="face f3">AL</span><span>owner</span><span class="ktag t-sec">Security</span></div></div>
+        <div class="kcard"><h4>Host new workloads on AWS</h4><div class="sub">Decided Feb 10</div>
+          <div class="kfoot"><span class="face f1">MK</span><span>owner</span><span class="ktag t-int">Integration</span></div></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="colhead"><span class="cd" style="background:var(--retired)"></span><h3>Retired / replaced</h3><span class="n">21</span></div>
+      <div class="colhint">No longer in force — kept for the record, never deleted.</div>
+      <div class="cards">
+        <div class="kcard" style="opacity:.75"><h4>Point-to-point file transfers billing ↔ CRM</h4><div class="sub">Replaced May 12 by the event-driven decision</div>
+          <div class="kfoot"><span class="ktag t-int">Integration</span></div></div>
+        <div class="kcard" style="opacity:.75"><h4>Self-hosted GitLab runners</h4><div class="sub">Retired Jan 20 · reason recorded</div>
+          <div class="kfoot"><span class="ktag t-sec">Security</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="caption" style="margin-top:6px">Concept B — “Guided Decision Journey”: a board of decisions + a step-by-step wizard
+  <small>View 2 of 2 — Working on a decision. One question at a time instead of a long form; the journey bar shows where you are. Every step writes a real MADR section underneath.</small>
+</div>
+<div class="screen">
+  <div class="nav">
+    <div class="brand"><span class="logo">◆</span>Decisions</div>
+    <div class="scope">🧩 Integration <small>▾</small></div>
+    <div class="spacer"></div>
+    <div class="ava">MK</div>
+  </div>
+  <div class="wizwrap">
+    <div class="journey">
+      <div class="jstep done"><div class="jdot">✓</div><div class="jl">Frame it</div><div class="js">what &amp; why</div></div>
+      <div class="jstep done"><div class="jdot">✓</div><div class="jl">What matters</div><div class="js">drivers</div></div>
+      <div class="jstep now"><div class="jdot">3</div><div class="jl">Explore options</div><div class="js">pros &amp; cons</div></div>
+      <div class="jstep"><div class="jdot">4</div><div class="jl">Decide</div><div class="js">outcome</div></div>
+      <div class="jstep"><div class="jdot">5</div><div class="jl">Live with it</div><div class="js">consequences</div></div>
+    </div>
+    <div class="wizcard">
+      <div class="stepno">Step 3 of 5 · How should billing talk to the new CRM?</div>
+      <h1>What options are you considering?</h1>
+      <p class="help">Add each realistic option — even the ones you don’t like. For each one, note what speaks for it and what speaks against it. You can decide in the next step.</p>
+      <div class="optrow">
+        <div class="optcard pick">
+          <h3>Event-driven messaging <span class="pickmark">LEANING ✓</span></h3>
+          <div class="pc"><span class="s">👍</span>Support sees CRM changes within seconds</div>
+          <div class="pc"><span class="s">👍</span>Clean audit trail of every change</div>
+          <div class="pc"><span class="s">👎</span>New infrastructure for the ops team to learn</div>
+        </div>
+        <div class="optcard">
+          <h3>Nightly batch sync</h3>
+          <div class="pc"><span class="s">👍</span>Simple — we run batches today</div>
+          <div class="pc"><span class="s">👎</span>Data is up to 24 h stale for support</div>
+          <div class="pc"><span class="s">👎</span>Hard to prove completeness to auditors</div>
+        </div>
+        <div class="addopt">+ Add another option</div>
+      </div>
+      <div class="whymatter">💡 <b>From step 2, what matters here:</b> data freshness for support · audit evidence · small ops team. Weigh the options against these.</div>
+      <div class="wizfoot">
+        <button class="btn btn-ghost">← Back</button>
+        <button class="btn btn-pri">Continue to “Decide” →</button>
+        <span class="savehint">Saved just now — you can leave and come back anytime</span>
+      </div>
+    </div>
+    <div class="madrnote">Behind the scenes this step is writing the real MADR sections — <b>Considered Options</b> and <b>Pros and Cons of the Options</b> — as Markdown in git. Engineers see a normal ADR file; nothing about the record format changes.</div>
+  </div>
+</div>
+</body></html>
