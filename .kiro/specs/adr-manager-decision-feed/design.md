@@ -172,6 +172,8 @@ apps/web/src/
 ├── features/compose/PromptCard.tsx    # Friendly section card w/ helper text + MADR tag
 ├── features/compose/OptionCardsEditor.tsx  # Option rows as cards + "Mark as chosen"
 ├── features/compose/SummaryControl.tsx # Short-description field, source ladder, AI suggestion UI
+├── features/compose/PeopleEditor.tsx  # Decision owner / Input from / Kept informed editing (rebuilt on people.ts helpers)
+├── features/compose/RelationsEditor.tsx # Plain-language relation add/remove (replaces AdrEditor's relation list)
 ├── features/compose/PreviewRail.tsx   # Live FeedCard preview + source indicator
 ├── features/compose/TopicPicker.tsx   # Choose/create topic (wraps getTree + createFolder + moveAdr)
 ├── features/compose/outcome.ts       # Pure: chosen-option→outcome prefill, canonical parse, lock rules
@@ -199,8 +201,9 @@ apps/e2e/tests/decision-feed.spec.ts  # Portal journeys + vocabulary assertions 
 - `apps/web/src/features/command-palette/`, `features/explorer/`, `features/inspector/`, `features/folder-tree/`, `features/search/SearchPanel.tsx`, `features/relations-graph/RelationsPanel.tsx`, `features/similarity-panel/SimilarityPanel.tsx`, `features/adr-editor/{AdrEditor,CollapsibleSection,OptionsEditor,PeopleEditor}.tsx`
 - `apps/web/src/components/{AspectSwitcher,ContextHeader}.tsx`, `hooks/{useAspectCounts,useInspectorPreviews}.ts`, `state/workspaceStore.ts`
 - `apps/web/src/styles/{app-shell,inspector,command-palette,folder-tree}.css`
-- Pure helpers `features/adr-editor/{options,people}.ts` move to `features/compose/` (logic reused verbatim)
-- Kept and reused: `components/{StatusBadge,RelationChip,MonoChip,SimilarityMeter,AdrCard}.tsx`, `features/diff-viewer/*`, `features/history-timeline/HistoryTimeline.tsx`, `state/queryClient.ts`, `styles/{tokens,base,soft-ui}.css` (RelationsPanel/SimilarityPanel/SearchPanel functionality is absorbed by ContextRail, hero search, and Technical view)
+- `apps/web/src/components/AdrCard.tsx` — deleted: its only consumers (SimilarityPanel, SearchPanel, FolderTree) are removed and `FeedCard` takes over the card role
+- Pure helpers `features/adr-editor/{options,people}.ts` move to `features/compose/` (logic reused verbatim); the people/relations editing UI is rebuilt as `features/compose/{PeopleEditor,RelationsEditor}.tsx`
+- Kept and reused: `components/{StatusBadge,RelationChip,MonoChip,SimilarityMeter}.tsx`, `features/diff-viewer/*`, `features/history-timeline/HistoryTimeline.tsx`, `state/queryClient.ts`, `styles/{tokens,base,soft-ui}.css` (RelationsPanel/SimilarityPanel/SearchPanel functionality is absorbed by ContextRail, hero search, and Technical view)
 
 ## System Flows
 
@@ -242,7 +245,7 @@ sequenceDiagram
     Note over A: serializeAdr writes summary into frontmatter — git-tracked
 ```
 
-Flow decisions: the suggestion is fetched on explicit user action only (never per keystroke); a provider error is returned as `available:false` and is not cached; acceptance is the only path that writes AI text into the record (13.3).
+Flow decisions: the suggestion is fetched on explicit user action only (never per keystroke); a provider error is returned as `available:false` and is not cached; acceptance is the only path that writes AI text into the record (13.3). **Availability boundary**: the suggestion exists only for saved decisions and reflects the last-saved revision (it is keyed by the saved `blobSha` — 13.2); in create mode, and for unsaved edits, the SummaryControl shows the resolution ladder without the AI affordance and hints that a save refreshes the suggestion. A content-based (unsaved-draft) suggestion endpoint is deliberately excluded — it would bypass the blobSha cache contract.
 
 ### Outcome lock and prefill (compose form)
 
@@ -269,7 +272,7 @@ Lock state is UI-only; the save API's validation is untouched (9.5).
 | 5 (5.1-5.3) | Attention digest | AttentionDigest, portalStore.authorName | Filter: status proposed + author-name match |
 | 6 (6.1-6.6) | Decision article | ArticlePage, OptionCompareCards, ContextRail, useDecision | getAdr/getRelations/getHistory/getSimilar (existing) |
 | 7 (7.1-7.5) | Technical view | TechnicalView (reuses HistoryTimeline, VersionDiffView, AdrCompareView, CompareLauncher) | `GET /api/adrs/:id/raw` |
-| 8 (8.1-8.5) | Compose form | ComposePage, PromptCard, TopicPicker, people/relations editors | Existing create/save incl. 409 conflict recovery (8.5) |
+| 8 (8.1-8.5) | Compose form | ComposePage, PromptCard, TopicPicker, PeopleEditor, RelationsEditor | Existing create/save incl. 409 conflict recovery (8.5) |
 | 9 (9.1-9.5) | Chosen option / outcome | OptionCardsEditor, `outcome.ts` | Outcome lock state flow |
 | 10 (10.1-10.3) | Live preview | PreviewRail, FeedCard, `derive.ts` | Shared resolution, source indicator |
 | 11 (11.1-11.3) | Author summary field | `types.ts` summary field, editingService passthrough, SummaryControl | parse/serialize round-trip (existing) |
@@ -295,7 +298,7 @@ Lock state is UI-only; the save API's validation is untouched (9.5).
 | HomePage + FeedCard + rails | web UI | Feed, chips, digest, topics rail, search results | 2, 3.3, 5, 14 | useFeed (P0), derive (P2) | — |
 | TopicsPage / PeoplePage | web UI | Grouped projections of feed | 3, 4 | useFeed (P0) | — |
 | ArticlePage (+ OptionCompareCards, ContextRail, TechnicalView) | web UI | Outcome-first article + escape hatch | 1.6, 6, 7 | useDecision (P0), reused diff/history components (P0) | — |
-| ComposePage (+ PromptCard, OptionCardsEditor, SummaryControl, PreviewRail, TopicPicker, outcome.ts) | web UI | Friendly create/edit | 8, 9, 10, 11, 13.3-13.4 | ApiClient (P0), derive (P0), useSummarySuggestion (P1) | — |
+| ComposePage (+ PromptCard, OptionCardsEditor, SummaryControl, PeopleEditor, RelationsEditor, PreviewRail, TopicPicker, outcome.ts) | web UI | Friendly create/edit | 8, 9, 10, 11, 13.3-13.4 | ApiClient (P0), derive (P0), useSummarySuggestion (P1) | — |
 
 Full detail blocks below only for components introducing new boundaries; UI compositions rely on the summary rows plus implementation notes.
 
@@ -511,7 +514,7 @@ Same discriminated `{ok:true,...}|{ok:false,status,...}` envelope as every exist
 - **TopicsPage / PeoplePage**: pure groupings of `FeedCard[]` by `topic` (incl. nesting by path prefix — 3.1-3.2) and by normalized person name (4.1-4.3); empty-topic state (3.4).
 - **ArticlePage**: summary box from `shortDescription` (6.2); sections via friendly names + canonical MADR tag from `MADR_SECTIONS` (6.3); OptionCompareCards highlights the option matching `parseCanonicalOutcome` (6.4); ContextRail renders relations/history as sentences via vocabulary + friendly dates, and "Related reading" from `getSimilar` with SimilarityMeter (6.5, preserved similarity per 15.2); people labels per 1.5 (6.6).
 - **TechnicalView**: raw markdown + path from `getRawAdr` (7.2); reuses HistoryTimeline, VersionDiffView (7.3), CompareLauncher/AdrCompareView (7.4); toggle returns to article (7.5); canonical values verbatim (1.6).
-- **ComposePage**: PromptCards per MADR section with helper text/placeholder/tag (8.1); status segment on `STATUS_LABELS` (8.2); create requires title+context only, publishes as proposed (8.3); TopicPicker for folder choice/creation and move-on-edit (existing `createFolder`/`moveAdr`); people + relations editors with plain labels (8.4); save via existing create/update incl. 409 recovery UI (8.5); `outcome.ts` implements lock/prefill (9.1-9.5); PreviewRail renders a live FeedCard from unsaved form state via `resolveShortDescription` with a feed-backed title resolver (10.1-10.3); SummaryControl shows the source ladder, the author field (11), and the AI suggestion with Use this / Write my own (13.3-13.4).
+- **ComposePage**: PromptCards per MADR section with helper text/placeholder/tag (8.1); status segment on `STATUS_LABELS` (8.2); create requires title+context only, publishes as proposed (8.3); TopicPicker for folder choice/creation and move-on-edit (existing `createFolder`/`moveAdr`); PeopleEditor and RelationsEditor with plain labels (8.4); save via existing create/update incl. 409 recovery UI (8.5); `outcome.ts` implements lock/prefill (9.1-9.5); PreviewRail renders a live FeedCard from unsaved form state via `resolveShortDescription` with a feed-backed title resolver (10.1-10.3); SummaryControl shows the source ladder, the author field (11), and — in edit mode only, for the last-saved revision — the AI suggestion with Use this / Write my own (13.3-13.4; see availability boundary in System Flows).
 
 **Implementation Notes (web)**
 - Integration: `main.tsx` swaps shell CSS imports for portal CSS; `App.tsx` becomes TopNav + switch on `view.kind`; query keys: `["feed"]`, `["adr", id]`, `["relations", id]`, `["history", id]`, `["similar", id]`, `["raw", id]`, `["summary-suggestion", id, blobSha]`. Saves invalidate `["feed"]` and the per-id keys.
