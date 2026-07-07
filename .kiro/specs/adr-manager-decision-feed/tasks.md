@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Foundation: shared vocabulary, types, and derivation
-- [ ] 1.1 Provide the plain-language vocabulary tables in the shared package
+- [x] 1.1 Provide the plain-language vocabulary tables in the shared package
   - Status labels for all five stored statuses (including Rejected), direction-aware relation labels, and the three people-role labels, exported through the shared package barrel
   - Unit tests assert the exact label strings the design specifies, so E2E and UI consume one source of truth
   - Observable: vocabulary unit tests pass asserting every mapping from the design's vocabulary contract
@@ -193,3 +193,6 @@
   - Web unit suite and build, api tests, and the full E2E suite green offline without an API key; package manifests show no new dependencies; the stored file format is unchanged except the additive summary frontmatter
   - Observable: all suites pass in one fresh offline run and the dependency/format constraints are verified against the manifests and a saved record
   - _Requirements: 15.3, 15.4, 15.5, 16.3, 16.4_
+
+## Implementation Notes
+- 1.1: Pre-existing `RelationView.direction` uses "outbound"/"inbound" (packages/shared/src/types.ts) while the new `RelationDirection` vocabulary type uses "outgoing"/"incoming" per design. Core's relationGraphService already derives reciprocal types for inbound relations — UI tasks must map directions without double-flipping relation labels (pass "outgoing" for already-reciprocal-typed views).
