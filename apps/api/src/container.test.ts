@@ -11,10 +11,14 @@ import {
   ComparisonService,
   SearchService,
   SimilarityService,
+  FeedService,
+  SummarySuggestionService,
 } from "@adr/core";
 import { WriteQueue } from "./infrastructure/concurrency/writeQueue.js";
 import { FakeEmbeddingProvider } from "./infrastructure/embeddings/fake.js";
 import { GeminiEmbeddingProvider } from "./infrastructure/embeddings/gemini.js";
+import { GeminiSummaryProvider } from "./infrastructure/summaries/geminiSummaryProvider.js";
+import { SqliteSummaryStore } from "./infrastructure/persistence/sqliteSummaryStore.js";
 import { buildContainer } from "./container.js";
 
 const AUTHOR = "Test Author <test@example.com>";
@@ -163,5 +167,52 @@ describe("buildContainer", () => {
     });
 
     expect(container.embeddingProvider).toBeInstanceOf(GeminiEmbeddingProvider);
+  });
+
+  it("wires FeedService, SummarySuggestionService, and the SQLite summary store (feed/suggestion endpoints' dependencies)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "fake-key" },
+    });
+
+    expect(container.feed).toBeInstanceOf(FeedService);
+    expect(container.summarySuggestion).toBeInstanceOf(SummarySuggestionService);
+    expect(container.summaryStore).toBeInstanceOf(SqliteSummaryStore);
+
+    // The store is real and functional against cfg.sqlitePath.
+    container.summaryStore.set("sha-x", "Cached sentence.");
+    expect(container.summaryStore.get("sha-x")).toBe("Cached sentence.");
+  });
+
+  it("selects a null summary provider when the gemini apiKey is blank, mirroring the embeddings selection (Req 13.5)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "" },
+    });
+
+    expect(container.summaryProvider).toBeNull();
+  });
+
+  it("treats a whitespace-only gemini apiKey as blank for the summary provider too (Req 13.5)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "   " },
+    });
+
+    expect(container.summaryProvider).toBeNull();
+  });
+
+  it("constructs GeminiSummaryProvider with cfg.gemini.summaryModel when an apiKey is configured (Req 13.1)", () => {
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "some-key", summaryModel: "summary-model-x" },
+    });
+
+    expect(container.summaryProvider).toBeInstanceOf(GeminiSummaryProvider);
+    expect((container.summaryProvider as GeminiSummaryProvider).model).toBe("summary-model-x");
   });
 });

@@ -8,6 +8,8 @@ import { historyRoutes } from "./routes/history.js";
 import { compareRoutes } from "./routes/compare.js";
 import { searchRoutes } from "./routes/search.js";
 import { similarityRoutes } from "./routes/similarity.js";
+import { feedRoutes } from "./routes/feed.js";
+import { summariesRoutes } from "./routes/summaries.js";
 
 /**
  * Builds a fully-wired Fastify instance for a given `Container`, without
@@ -31,6 +33,8 @@ export async function buildServer(container: Container): Promise<FastifyInstance
   await app.register(compareRoutes, { container });
   await app.register(searchRoutes, { container });
   await app.register(similarityRoutes, { container });
+  await app.register(feedRoutes, { container });
+  await app.register(summariesRoutes, { container });
 
   return app;
 }

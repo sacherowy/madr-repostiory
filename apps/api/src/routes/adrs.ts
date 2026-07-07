@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { parseAdr } from "@adr/core";
-import type { Adr, CreateAdrRequest, UpdateAdrRequest } from "@adr/shared";
+import type { Adr, CreateAdrRequest, RawAdrContent, UpdateAdrRequest } from "@adr/shared";
 import type { Container } from "../container.js";
 
 /**
@@ -58,6 +58,21 @@ export async function adrRoutes(app: FastifyInstance, opts: { container: Contain
       return reply.status(404).send();
     }
     return reply.status(200).send(adr);
+  });
+
+  app.get("/api/adrs/:id/raw", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const adr = await findAdrById(container, id);
+    if (!adr) {
+      return reply.status(404).send();
+    }
+    // Re-read the file through the git adapter so `markdown` is the exact
+    // stored bytes of the record (req 7.2) — deliberately NOT a
+    // parse -> serialize round trip, which could normalize frontmatter or
+    // whitespace.
+    const markdown = await container.git.read(adr.path);
+    const body: RawAdrContent = { path: adr.path, markdown };
+    return reply.status(200).send(body);
   });
 
   app.put("/api/adrs/:id", async (request, reply) => {
