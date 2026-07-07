@@ -20,6 +20,13 @@ export interface AdrFrontmatter {
   id: AdrId;
   status: AdrStatus;
   date: string;
+  /**
+   * Author-owned one-line short description (11.1). Optional: records without
+   * it remain valid (11.3), and the system never writes it without explicit
+   * user acceptance (13.3). Round-trips through `parseAdr`/`serializeAdr` via
+   * the existing frontmatter spread behavior.
+   */
+  summary?: string;
   decisionMakers?: string[];
   consulted?: string[];
   informed?: string[];
@@ -135,6 +142,49 @@ export interface CreateFolderRequest {
 export interface MoveAdrRequest {
   targetFolder: string;
   author: string;
+}
+
+/** Provenance of a decision's short description: author-written frontmatter
+ * `summary` (layer 1, 11.2) or deterministic derivation (layer 2, 12.1-12.4). */
+export type ShortDescriptionSource = "summary" | "derived";
+
+/** Short-description value object; `source` records provenance so the UI can
+ * show the resolution ladder (10.3). */
+export interface ShortDescription {
+  text: string;
+  source: ShortDescriptionSource;
+}
+
+/**
+ * Read-model projection powering Home/Topics/People/digest/search card
+ * rendering. Derived per request from parsed ADRs; never persisted.
+ */
+export interface FeedCard {
+  id: AdrId;
+  title: string;
+  status: AdrStatus;
+  path: string;
+  /** Parent folder path ("" = root). */
+  topic: string;
+  date: string;
+  decisionMakers: string[];
+  consulted: string[];
+  informed: string[];
+  shortDescription: ShortDescription;
+}
+
+/**
+ * Discriminated union returned by the summary-suggestion endpoint; both
+ * variants are HTTP 200 — absence of AI is not an error (13.5).
+ */
+export type SummarySuggestionResult =
+  | { available: true; suggestion: string }
+  | { available: false; reason: "no-provider" | "provider-error" };
+
+/** Response of `GET /api/adrs/:id/raw`: the exact stored file bytes. */
+export interface RawAdrContent {
+  path: string;
+  markdown: string;
 }
 
 /**

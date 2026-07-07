@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AdrSections } from "@adr/shared";
+import type { Adr, AdrSections } from "@adr/shared";
 import { parseAdr, serializeAdr } from "./parse.js";
 
 /** All 8 MADR section fields empty, for spreading into test fixtures that
@@ -482,6 +482,73 @@ describe("parseAdr/serializeAdr MADR section round-trip", () => {
     expect(reparsed.prosAndConsOfTheOptions).toBe("");
     expect(reparsed.moreInformation).toBe("");
     expect(reparsed.additionalContent).toBe("");
+  });
+});
+
+describe("parseAdr/serializeAdr summary frontmatter round-trip (11.1, 11.3)", () => {
+  it("round-trips the typed summary frontmatter field through read-then-write-then-read", () => {
+    const raw = [
+      "---",
+      "id: ADR-0001",
+      "status: accepted",
+      "date: 2024-01-01",
+      "summary: We chose Postgres because it is boring and reliable.",
+      "---",
+      "# Title",
+      "",
+      "Body text.",
+    ].join("\n");
+
+    const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
+    // Typed access: `summary` must exist on AdrFrontmatter, not only ride the unknown-key spread.
+    expect(adr.summary).toBe("We chose Postgres because it is boring and reliable.");
+
+    const serialized = serializeAdr(adr);
+    expect(serialized).toMatch(/^summary: /m);
+
+    const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
+    expect(reparsed.summary).toBe("We chose Postgres because it is boring and reliable.");
+  });
+
+  it("serializes a typed summary set programmatically on an Adr into frontmatter", () => {
+    const adr: Adr = {
+      id: "ADR-0001",
+      status: "accepted",
+      date: "2024-01-01",
+      summary: "One-line author summary.",
+      title: "Title",
+      ...emptySections,
+      additionalContent: "Body text.",
+      path: "examples/0001-title.md",
+      blobSha: "sha1",
+    };
+
+    const serialized = serializeAdr(adr);
+    const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
+
+    expect(reparsed.summary).toBe("One-line author summary.");
+  });
+
+  it("treats records without a summary field as valid and never invents one on save", () => {
+    const raw = [
+      "---",
+      "id: ADR-0001",
+      "status: accepted",
+      "date: 2024-01-01",
+      "---",
+      "# Title",
+      "",
+      "Body text.",
+    ].join("\n");
+
+    const adr = parseAdr(raw, "examples/0001-title.md", "sha1");
+    expect(adr.summary).toBeUndefined();
+
+    const serialized = serializeAdr(adr);
+    expect(serialized).not.toMatch(/^summary:/m);
+
+    const reparsed = parseAdr(serialized, adr.path, adr.blobSha);
+    expect(reparsed.summary).toBeUndefined();
   });
 });
 

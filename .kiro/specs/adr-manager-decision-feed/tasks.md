@@ -6,7 +6,7 @@
   - Unit tests assert the exact label strings the design specifies, so E2E and UI consume one source of truth
   - Observable: vocabulary unit tests pass asserting every mapping from the design's vocabulary contract
   - _Requirements: 1.1, 1.2, 1.5_
-- [ ] 1.2 Add the typed author summary frontmatter field and the new data-transfer types
+- [x] 1.2 Add the typed author summary frontmatter field and the new data-transfer types
   - Optional `summary` on the frontmatter type; feed-card, short-description, summary-suggestion-result, and raw-content types exported
   - Existing parse/serialize tests stay green — the field rides the established unknown-key round-trip, and records without it remain valid
   - Observable: shared and core packages typecheck and their existing test suites pass with the new types exported

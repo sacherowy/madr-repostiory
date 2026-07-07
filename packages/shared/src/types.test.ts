@@ -21,6 +21,11 @@ import type {
   UpdateAdrRequest,
   CreateFolderRequest,
   MoveAdrRequest,
+  ShortDescriptionSource,
+  ShortDescription,
+  FeedCard,
+  SummarySuggestionResult,
+  RawAdrContent,
 } from "./types.js";
 
 describe("view types", () => {
@@ -226,6 +231,81 @@ describe("AdrFrontmatter decision-participant fields", () => {
     const typesPath = fileURLToPath(new URL("./types.ts", import.meta.url));
     const source = readFileSync(typesPath, "utf-8");
     expect(source).not.toMatch(/\bdeciders\b/);
+  });
+});
+
+describe("AdrFrontmatter optional author summary (11.1, 11.3)", () => {
+  it("constructs an AdrFrontmatter literal with a summary field", () => {
+    const frontmatter: AdrFrontmatter = {
+      id: "0001-use-postgres",
+      status: "accepted",
+      date: "2026-01-01",
+      summary: "We chose Postgres because it is boring and reliable.",
+    };
+    expect(frontmatter.summary).toBe("We chose Postgres because it is boring and reliable.");
+  });
+
+  it("remains valid without a summary field", () => {
+    const frontmatter: AdrFrontmatter = {
+      id: "0001-use-postgres",
+      status: "accepted",
+      date: "2026-01-01",
+    };
+    expect(frontmatter.summary).toBeUndefined();
+  });
+});
+
+describe("decision-feed data-transfer types", () => {
+  it("constructs ShortDescription literals for both provenance sources", () => {
+    const fromSummary: ShortDescription = { text: "Author-written line.", source: "summary" };
+    const derived: ShortDescription = { text: "We chose X, because Y.", source: "derived" };
+    const sources: ShortDescriptionSource[] = [fromSummary.source, derived.source];
+    expect(sources).toEqual(["summary", "derived"]);
+  });
+
+  it("constructs a FeedCard literal with topic, people fields, and a shortDescription", () => {
+    const card: FeedCard = {
+      id: "0001-use-postgres",
+      title: "Use Postgres",
+      status: "accepted",
+      path: "decisions/db/0001-use-postgres.md",
+      topic: "decisions/db",
+      date: "2026-01-01",
+      decisionMakers: ["Alice"],
+      consulted: ["Carol"],
+      informed: ["Dave"],
+      shortDescription: { text: "We chose Postgres.", source: "summary" },
+    };
+    expect(card.topic).toBe("decisions/db");
+    expect(card.shortDescription.source).toBe("summary");
+    expect(card.decisionMakers).toEqual(["Alice"]);
+  });
+
+  it("constructs both variants of the SummarySuggestionResult discriminated union", () => {
+    const available: SummarySuggestionResult = {
+      available: true,
+      suggestion: "A one-sentence suggestion.",
+    };
+    const noProvider: SummarySuggestionResult = { available: false, reason: "no-provider" };
+    const providerError: SummarySuggestionResult = { available: false, reason: "provider-error" };
+
+    expect(available.available).toBe(true);
+    if (available.available) {
+      expect(available.suggestion).toBe("A one-sentence suggestion.");
+    }
+    expect([noProvider, providerError].every((r) => !r.available)).toBe(true);
+    if (!noProvider.available) {
+      expect(noProvider.reason).toBe("no-provider");
+    }
+  });
+
+  it("constructs a RawAdrContent literal with path and exact markdown", () => {
+    const raw: RawAdrContent = {
+      path: "decisions/0001-use-postgres.md",
+      markdown: "---\nid: '0001'\n---\n\n# Use Postgres\n",
+    };
+    expect(raw.markdown).toContain("# Use Postgres");
+    expect(raw.path).toMatch(/\.md$/);
   });
 });
 
