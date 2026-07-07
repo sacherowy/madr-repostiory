@@ -1,0 +1,195 @@
+# Implementation Plan
+
+- [ ] 1. Foundation: shared vocabulary, types, and derivation
+- [ ] 1.1 Provide the plain-language vocabulary tables in the shared package
+  - Status labels for all five stored statuses (including Rejected), direction-aware relation labels, and the three people-role labels, exported through the shared package barrel
+  - Unit tests assert the exact label strings the design specifies, so E2E and UI consume one source of truth
+  - Observable: vocabulary unit tests pass asserting every mapping from the design's vocabulary contract
+  - _Requirements: 1.1, 1.2, 1.5_
+- [ ] 1.2 Add the typed author summary frontmatter field and the new data-transfer types
+  - Optional `summary` on the frontmatter type; feed-card, short-description, summary-suggestion-result, and raw-content types exported
+  - Existing parse/serialize tests stay green — the field rides the established unknown-key round-trip, and records without it remain valid
+  - Observable: shared and core packages typecheck and their existing test suites pass with the new types exported
+  - _Requirements: 11.1, 11.3_
+- [ ] 1.3 Implement deterministic short-description resolution in the shared package
+  - Author summary always wins when present; otherwise derive by status: Decided from the canonical outcome phrasing (with first-sentence fallback), In discussion from considered options plus optional first driver, Replaced from the replacing decision's title and date, otherwise outcome text falling back to the first sentence of the context
+  - Pure function with a caller-supplied title resolver; no network or file access; returns the source layer alongside the text
+  - Observable: unit tests cover each derivation branch, summary precedence, the canonical-outcome parser, and empty-input tolerance
+  - _Requirements: 11.2, 12.1, 12.2, 12.3, 12.4, 12.5_
+
+- [ ] 2. Core services and summary passthrough
+- [ ] 2.1 (P) Accept the author summary through the editing service
+  - Create and update payloads carry the optional summary onto the record; saving persists it into the file's frontmatter and it survives a read-modify-write cycle
+  - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
+  - Observable: round-trip test proves a saved summary reappears on re-read, and records without one remain valid
+  - _Requirements: 11.1, 11.3_
+  - _Boundary: AdrEditingService_
+- [ ] 2.2 (P) Build the feed assembly service
+  - Scan the repository, parse each record, and assemble cards with title, status, topic (from folder location), date, people fields, and the resolved short description using the shared derivation with a repository-wide title resolver
+  - Cards sorted by date descending then id; unparseable files skipped with the same tolerance as existing services
+  - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
+  - Observable: unit tests over an in-memory repository fake verify card assembly, topic derivation, sort order, per-status descriptions, and skip behavior
+  - _Requirements: 2.3, 12.1, 12.2, 12.3, 12.4_
+  - _Boundary: FeedService_
+- [ ] 2.3 (P) Build the summary-suggestion orchestration service and its ports
+  - Provider and store ports defined in core; cache-first by the saved revision's blob identity; provider errors surface as unavailable and are not cached; absent provider reports unavailable without touching the store
+  - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
+  - Observable: unit tests prove a cache hit performs zero provider calls, a miss generates and stores, an error is not cached, and a null provider yields the no-provider result
+  - _Requirements: 13.1, 13.2, 13.5_
+  - _Boundary: SummarySuggestionService_
+
+- [ ] 3. API surface
+- [ ] 3.1 Add the summary cache store and the Gemini summary provider adapters
+  - Cache table keyed by blob identity as a sibling of the embedding cache, in the existing database file with its own connection
+  - Text-generation adapter calling the same API family as the existing embeddings adapter, returning one trimmed plain-language sentence; summary model configurable by environment variable with the design's default
+  - Observable: adapter tests pass; the cache store honors get/set semantics identical to the embedding-cache precedent
+  - _Depends: 2.3_
+  - _Requirements: 13.1, 13.2_
+- [ ] 3.2 Expose feed, raw-content, and suggestion endpoints wired through the container
+  - Feed endpoint returns the assembled cards; raw endpoint returns the exact stored file bytes and path; suggestion endpoint returns the availability union with both variants as success responses
+  - Container wires the new services; the provider is absent when no API key is configured, mirroring the embeddings selection
+  - Observable: integration tests cover enriched cards over a seeded repository, byte-exact raw content, offline no-provider result, a cached second suggestion call, and a guard that existing endpoints' responses are byte-compatible before and after
+  - _Depends: 2.2, 2.3, 3.1_
+  - _Requirements: 2.3, 7.2, 13.1, 13.2, 13.5, 15.3_
+
+- [ ] 4. Web foundation
+- [ ] 4.1 (P) Build the portal view store
+  - Discriminated view union (home, topics, topic, people, person, decision with technical flag, compose with optional id), author name, navigation and technical-view toggle actions; default view is Home
+  - Observable: store unit tests verify navigation transitions, the default Home view, and the technical-view toggle constraint
+  - _Requirements: 2.1, 5.1, 15.5_
+  - _Boundary: portalStore_
+- [ ] 4.2 (P) Extend the API client and add the portal query hooks
+  - Client methods for feed, raw content, and summary suggestion using the existing discriminated result envelope; query hooks for feed, per-decision data, and on-demand suggestion with the design's query keys
+  - Observable: hook tests against the real backend return typed feed cards, raw content, and the suggestion union
+  - _Depends: 3.2_
+  - _Requirements: 2.3, 7.2, 13.1_
+  - _Boundary: ApiClient, query hooks_
+- [ ] 4.3 (P) Apply plain-language labels to the shared primitives
+  - Status badge shows the plain-language label (dot colors unchanged); relation chip shows direction-aware plain labels
+  - Observable: full web unit suite remains green — existing shell/panel tests asserting raw status or relation strings are updated in this task
+  - _Requirements: 1.1, 1.2_
+  - _Boundary: StatusBadge, RelationChip_
+
+- [ ] 5. Home, Topics, and People surfaces
+- [ ] 5.1 Build the decision card and top navigation components
+  - Presentational card showing title, plain-language status, one-line short description, topic, people, and a friendly relative timestamp; no data fetching inside the card so it is reusable for search results, topic/person lists, and the live preview
+  - Top navigation with Home, Topics, People destinations, the author-name field, and a New decision action
+  - Observable: component tests render a card from a feed payload with every field visible and the status in plain language
+  - _Requirements: 1.5, 2.3_
+- [ ] 5.2 Build the Home page with hero search, filter chips, feed, and empty states
+  - Hero search submits to the existing keyword search and renders hits as decision cards; plain-word chips (including Rejected) filter the feed; selecting a card navigates to the decision
+  - HomePage renders explicit rail mount slots (topics rail, attention digest) as empty placeholders so sibling tasks plug in additively without editing each other's code
+  - Observable: component tests cover feed rendering, chip filtering, search-result cards, card navigation, and the inviting empty state
+  - _Requirements: 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 14.1, 14.2_
+- [ ] 5.3 (P) Build the topics rail and the Topics destination
+  - Topics listed from folders including nested sub-topics; selecting a topic shows its decisions including sub-topics; empty topics show an empty state; the Home rail links into the destination
+  - Fills the topics-rail slot additively (own component files; the HomePage edit is a one-line slot fill)
+  - Observable: component tests cover nested topic listing, per-topic filtering, the empty-topic state, and rail navigation
+  - _Depends: 5.1, 5.2_
+  - _Requirements: 1.3, 3.1, 3.2, 3.3, 3.4_
+  - _Boundary: TopicsPage, TopicsRail_
+- [ ] 5.4 (P) Build the People directory
+  - Distinct people gathered across owner/input/informed fields with case-insensitive, whitespace-trimmed grouping; selecting a person lists their decisions
+  - Observable: component tests verify distinct-person listing, normalized name grouping, and per-person decision lists
+  - _Depends: 5.1_
+  - _Requirements: 4.1, 4.2, 4.3_
+  - _Boundary: PeoplePage_
+- [ ] 5.5 (P) Build the Needs-your-attention digest
+  - Lists In-discussion decisions whose people fields match the session author name (case-insensitive, trimmed); blank author name shows a prompt state; selecting an entry opens the decision
+  - Owns the digest matching logic, reading the author name from the portal store; fills the digest slot additively (own component files)
+  - Observable: component tests cover matching semantics including case and whitespace, the blank-author prompt, and entry navigation
+  - _Depends: 5.1, 5.2_
+  - _Requirements: 5.1, 5.2, 5.3_
+  - _Boundary: AttentionDigest_
+
+- [ ] 6. Decision article and Technical view
+- [ ] 6.1 Build the article page core
+  - Outcome-first summary box before any section content; each section under a friendly name with the canonical MADR heading as a subtle tag; people shown with plain-language labels
+  - ArticlePage creates mount slots for the option compare cards and the context rail
+  - Observable: component tests verify the summary box leads the page, friendly names carry canonical tags, and people labels are plain-language
+  - _Requirements: 6.1, 6.2, 6.3, 6.6_
+- [ ] 6.2 (P) Build the option compare cards with chosen highlight
+  - Options render as compare cards; the chosen option is identified via the canonical outcome parse and visually highlighted
+  - Additive slot fill; own component files
+  - Observable: component test shows the chosen card highlighted and non-canonical outcomes rendering without a false highlight
+  - _Depends: 6.1_
+  - _Requirements: 6.4_
+  - _Boundary: OptionCompareCards_
+- [ ] 6.3 (P) Build the context rail with plain-sentence relations, story, and related reading
+  - Relations and history rendered as plain-language sentences; related reading from the existing similarity data with meters
+  - Additive slot fill; own component files
+  - Observable: component tests verify relation/history sentences use the vocabulary labels and related-reading entries carry similarity meters
+  - _Depends: 6.1_
+  - _Requirements: 1.4, 6.5, 15.2_
+  - _Boundary: ContextRail_
+- [ ] 6.4 Build the Technical view
+  - Toggle from the article shows the raw Markdown file content and path, canonical status/relation values verbatim, the real git history with version diffs, and the ADR-to-ADR comparison entry, reusing the existing history/diff/compare components; toggling off returns to the article
+  - Observable: component tests verify raw content and path display, canonical values shown verbatim, reused history/diff/compare rendering, and the return toggle
+  - _Depends: 4.2, 6.1_
+  - _Requirements: 1.6, 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [ ] 7. Compose form
+- [ ] 7.1 Build the compose skeleton with prompt cards, status segment, and publish gate
+  - Each MADR section as a prompt card with friendly heading, helper text, example placeholder, and the canonical heading tag; plain-word status segment; creating requires only title and context and publishes as In discussion
+  - ComposePage lays out labeled section slots for topic/people/relations, options, summary control, and preview rail
+  - Relocates the pure option/people helpers into the compose feature and updates remaining imports so the old editor keeps compiling until its removal; web unit suite stays green
+  - Observable: component tests verify the publish gate (title+context only), prompt-card structure with canonical tags, and the plain-word status segment
+  - _Requirements: 8.1, 8.2, 8.3_
+- [ ] 7.2 (P) Build the topic picker, people editor, and relations editor
+  - Topic choice wraps existing folder listing/creation; changing topic on edit moves the record; people and relations edited with plain-language labels
+  - Additive slot fill; own component files
+  - Observable: component tests cover topic create/choose, move-on-edit, and people/relation add/remove with plain labels
+  - _Depends: 7.1_
+  - _Requirements: 8.4_
+  - _Boundary: TopicPicker, PeopleEditor, RelationsEditor_
+- [ ] 7.3 (P) Build option cards with Mark-as-chosen and the outcome lock/prefill
+  - Marking an option chosen pre-fills the outcome in the canonical "Chosen option: X, because Y" phrasing; the outcome stays locked while In discussion with no chosen option and unlocks on choose or Decided; enforcement is UI-only, leaving save validation untouched
+  - Additive slot fill; own component files
+  - Observable: component tests cover the lock matrix, the prefill phrasing round-tripping through the canonical parser, and unlock transitions
+  - _Depends: 7.1_
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+  - _Boundary: OptionCardsEditor, outcome helpers_
+- [ ] 7.4 (P) Build the summary control with the AI suggestion
+  - Source-ladder indicator, author summary field, and the suggestion offered in edit mode only for the last-saved revision; Use this copies the sentence into the summary field, Write my own overrides it; when unavailable the AI affordance is absent with a quiet hint
+  - Additive slot fill; own component files
+  - Observable: component tests cover the ladder indicator, accept-copies-to-field, author override, and the degraded no-provider state
+  - _Depends: 4.2, 7.1_
+  - _Requirements: 10.3, 11.2, 13.1, 13.3, 13.4, 13.5_
+  - _Boundary: SummaryControl_
+- [ ] 7.5 (P) Build the live feed-card preview rail
+  - Renders the decision card from unsaved form state through the shared derivation with a feed-backed title resolver; updates as fields change; shows which layer sources the preview text
+  - Additive slot fill; own component files
+  - Observable: component tests verify live updates on edits and the correct source indicator for authored vs derived text
+  - _Depends: 5.1, 7.1_
+  - _Requirements: 10.1, 10.2, 10.3_
+  - _Boundary: PreviewRail_
+- [ ] 7.6 Wire the compose save flows with conflict recovery
+  - Create and edit save through the existing endpoints including the summary field; the stale-write conflict recovery flow and message are preserved; saves invalidate the feed and per-decision queries
+  - Observable: tests against the real backend prove create, edit with summary persistence, 409 recovery, and query invalidation refreshing the feed
+  - _Requirements: 8.5, 11.1_
+
+- [ ] 8. Integration: portal swap and shell removal
+- [ ] 8.1 Assemble the portal in the application root
+  - Top navigation plus a switch over the view union renders Home, Topics, People, article, and compose; portal styles built on the existing tokens; default view is Home
+  - Wires the top-nav author-name field to the portal store and save payloads only; digest matching is owned by 5.5
+  - Observable: app-level tests navigate between all destinations, land on Home by default, and reach a decision article from a card
+  - _Requirements: 2.1, 2.6, 15.5_
+- [ ] 8.2 Remove the contextual-shell navigation
+  - Delete the command palette, explorer, inspector, folder tree, aspect switcher, context header, workspace store, aspect/inspector hooks, the superseded card primitive, the old search/relations/similarity panels, the old editor UI files, and the shell stylesheets; sweep all remaining references
+  - Observable: typecheck and the full web unit suite are green (helpers already relocated in 7.1); E2E journey specs are intentionally red until 9.1 migrates them — per the design's same-change-set migration strategy
+  - _Requirements: 15.1, 15.2_
+
+- [ ] 9. E2E validation
+- [ ] 9.1 Migrate the existing journey specs to the portal navigation
+  - Re-target the lifecycle, search, tree (to Topics), similarity (to article related reading), both migrated-fixture specs, and the design-system spec to drive the portal; harness, config, and runners untouched
+  - Observable: all seven migrated specs pass offline against the portal with the existing run lifecycle
+  - _Depends: 8.1, 8.2_
+  - _Requirements: 15.2, 16.3, 16.4_
+- [ ] 9.2 Add the decision-feed journey spec
+  - Asserts feed rendering with plain-language labels, chip filtering, topic browsing, the people directory, the author-matched digest, the article with summary box, the Technical view showing canonical values verbatim, compose create with title+context only appearing in the feed with a derived description, and mark-as-chosen producing a Decided card
+  - Observable: the new spec passes offline in the pre-provisioned browser with no snapshot assertions
+  - _Requirements: 16.1, 16.2, 16.3, 16.4_
+- [ ] 9.3 Run the full offline regression and constraint verification
+  - Web unit suite and build, api tests, and the full E2E suite green offline without an API key; package manifests show no new dependencies; the stored file format is unchanged except the additive summary frontmatter
+  - Observable: all suites pass in one fresh offline run and the dependency/format constraints are verified against the manifests and a saved record
+  - _Requirements: 15.3, 15.4, 15.5, 16.3, 16.4_
