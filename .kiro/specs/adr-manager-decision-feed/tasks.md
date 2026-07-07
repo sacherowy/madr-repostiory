@@ -11,7 +11,7 @@
   - Existing parse/serialize tests stay green — the field rides the established unknown-key round-trip, and records without it remain valid
   - Observable: shared and core packages typecheck and their existing test suites pass with the new types exported
   - _Requirements: 11.1, 11.3_
-- [ ] 1.3 Implement deterministic short-description resolution in the shared package
+- [x] 1.3 Implement deterministic short-description resolution in the shared package
   - Author summary always wins when present; otherwise derive by status: Decided from the canonical outcome phrasing (with first-sentence fallback), In discussion from considered options plus optional first driver, Replaced from the replacing decision's title and date, otherwise outcome text falling back to the first sentence of the context
   - Pure function with a caller-supplied title resolver; no network or file access; returns the source layer alongside the text
   - Observable: unit tests cover each derivation branch, summary precedence, the canonical-outcome parser, and empty-input tolerance
@@ -196,3 +196,4 @@
 
 ## Implementation Notes
 - 1.1: Pre-existing `RelationView.direction` uses "outbound"/"inbound" (packages/shared/src/types.ts) while the new `RelationDirection` vocabulary type uses "outgoing"/"incoming" per design. Core's relationGraphService already derives reciprocal types for inbound relations — UI tasks must map directions without double-flipping relation labels (pass "outgoing" for already-reciprocal-typed views).
+- 1.3: Decided-branch derivation renders "We chose <option> — <reason>" (em dash, per approved proposal), not the comma form in 12.1's example. Single-option In-discussion renders "Considering <option>"; Retired WITH a resolvable superseded-by uses the 12.3 "Replaced by" derivation. Derived text is plain (bold markers stripped). Downstream tasks (PreviewRail 7.5, feed rendering 5.x, E2E string assertions 9.x) must assert these exact renderings via the shared function, not re-derive.
