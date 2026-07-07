@@ -18,7 +18,7 @@
   - _Requirements: 11.2, 12.1, 12.2, 12.3, 12.4, 12.5_
 
 - [ ] 2. Core services and summary passthrough
-- [ ] 2.1 (P) Accept the author summary through the editing service
+- [x] 2.1 (P) Accept the author summary through the editing service
   - Create and update payloads carry the optional summary onto the record; saving persists it into the file's frontmatter and it survives a read-modify-write cycle
   - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
   - Observable: round-trip test proves a saved summary reappears on re-read, and records without one remain valid
@@ -197,3 +197,4 @@
 ## Implementation Notes
 - 1.1: Pre-existing `RelationView.direction` uses "outbound"/"inbound" (packages/shared/src/types.ts) while the new `RelationDirection` vocabulary type uses "outgoing"/"incoming" per design. Core's relationGraphService already derives reciprocal types for inbound relations — UI tasks must map directions without double-flipping relation labels (pass "outgoing" for already-reciprocal-typed views).
 - 1.3: Decided-branch derivation renders "We chose <option> — <reason>" (em dash, per approved proposal), not the comma form in 12.1's example. Single-option In-discussion renders "Considering <option>"; Retired WITH a resolvable superseded-by uses the 12.3 "Replaced by" derivation. Derived text is plain (bold markers stripped). Downstream tasks (PreviewRail 7.5, feed rendering 5.x, E2E string assertions 9.x) must assert these exact renderings via the shared function, not re-derive.
+- 2.1: Shared HTTP DTOs (CreateAdrRequest/UpdateAdrRequest) deliberately NOT extended — the editing service accepts `summary` via local intersection types (SummaryCarrier). Whoever wires routes/form (3.2 request passthrough is server-side only; the PUT/POST body field lands with 7.6) must add `summary?` to the shared DTOs then and should add a pin test that an update payload omitting summary clears a stored one (full-document save semantics). Blank/whitespace summaries normalize to absent.

@@ -6,12 +6,25 @@ import { parseAdr, serializeAdr } from "./parse.js";
 import { combinedSectionText } from "./sections.js";
 
 /**
+ * Optional author-owned one-line short description accepted in create/update
+ * payloads (11.1) and passed through onto the Adr explicitly. Declared as a
+ * local intersection rather than on `CreateAdrRequest`/`UpdateAdrRequest` in
+ * `@adr/shared` because those are the HTTP request DTOs — extending them
+ * additively is the API-contract change (15.3) owned by the routes work, while
+ * this service only needs its own payload types to carry the field.
+ */
+export type SummaryCarrier = { summary?: string };
+
+/** `create`'s payload: the shared create DTO plus the optional author summary. */
+export type CreateAdrInput = CreateAdrRequest & SummaryCarrier;
+
+/**
  * `UpdateAdrRequest` bundles `author`/`baseBlobSha` into the same object, but
  * `save`'s call signature (per design.md) takes them as separate trailing
  * parameters instead — mirrors the system flow where the route layer passes
  * `baseBlobSha` through a dedicated concurrency-check step.
  */
-export type SaveAdrInput = Omit<UpdateAdrRequest, "author" | "baseBlobSha">;
+export type SaveAdrInput = Omit<UpdateAdrRequest, "author" | "baseBlobSha"> & SummaryCarrier;
 
 export type SaveResult =
   | { kind: "saved"; adr: Adr }
@@ -33,6 +46,18 @@ function withoutUndefined<T extends object>(obj: T): Partial<T> {
     if (obj[key] !== undefined) result[key] = obj[key];
   }
   return result;
+}
+
+/** Normalizes a blank (empty/whitespace-only) summary to `undefined` so it is
+ * dropped by the withoutUndefined spread like any other absent optional
+ * frontmatter field, instead of persisting a meaningless `summary: ''` key.
+ * A blank string carries no author framing — absence is the valid state for
+ * summary-less records (11.3), and every downstream consumer (the derivation
+ * ladder) already treats non-blank as the only "author summary present"
+ * signal, so an empty key would be pure frontmatter noise. Non-blank values
+ * pass through verbatim (author-owned prose is never rewritten). */
+function normalizeSummary(summary: string | undefined): string | undefined {
+  return summary !== undefined && summary.trim() !== "" ? summary : undefined;
 }
 
 /**
@@ -60,13 +85,14 @@ export class AdrEditingService {
    * to index yet (it becomes searchable once the user saves real content via
    * save()).
    */
-  async create(input: CreateAdrRequest, author: string): Promise<Adr> {
+  async create(input: CreateAdrInput, author: string): Promise<Adr> {
     const id = await this.nextId();
     const path = input.folder === "." ? `${id}.md` : `${input.folder}/${id}.md`;
     const date = new Date().toISOString().slice(0, 10);
 
     const adr: Adr = {
       ...withoutUndefined({
+        summary: normalizeSummary(input.summary),
         decisionMakers: input.decisionMakers,
         consulted: input.consulted,
         informed: input.informed,
@@ -134,6 +160,7 @@ export class AdrEditingService {
 
     const adr: Adr = {
       ...withoutUndefined({
+        summary: normalizeSummary(input.summary),
         decisionMakers: input.decisionMakers,
         consulted: input.consulted,
         informed: input.informed,
