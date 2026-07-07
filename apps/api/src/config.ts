@@ -4,6 +4,7 @@ export const config = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? "",
     model: process.env.GEMINI_EMBED_MODEL ?? "text-embedding-004",
+    summaryModel: process.env.GEMINI_SUMMARY_MODEL ?? "gemini-2.0-flash",
   },
   port: Number(process.env.PORT ?? 3000),
 };

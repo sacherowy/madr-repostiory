@@ -39,7 +39,7 @@
   - _Boundary: SummarySuggestionService_
 
 - [ ] 3. API surface
-- [ ] 3.1 Add the summary cache store and the Gemini summary provider adapters
+- [x] 3.1 Add the summary cache store and the Gemini summary provider adapters
   - Cache table keyed by blob identity as a sibling of the embedding cache, in the existing database file with its own connection
   - Text-generation adapter calling the same API family as the existing embeddings adapter, returning one trimmed plain-language sentence; summary model configurable by environment variable with the design's default
   - Observable: adapter tests pass; the cache store honors get/set semantics identical to the embedding-cache precedent
