@@ -24,7 +24,7 @@
   - Observable: round-trip test proves a saved summary reappears on re-read, and records without one remain valid
   - _Requirements: 11.1, 11.3_
   - _Boundary: AdrEditingService_
-- [ ] 2.2 (P) Build the feed assembly service
+- [x] 2.2 (P) Build the feed assembly service
   - Scan the repository, parse each record, and assemble cards with title, status, topic (from folder location), date, people fields, and the resolved short description using the shared derivation with a repository-wide title resolver
   - Cards sorted by date descending then id; unparseable files skipped with the same tolerance as existing services
   - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
@@ -197,4 +197,5 @@
 ## Implementation Notes
 - 1.1: Pre-existing `RelationView.direction` uses "outbound"/"inbound" (packages/shared/src/types.ts) while the new `RelationDirection` vocabulary type uses "outgoing"/"incoming" per design. Core's relationGraphService already derives reciprocal types for inbound relations — UI tasks must map directions without double-flipping relation labels (pass "outgoing" for already-reciprocal-typed views).
 - 1.3: Decided-branch derivation renders "We chose <option> — <reason>" (em dash, per approved proposal), not the comma form in 12.1's example. Single-option In-discussion renders "Considering <option>"; Retired WITH a resolvable superseded-by uses the 12.3 "Replaced by" derivation. Derived text is plain (bold markers stripped). Downstream tasks (PreviewRail 7.5, feed rendering 5.x, E2E string assertions 9.x) must assert these exact renderings via the shared function, not re-derive.
+- 2.2: gray-matter parses unquoted YAML dates (`date: 2026-06-17`) into JS Date objects at runtime despite `Adr.date: string` typing. FeedService normalizes at its boundary (`toISOString().slice(0,10)`, UTC-safe). Root-cause fix belongs in parseAdr (out of feed boundary) — any task touching parse.ts or date display should be aware; `GET /api/adrs/:id` serializes such dates as full ISO timestamps.
 - 2.1: Shared HTTP DTOs (CreateAdrRequest/UpdateAdrRequest) deliberately NOT extended — the editing service accepts `summary` via local intersection types (SummaryCarrier). Whoever wires routes/form (3.2 request passthrough is server-side only; the PUT/POST body field lands with 7.6) must add `summary?` to the shared DTOs then and should add a pin test that an update payload omitting summary clears a stored one (full-document save semantics). Blank/whitespace summaries normalize to absent.

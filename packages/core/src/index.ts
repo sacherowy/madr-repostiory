@@ -11,3 +11,4 @@ export * from "./compare/comparisonService.js";
 export * from "./search/searchService.js";
 export * from "./similarity/similarityService.js";
 export * from "./adr/editingService.js";
+export * from "./feed/feedService.js";
