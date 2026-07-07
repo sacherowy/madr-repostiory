@@ -1,6 +1,7 @@
 export * from "./ports/git.js";
 export * from "./ports/embeddings.js";
 export * from "./ports/search.js";
+export * from "./ports/summaries.js";
 export * from "./adr/parse.js";
 export * from "./adr/sections.js";
 export * from "./similarity/cosine.js";
@@ -12,3 +13,4 @@ export * from "./search/searchService.js";
 export * from "./similarity/similarityService.js";
 export * from "./adr/editingService.js";
 export * from "./feed/feedService.js";
+export * from "./summaries/summarySuggestionService.js";
