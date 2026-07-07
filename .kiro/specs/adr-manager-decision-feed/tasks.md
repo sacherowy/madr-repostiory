@@ -53,7 +53,7 @@
   - _Requirements: 2.3, 7.2, 13.1, 13.2, 13.5, 15.3_
 
 - [ ] 4. Web foundation
-- [ ] 4.1 (P) Build the portal view store
+- [x] 4.1 (P) Build the portal view store
   - Discriminated view union (home, topics, topic, people, person, decision with technical flag, compose with optional id), author name, navigation and technical-view toggle actions; default view is Home
   - Observable: store unit tests verify navigation transitions, the default Home view, and the technical-view toggle constraint
   - _Requirements: 2.1, 5.1, 15.5_
@@ -198,6 +198,7 @@
 - 1.1: Pre-existing `RelationView.direction` uses "outbound"/"inbound" (packages/shared/src/types.ts) while the new `RelationDirection` vocabulary type uses "outgoing"/"incoming" per design. Core's relationGraphService already derives reciprocal types for inbound relations — UI tasks must map directions without double-flipping relation labels (pass "outgoing" for already-reciprocal-typed views).
 - 1.3: Decided-branch derivation renders "We chose <option> — <reason>" (em dash, per approved proposal), not the comma form in 12.1's example. Single-option In-discussion renders "Considering <option>"; Retired WITH a resolvable superseded-by uses the 12.3 "Replaced by" derivation. Derived text is plain (bold markers stripped). Downstream tasks (PreviewRail 7.5, feed rendering 5.x, E2E string assertions 9.x) must assert these exact renderings via the shared function, not re-derive.
 - 2.2: gray-matter parses unquoted YAML dates (`date: 2026-06-17`) into JS Date objects at runtime despite `Adr.date: string` typing. FeedService normalizes at its boundary (`toISOString().slice(0,10)`, UTC-safe). Root-cause fix belongs in parseAdr (out of feed boundary) — any task touching parse.ts or date display should be aware; `GET /api/adrs/:id` serializes such dates as full ISO timestamps.
+- 4.1: portalStore.navigate() NORMALIZES decision entry to technical:false — toggleTechnicalView is the sole entry into Technical view (justified by requirements 2.6/5.3/6.1/7.1: all decision navigation lands on the article page). toggleTechnicalView is a pinned no-op outside decision views. No reset() action exists (contract-faithful); tests isolate via setState.
 - 3.2: `ContainerConfig.gemini.summaryModel` is optional with fallback to global config (required would break existing buildContainer callers incl. web's client.test.ts); prod path always passes it. Suggestion endpoint returns both union variants as HTTP 200; raw endpoint returns git.read bytes (never re-serialized).
 - 2.3: Blank/whitespace provider output → provider-error, NOT cached — a persistently-blank provider is re-called per suggest() for the same blobSha (intentional: no cache poisoning). The Gemini adapter (3.1) should return a trimmed single sentence and let genuinely-empty responses surface as errors.
 - 2.1: Shared HTTP DTOs (CreateAdrRequest/UpdateAdrRequest) deliberately NOT extended — the editing service accepts `summary` via local intersection types (SummaryCarrier). Whoever wires routes/form (3.2 request passthrough is server-side only; the PUT/POST body field lands with 7.6) must add `summary?` to the shared DTOs then and should add a pin test that an update payload omitting summary clears a stored one (full-document save semantics). Blank/whitespace summaries normalize to absent.
