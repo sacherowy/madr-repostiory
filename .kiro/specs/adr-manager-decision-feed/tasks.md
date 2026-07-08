@@ -88,7 +88,7 @@
   - _Depends: 5.1, 5.2_
   - _Requirements: 1.3, 3.1, 3.2, 3.3, 3.4_
   - _Boundary: TopicsPage, TopicsRail_
-- [ ] 5.4 (P) Build the People directory
+- [x] 5.4 (P) Build the People directory
   - Distinct people gathered across owner/input/informed fields with case-insensitive, whitespace-trimmed grouping; selecting a person lists their decisions
   - Observable: component tests verify distinct-person listing, normalized name grouping, and per-person decision lists
   - _Depends: 5.1_

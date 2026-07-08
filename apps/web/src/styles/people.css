@@ -1,0 +1,104 @@
+/* =======================================================================
+   People destination (adr-manager-decision-feed, task 5.4).
+
+   Styling for the People destination (`PeoplePage`: person directory +
+   per-person feed). Additive only — every value is drawn from the existing
+   token system in tokens.css; this file re-values nothing in
+   tokens.css/base.css/soft-ui.css. It reuses the shared `.state*` primitives
+   from base.css and the `.feed-card` primitive styled in portal.css, mirroring
+   the topics.css conventions; only people-specific layout lives here.
+   ======================================================================= */
+
+.people {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Person directory                                                        */
+/* ----------------------------------------------------------------------- */
+
+.people__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.person-item {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.person-item:hover {
+  background: var(--teal-50);
+  border-color: var(--line-strong);
+}
+
+.person-item:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.person-item__count {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-700);
+  background: var(--bg);
+  border-radius: var(--r-full);
+  padding: 2px 10px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Per-person feed                                                         */
+/* ----------------------------------------------------------------------- */
+
+.people__person {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.people__person-heading {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.people__feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.people__feed-item {
+  display: block;
+}
