@@ -1,0 +1,151 @@
+/* =======================================================================
+   Home decision feed (adr-manager-decision-feed, task 5.2).
+
+   Styling for the Home page: hero search, plain-word status chips, the feed
+   list, its empty states, and the two additive rail mount slots (topics rail,
+   attention digest). Additive only — every value is drawn from the existing
+   token system in tokens.css; this file re-values nothing in tokens.css/
+   base.css/soft-ui.css. It reuses the shared `.btn`, `.field__input`, and
+   `.state*` primitives from base.css and the `.feed-card` primitive styled in
+   portal.css; only Home-specific layout lives here.
+   ======================================================================= */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Hero: title, search, status chips                                       */
+/* ----------------------------------------------------------------------- */
+
+.home__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home__hero-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.home__search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home__search-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.home__search-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.home__search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.home__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home__chip {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-700);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.home__chip:hover {
+  background: var(--teal-50);
+  color: var(--ink-900);
+}
+
+.home__chip.is-active,
+.home__chip[aria-pressed="true"] {
+  background: var(--teal-500);
+  color: #fff;
+  border-color: var(--teal-500);
+}
+
+.home__chip:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Layout: feed column + highlights rail                                   */
+/* ----------------------------------------------------------------------- */
+
+.home__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.home__feed-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home__feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home__feed-item {
+  display: block;
+}
+
+.home__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Additive mount slots for tasks 5.3 (topics rail) / 5.5 (attention digest).
+   Empty until those tasks pass their component in; no box treatment of their
+   own so filled content controls its own presentation. */
+.home__slot:empty {
+  display: none;
+}
+
+/* Single-column layout on narrow viewports so the page body never scrolls
+   horizontally; the rail drops below the feed. */
+@media (max-width: 860px) {
+  .home__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
