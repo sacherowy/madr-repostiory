@@ -78,6 +78,9 @@ function createFakeApiClient(initial: Adr): ApiClient {
     compareAdrs: notImplemented,
     search: notImplemented,
     getSimilar: notImplemented,
+    getFeed: notImplemented,
+    getRawAdr: notImplemented,
+    getSummarySuggestion: notImplemented,
   };
 }
 

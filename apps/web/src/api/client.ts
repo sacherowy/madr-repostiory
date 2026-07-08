@@ -1,14 +1,18 @@
 import type {
   Adr,
   AdrCompareView,
+  AdrId,
   CreateAdrRequest,
   CreateFolderRequest,
+  FeedCard,
   FolderNode,
   MoveAdrRequest,
+  RawAdrContent,
   RelationView,
   SearchHit,
   CommitMeta,
   SimilarityResult,
+  SummarySuggestionResult,
   UpdateAdrRequest,
   VersionDiffView,
 } from "@adr/shared";
@@ -16,14 +20,15 @@ import type {
 /**
  * Typed fetch wrapper over `@adr/shared` types (design.md's `ApiClient`
  * boundary). Every method returns a `Promise` of a discriminated union with
- * a consistent `ok: true` / `ok: false` discriminant across all 13 methods.
+ * a consistent `ok: true` / `ok: false` discriminant across all 16 methods.
  *
  * For endpoints with multiple distinct 4xx body shapes (e.g. `updateAdr`'s
  * 409/400/400), the failure branch carries a nested `kind` so a caller can
  * switch on it to get fully-typed access to `result.latest`,
  * `result.missingFields`, etc. without casting. For endpoints with no
- * documented error (`getTree`, `search`), the same `ok: true` wrapper is
- * still used so every one of the 13 methods shares one calling convention.
+ * documented error (`getTree`, `search`, `getFeed`), the same `ok: true`
+ * wrapper is still used so every one of the 16 methods shares one calling
+ * convention.
  */
 
 interface ApiFailure {
@@ -78,6 +83,17 @@ type GetSimilarResult =
   | { ok: true; kind: "emptyScope" }
   | ApiFailure;
 
+type GetFeedResult = { ok: true; cards: FeedCard[] } | ApiFailure;
+
+type GetRawAdrResult = { ok: true; raw: RawAdrContent } | ApiFailure;
+
+/**
+ * The `SummarySuggestionResult` union itself is the endpoint's 200 body —
+ * BOTH variants (available / unavailable) are successes, so `ok: false` is
+ * reserved for transport-level failures (404 unknown id, 500).
+ */
+type GetSummarySuggestionResult = { ok: true; suggestion: SummarySuggestionResult } | ApiFailure;
+
 export interface ApiClient {
   createAdr(body: CreateAdrRequest & { author: string }): Promise<CreateAdrResult>;
   getAdr(id: string): Promise<GetAdrResult>;
@@ -92,6 +108,9 @@ export interface ApiClient {
   compareAdrs(a: string, b: string): Promise<CompareAdrsResult>;
   search(q: string): Promise<SearchResult>;
   getSimilar(id: string, scope?: string): Promise<GetSimilarResult>;
+  getFeed(): Promise<GetFeedResult>;
+  getRawAdr(id: AdrId): Promise<GetRawAdrResult>;
+  getSummarySuggestion(id: AdrId): Promise<GetSummarySuggestionResult>;
 }
 
 /**
@@ -257,6 +276,30 @@ export function createApiClient(baseUrl: string = ""): ApiClient {
           return { ok: true, kind: "ranked", results: data };
         }
         return { ok: true, kind: "emptyScope" };
+      }
+      return { ok: false, status: res.status };
+    },
+
+    async getFeed() {
+      const res = await fetch(`${baseUrl}/api/feed`);
+      if (res.status === 200) {
+        return { ok: true, cards: (await res.json()) as FeedCard[] };
+      }
+      return { ok: false, status: res.status };
+    },
+
+    async getRawAdr(id) {
+      const res = await fetch(`${baseUrl}/api/adrs/${encodeURIComponent(id)}/raw`);
+      if (res.status === 200) {
+        return { ok: true, raw: (await res.json()) as RawAdrContent };
+      }
+      return { ok: false, status: res.status };
+    },
+
+    async getSummarySuggestion(id) {
+      const res = await fetch(`${baseUrl}/api/adrs/${encodeURIComponent(id)}/summary-suggestion`);
+      if (res.status === 200) {
+        return { ok: true, suggestion: (await res.json()) as SummarySuggestionResult };
       }
       return { ok: false, status: res.status };
     },
