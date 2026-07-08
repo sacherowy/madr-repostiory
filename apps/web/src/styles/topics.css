@@ -1,0 +1,175 @@
+/* =======================================================================
+   Topics destination + Home topics rail (adr-manager-decision-feed, task 5.3).
+
+   Styling for the Topics destination (`TopicsPage`: topic list + per-topic
+   feed) and the compact Home `TopicsRail`. Additive only — every value is drawn
+   from the existing token system in tokens.css; this file re-values nothing in
+   tokens.css/base.css/soft-ui.css. It reuses the shared `.state*` primitives
+   from base.css and the `.feed-card` primitive styled in portal.css; only
+   topic-specific layout lives here.
+   ======================================================================= */
+
+.topics {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Topic list                                                              */
+/* ----------------------------------------------------------------------- */
+
+.topics__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topic-item {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.topic-item:hover {
+  background: var(--teal-50);
+  border-color: var(--line-strong);
+}
+
+.topic-item:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.topic-item__count {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-700);
+  background: var(--bg);
+  border-radius: var(--r-full);
+  padding: 2px 10px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Per-topic feed                                                          */
+/* ----------------------------------------------------------------------- */
+
+.topics__topic {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topics__topic-heading {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.topics__feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topics__feed-item {
+  display: block;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Home topics rail                                                        */
+/* ----------------------------------------------------------------------- */
+
+.topics-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+}
+
+.topics-rail__title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.topics-rail__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topics-rail__item {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.topics-rail__item:hover {
+  background: var(--teal-50);
+  border-color: var(--line);
+}
+
+.topics-rail__item:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.topics-rail__count {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-700);
+}
