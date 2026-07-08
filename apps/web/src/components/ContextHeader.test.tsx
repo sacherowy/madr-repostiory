@@ -34,7 +34,8 @@ describe("ContextHeader", () => {
     const badge = header.querySelector(".badge");
     expect(badge).not.toBeNull();
     expect(badge).toHaveClass("badge--accepted");
-    expect(badge).toHaveTextContent("Accepted");
+    // Requirement 1.1: the status badge shows the plain-language label ("Decided").
+    expect(badge).toHaveTextContent("Decided");
 
     // Req 3.1 title text.
     expect(scoped.getByText("Adopt the morski design system")).toBeInTheDocument();

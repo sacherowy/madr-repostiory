@@ -1,4 +1,4 @@
-import type { AdrStatus } from "@adr/shared";
+import { STATUS_LABELS, type AdrStatus } from "@adr/shared";
 
 export interface BasePrimitiveProps {
   /** Optional extra class appended after the primitive's own design-system class. */
@@ -15,19 +15,13 @@ export interface StatusBadgeProps extends BasePrimitiveProps {
 }
 
 /**
- * Human-readable display labels for the five known statuses (Req 4.2). The app
- * surfaces raw English status keys elsewhere, so the labels stay in English but
- * are capitalized to read as a label rather than a machine key. An unknown
- * status has no entry here and falls back to rendering its raw value verbatim.
+ * Plain-language display label for each of the five known statuses comes from
+ * the shared vocabulary layer (`STATUS_LABELS` in @adr/shared, Requirement 1.1):
+ * `proposed` → "In discussion", `accepted` → "Decided", `deprecated` →
+ * "Retired", `superseded` → "Replaced", `rejected` → "Rejected". The dot colors
+ * are unchanged — only the label text is sourced from the vocabulary table. An
+ * unknown status has no entry there and falls back to its raw value verbatim.
  */
-const STATUS_LABELS: Record<KnownStatus, string> = {
-  proposed: "Proposed",
-  accepted: "Accepted",
-  deprecated: "Deprecated",
-  superseded: "Superseded",
-  rejected: "Rejected",
-};
-
 function isKnownStatus(status: string): status is KnownStatus {
   return Object.prototype.hasOwnProperty.call(STATUS_LABELS, status);
 }

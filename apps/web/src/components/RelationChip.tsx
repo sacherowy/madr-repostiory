@@ -1,4 +1,4 @@
-import type { RelationType } from "@adr/shared";
+import { relationLabel, type RelationType } from "@adr/shared";
 
 /** Shared base props for primitives that forward styling/test hooks. Mirrors the
  * shape used by StatusBadge so all primitives stay consistent. */
@@ -40,12 +40,24 @@ const RELATION_MODIFIERS: Record<RelationType, string> = {
  * read-only relations view and the editor's relation controls (Req 5.2 — the
  * primitive is context-agnostic).
  *
+ * The `relation-type` hook renders the plain-language relation label from the
+ * shared vocabulary layer (`relationLabel` in @adr/shared, Requirement 1.2):
+ * `supersedes` → "Replaces", `superseded-by` → "Replaced by", `depends-on` →
+ * "Builds on", `relates-to` → "Related to", `conflicts-with` → "Conflicts
+ * with". The chip is always fed the type as it should read from the current
+ * ADR's perspective — core's `relationGraphService` already derives the
+ * reciprocal type for inbound views (an inbound `supersedes` arrives as
+ * `superseded-by`). The `type` is therefore already the outgoing/authored type,
+ * so the label is looked up with the "outgoing" direction to avoid
+ * double-flipping the supersedes pair. The `direction` prop remains a raw
+ * presentational hook and does not re-derive the label.
+ *
  * Test-hook preservation (Req 12.2): when `direction`/`type`/`target` are shown
  * they are wrapped in distinct `data-testid="relation-direction" |
- * "relation-type" | "relation-target"` spans carrying their exact text, so the
- * existing `RelationsPanel` contract stays intact once it adopts this chip. The
- * hooks are never collapsed into a single opaque element. `direction` and
- * `target` are optional and their spans are omitted when not provided.
+ * "relation-type" | "relation-target"` spans, so the existing `RelationsPanel`
+ * contract stays intact once it adopts this chip. The hooks are never collapsed
+ * into a single opaque element. `direction` and `target` are optional and their
+ * spans are omitted when not provided.
  */
 export function RelationChip({
   type,
@@ -62,7 +74,7 @@ export function RelationChip({
       {direction !== undefined ? (
         <span data-testid="relation-direction">{direction}</span>
       ) : null}
-      <span data-testid="relation-type">{type}</span>
+      <span data-testid="relation-type">{relationLabel(type, "outgoing")}</span>
       {target !== undefined ? <span data-testid="relation-target">{target}</span> : null}
     </span>
   );

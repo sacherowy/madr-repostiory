@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import type { RelationType } from "@adr/shared";
+import { relationLabel, type RelationType } from "@adr/shared";
 import { RelationChip } from "./RelationChip.js";
 
 const RELATION_TYPES: RelationType[] = [
@@ -52,8 +52,37 @@ describe("RelationChip", () => {
     );
 
     expect(screen.getByTestId("relation-direction")).toHaveTextContent("outbound");
-    expect(screen.getByTestId("relation-type")).toHaveTextContent("supersedes");
+    // Requirement 1.2: the type hook renders the plain-language relation label
+    // ("Replaces"), not the raw stored relation type ("supersedes").
+    expect(screen.getByTestId("relation-type")).toHaveTextContent("Replaces");
+    expect(screen.getByTestId("relation-type")).not.toHaveTextContent("supersedes");
     expect(screen.getByTestId("relation-target")).toHaveTextContent("ADR-0007");
+  });
+
+  // Requirement 1.2 (direction-aware): the chip is fed an already-reciprocal-
+  // resolved type (core's relationGraphService derives the reciprocal for
+  // inbound views), so it renders the outgoing label for that type WITHOUT
+  // double-flipping. An inbound `superseded-by` view reads "Replaced by".
+  it("renders the plain-language label for a reciprocal-resolved inbound relation without double-flipping", () => {
+    render(
+      <RelationChip
+        type="superseded-by"
+        target="ADR-0007"
+        direction="inbound"
+        data-testid="relation-chip"
+      />
+    );
+
+    expect(screen.getByTestId("relation-type")).toHaveTextContent("Replaced by");
+    // A double-flip would incorrectly surface the "supersedes" label ("Replaces").
+    expect(screen.getByTestId("relation-type").textContent).not.toBe("Replaces");
+  });
+
+  // Requirement 1.2: every relation type maps to its plain-language outgoing
+  // label from the shared vocabulary.
+  it.each(RELATION_TYPES)("renders the plain-language label for the %s type", (type) => {
+    render(<RelationChip type={type} data-testid="relation-chip" />);
+    expect(screen.getByTestId("relation-type").textContent).toBe(relationLabel(type, "outgoing"));
   });
 
   // The hooks must be three distinct testid'd spans, not collapsed into one opaque element.
@@ -84,7 +113,7 @@ describe("RelationChip", () => {
     render(<RelationChip type="relates-to" target="ADR-0003" data-testid="relation-chip" />);
 
     expect(screen.queryByTestId("relation-direction")).toBeNull();
-    expect(screen.getByTestId("relation-type")).toHaveTextContent("relates-to");
+    expect(screen.getByTestId("relation-type")).toHaveTextContent("Related to");
     expect(screen.getByTestId("relation-target")).toHaveTextContent("ADR-0003");
   });
 
@@ -93,7 +122,7 @@ describe("RelationChip", () => {
     render(<RelationChip type="conflicts-with" data-testid="relation-chip" />);
 
     expect(screen.queryByTestId("relation-target")).toBeNull();
-    expect(screen.getByTestId("relation-type")).toHaveTextContent("conflicts-with");
+    expect(screen.getByTestId("relation-type")).toHaveTextContent("Conflicts with");
   });
 
   // BasePrimitiveProps passthrough: className appended after the design-system

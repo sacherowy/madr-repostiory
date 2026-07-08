@@ -106,7 +106,8 @@ describe("RelationsPanel", () => {
     await waitFor(() => expect(screen.getByTestId("relations-panel")).toBeInTheDocument());
     const item = screen.getByTestId(`relation-item-outbound-relates-to-${target.adr.id}`);
     expect(item).toBeInTheDocument();
-    expect(item.textContent).toContain("relates-to");
+    // Requirement 1.2: the chip renders the plain-language relation label.
+    expect(item.textContent).toContain("Related to");
     expect(item.textContent?.toLowerCase()).toContain("outbound");
     expect(item.textContent).toContain(target.adr.id);
   });
@@ -145,7 +146,9 @@ describe("RelationsPanel", () => {
     await waitFor(() => expect(screen.getByTestId("relations-panel")).toBeInTheDocument());
     const item = screen.getByTestId(`relation-item-inbound-superseded-by-${newAdr.adr.id}`);
     expect(item).toBeInTheDocument();
-    expect(item.textContent).toContain("superseded-by");
+    // Requirement 1.2 (direction-aware): the inbound superseded-by view is
+    // already reciprocal-resolved by core, so the chip reads "Replaced by".
+    expect(item.textContent).toContain("Replaced by");
     expect(item.textContent?.toLowerCase()).toContain("inbound");
   });
 
