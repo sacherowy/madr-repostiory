@@ -108,7 +108,7 @@
   - ArticlePage creates mount slots for the option compare cards and the context rail
   - Observable: component tests verify the summary box leads the page, friendly names carry canonical tags, and people labels are plain-language
   - _Requirements: 6.1, 6.2, 6.3, 6.6_
-- [ ] 6.2 (P) Build the option compare cards with chosen highlight
+- [x] 6.2 (P) Build the option compare cards with chosen highlight
   - Options render as compare cards; the chosen option is identified via the canonical outcome parse and visually highlighted
   - Additive slot fill; own component files
   - Observable: component test shows the chosen card highlighted and non-canonical outcomes rendering without a false highlight
