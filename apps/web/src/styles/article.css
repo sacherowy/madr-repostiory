@@ -1,0 +1,186 @@
+/* =======================================================================
+   Decision article page (adr-manager-decision-feed, task 6.1).
+
+   Styling for the outcome-first decision article: the header (title + status),
+   the leading summary box, the people meta row, the friendly MADR sections with
+   their canonical tags, and the two additive mount slots (option compare cards,
+   context rail). Additive only — every value is drawn from the existing token
+   system in tokens.css; this file re-values nothing in tokens.css/base.css/
+   soft-ui.css. It reuses the shared `.state*` primitives from base.css and the
+   `.badge` (StatusBadge) primitive; only article-specific layout lives here.
+   ======================================================================= */
+
+.article {
+  padding: 24px 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.article__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.article__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Header: title + status                                                  */
+/* ----------------------------------------------------------------------- */
+
+.article__header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.article__title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Outcome-first summary box (Req 6.2)                                      */
+/* ----------------------------------------------------------------------- */
+
+.article__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  padding: 16px 18px;
+  background: var(--teal-50);
+  border: 1px solid var(--teal-500);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+}
+
+.article__summary-lead {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--teal-700);
+}
+
+.article__summary-text {
+  font-size: 1.05rem;
+  color: var(--ink-900);
+}
+
+/* ----------------------------------------------------------------------- */
+/* People meta row (Req 6.6)                                                */
+/* ----------------------------------------------------------------------- */
+
+.article__people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.article__people:empty {
+  display: none;
+}
+
+.article__people-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.article__people-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-500);
+}
+
+.article__people-names {
+  font-size: 0.92rem;
+  color: var(--ink-900);
+}
+
+/* ----------------------------------------------------------------------- */
+/* Friendly MADR sections + canonical tags (Req 6.3)                        */
+/* ----------------------------------------------------------------------- */
+
+.article__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.article__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.article__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.article__section-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+/* The canonical MADR heading, kept as a subtle tag alongside the friendly name. */
+.article__section-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 2px 10px;
+}
+
+.article__section-body {
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--ink-700);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Additive mount slot for the option compare cards (task 6.2). No box of its
+   own so filled content controls its own presentation; collapses when empty. */
+.article__slot:empty {
+  display: none;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Context rail mount slot (task 6.3)                                       */
+/* ----------------------------------------------------------------------- */
+
+.article__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Single-column layout on narrow viewports so the page body never scrolls
+   horizontally; the rail drops below the article body. */
+@media (max-width: 860px) {
+  .article__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
