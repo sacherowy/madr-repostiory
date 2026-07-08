@@ -142,6 +142,46 @@
   display: none;
 }
 
+/* ----------------------------------------------------------------------- */
+/* "Needs your attention" digest (task 5.5)                                */
+/* ----------------------------------------------------------------------- */
+
+/* Mirrors the topics-rail box so the two Home rail cards read as siblings.
+   Additive only — every value comes from the existing token system. */
+.attention-digest {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+}
+
+.attention-digest__title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.attention-digest__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.attention-digest__list-item {
+  display: block;
+}
+
 /* Single-column layout on narrow viewports so the page body never scrolls
    horizontally; the rail drops below the feed. */
 @media (max-width: 860px) {

@@ -94,7 +94,7 @@
   - _Depends: 5.1_
   - _Requirements: 4.1, 4.2, 4.3_
   - _Boundary: PeoplePage_
-- [ ] 5.5 (P) Build the Needs-your-attention digest
+- [x] 5.5 (P) Build the Needs-your-attention digest
   - Lists In-discussion decisions whose people fields match the session author name (case-insensitive, trimmed); blank author name shows a prompt state; selecting an entry opens the decision
   - Owns the digest matching logic, reading the author name from the portal store; fills the digest slot additively (own component files)
   - Observable: component tests cover matching semantics including case and whitespace, the blank-author prompt, and entry navigation
