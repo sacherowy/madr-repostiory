@@ -202,7 +202,10 @@ describe("HomePage", () => {
 
   it("renders the topics-rail and attention-digest mount slots, empty when no content is provided", async () => {
     renderHome();
-    await waitFor(() => expect(screen.getByTestId("home-topics-rail-slot")).toBeInTheDocument());
+    // Wait for the feed request to settle (empty feed -> "No decisions yet")
+    // before asserting; ending the test while `/api/feed` is still in flight
+    // leaves a socket open that stalls the afterEach `app.close()` teardown.
+    await waitFor(() => expect(screen.getByTestId("home-empty")).toBeInTheDocument());
     const railSlot = screen.getByTestId("home-topics-rail-slot");
     const digestSlot = screen.getByTestId("home-attention-digest-slot");
     // Placeholder slots start empty so sibling tasks 5.3/5.5 can fill them additively.
@@ -223,5 +226,8 @@ describe("HomePage", () => {
     expect(screen.getByTestId("home-attention-digest-slot")).toContainElement(
       screen.getByTestId("provided-attention-digest")
     );
+    // Let the in-flight feed request settle before teardown (see the empty-slot
+    // test above) so afterEach `app.close()` does not stall on an open socket.
+    await waitFor(() => expect(screen.getByTestId("home-empty")).toBeInTheDocument());
   });
 });

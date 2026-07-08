@@ -12,8 +12,20 @@ import "@testing-library/jest-dom/vitest";
 // `git` invocations and win over the global config; child processes started by
 // simple-git inherit this process's env. This is a test-only override — it does
 // not touch the application's own commit behavior.
-if (!process.env.GIT_CONFIG_COUNT) {
-  process.env.GIT_CONFIG_COUNT = "1";
-  process.env.GIT_CONFIG_KEY_0 = "commit.gpgsign";
-  process.env.GIT_CONFIG_VALUE_0 = "false";
-}
+//
+// The sandbox already publishes its own GIT_CONFIG_* set (credential and
+// url.insteadOf rewrites), so we must APPEND our entry at the next index and
+// bump GIT_CONFIG_COUNT rather than overwrite — clobbering the count would drop
+// the sandbox's entries, and skipping when a count already exists (as an
+// earlier version did) silently no-ops this fix.
+(function disableCommitSigningForGitSubprocesses(): void {
+  const existing = Number(process.env.GIT_CONFIG_COUNT ?? "0");
+  const count = Number.isFinite(existing) && existing > 0 ? existing : 0;
+  // Don't append twice if setup runs more than once in the same worker.
+  for (let i = 0; i < count; i++) {
+    if (process.env[`GIT_CONFIG_KEY_${i}`] === "commit.gpgsign") return;
+  }
+  process.env[`GIT_CONFIG_KEY_${count}`] = "commit.gpgsign";
+  process.env[`GIT_CONFIG_VALUE_${count}`] = "false";
+  process.env.GIT_CONFIG_COUNT = String(count + 1);
+})();
