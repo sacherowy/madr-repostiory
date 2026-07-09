@@ -482,3 +482,99 @@
   color: var(--ink-500);
   cursor: not-allowed;
 }
+
+/* --- SummaryControl (task 7.4): short-description field, source ladder, AI suggestion --- */
+.summary-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-control__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.summary-control__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.summary-control__helper {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-600);
+}
+
+.summary-control__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, var(--surface-sunk));
+  border-radius: 8px;
+  background: var(--surface-sunk);
+}
+
+.summary-control__source-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+}
+
+.summary-control__source-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+}
+
+.summary-control__source[data-source="derived"] .summary-control__source-badge {
+  color: var(--ink-600);
+}
+
+.summary-control__source-text {
+  font-size: 0.85rem;
+  color: var(--ink-700);
+}
+
+.summary-control__suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent, var(--border));
+  border-radius: 8px;
+}
+
+.summary-control__suggestion-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-strong, var(--accent));
+}
+
+.summary-control__suggestion-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-800, var(--ink-700));
+}
+
+.summary-control__suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-control__ai-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-600);
+}
+
+.summary-control__ai-hint.is-subdued {
+  color: var(--ink-500);
+}
