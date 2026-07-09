@@ -199,3 +199,144 @@
   color: var(--ink-500);
   margin: 0;
 }
+
+/* ----------------------------------------------------------------------- */
+/* Topic / people / relations editors (task 7.2, Req 8.4)                    */
+/* ----------------------------------------------------------------------- */
+
+.topic-picker,
+.people-editor,
+.relations-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.topic-picker__head,
+.people-editor__head,
+.relations-editor__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topic-picker__title,
+.people-editor__title,
+.relations-editor__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.topic-picker__helper,
+.people-editor__helper,
+.relations-editor__helper {
+  font-size: 0.85rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+/* Topic picker: folder options as a plain-word chooser. */
+.topic-picker__options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topic-picker__option {
+  appearance: none;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-700);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  /* Depth-based indent driven by the --topic-depth custom prop set per option. */
+  padding-left: calc(12px + var(--topic-depth, 0) * 16px);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.topic-picker__option:hover {
+  background: var(--teal-50);
+}
+
+.topic-picker__option.is-active,
+.topic-picker__option[aria-pressed="true"] {
+  background: var(--teal-600);
+  color: #fff;
+}
+
+.topic-picker__option:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.topic-picker__create-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.topic-picker__create-row .field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* People editor rows. */
+.people-editor__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.people-editor__row .field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+/* Relations editor. */
+.relations-editor__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.relations-editor__add .field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.relations-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.relations-editor__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.relations-editor__target-title {
+  font-size: 0.88rem;
+  color: var(--ink-700);
+}
