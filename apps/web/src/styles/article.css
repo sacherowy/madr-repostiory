@@ -266,3 +266,88 @@
   line-height: 1.5;
   color: var(--ink-700);
 }
+
+/* ----------------------------------------------------------------------- */
+/* Context rail (task 6.3, Req 6.5 / 1.4 / 15.2)                            */
+/* Fills the `.article__rail` slot with plain-sentence relations, the git   */
+/* "story", and related reading. Additive only, drawing every value from    */
+/* tokens.css.                                                              */
+/* ----------------------------------------------------------------------- */
+
+.context-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.context-rail__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+}
+
+.context-rail__heading {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-500);
+  margin: 0;
+}
+
+.context-rail__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.context-rail__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.context-rail__related {
+  gap: 6px;
+}
+
+.context-rail__sentence {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--ink-900);
+}
+
+.context-rail__detail {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--ink-500);
+}
+
+/* Relation/related entries link into the target decision (task 8.1 wires the
+   callback). Styled as an inline text button so the rail reads as prose. */
+.context-rail__link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--teal-700);
+  cursor: pointer;
+}
+
+.context-rail__link:hover {
+  text-decoration: underline;
+}
