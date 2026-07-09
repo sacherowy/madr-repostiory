@@ -578,3 +578,60 @@
 .summary-control__ai-hint.is-subdued {
   color: var(--ink-500);
 }
+
+/* ----------------------------------------------------------------------- */
+/* Live feed-card preview rail (task 7.5, Req 10.1-10.3)                     */
+/* ----------------------------------------------------------------------- */
+
+.preview-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-rail__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview-rail__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-800, var(--ink-700));
+}
+
+.preview-rail__helper {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-600);
+}
+
+.preview-rail__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, var(--surface-sunk));
+  border-radius: 8px;
+  background: var(--surface-sunk);
+}
+
+.preview-rail__source-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+}
+
+.preview-rail__source-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+}
+
+.preview-rail__source[data-source="derived"] .preview-rail__source-badge {
+  color: var(--ink-600);
+}
