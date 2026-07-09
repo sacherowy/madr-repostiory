@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { OptionsEditor } from "./OptionsEditor.js";
-import type { OptionRow } from "./options.js";
+import type { OptionRow } from "../compose/options.js";
 
 afterEach(() => cleanup());
 

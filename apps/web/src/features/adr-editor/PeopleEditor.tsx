@@ -1,4 +1,4 @@
-import type { PersonRow, StakeholderRole } from "./people.js";
+import type { PersonRow, StakeholderRole } from "../compose/people.js";
 
 /**
  * Stateless list of person rows with add/remove and a role field per row.

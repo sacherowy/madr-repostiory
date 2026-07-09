@@ -1,0 +1,201 @@
+/* =======================================================================
+   Friendly decision compose form (adr-manager-decision-feed, task 7.1).
+
+   Styling for the single-page create/edit form: the prompt-card sections, the
+   plain-word status segmented control, the title field, the publish gate, and
+   the labeled mount slots that later tasks (7.2-7.5) fill. Additive only —
+   every value is drawn from the existing token system in tokens.css; this file
+   re-values nothing in tokens.css/base.css/soft-ui.css and reuses the shared
+   `.btn`, `.field__label`, and `.field__input` primitives from base.css.
+   ======================================================================= */
+
+.compose {
+  padding: 24px 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.compose__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .compose__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.compose__main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Header                                                                   */
+/* ----------------------------------------------------------------------- */
+
+.compose__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compose__title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.compose__lead {
+  font-size: 0.9rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Title + status fields                                                    */
+/* ----------------------------------------------------------------------- */
+
+.compose__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Plain-word status segmented control (Req 8.2). */
+.compose__segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  width: fit-content;
+}
+
+.compose__segment-option {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-700);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.compose__segment-option:hover {
+  background: var(--teal-50);
+}
+
+.compose__segment-option.is-active,
+.compose__segment-option[aria-pressed="true"] {
+  background: var(--teal-600);
+  color: #fff;
+}
+
+.compose__segment-option:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Prompt cards (Req 8.1)                                                    */
+/* ----------------------------------------------------------------------- */
+
+.prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.prompt-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prompt-card__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.prompt-card__required {
+  color: var(--danger);
+}
+
+/* The canonical MADR heading, kept as a subtle tag beside the friendly name. */
+.prompt-card__tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  background: var(--teal-50);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.prompt-card__helper {
+  font-size: 0.85rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.prompt-card__input {
+  min-height: 84px;
+  resize: vertical;
+  font-family: var(--font-body);
+}
+
+/* ----------------------------------------------------------------------- */
+/* Mount slots (7.2-7.5) + publish gate                                      */
+/* ----------------------------------------------------------------------- */
+
+/* Slots collapse to nothing until a later task fills them, so an empty seam
+   adds no visual weight. */
+.compose__slot:empty {
+  display: none;
+}
+
+.compose__rail {
+  position: sticky;
+  top: 20px;
+}
+
+.compose__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.compose__gate-hint {
+  font-size: 0.82rem;
+  color: var(--ink-500);
+  margin: 0;
+}

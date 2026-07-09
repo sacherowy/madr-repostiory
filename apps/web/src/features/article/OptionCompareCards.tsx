@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { parseCanonicalOutcome } from "@adr/shared";
-// The pure option parser currently lives in the adr-editor feature; it is
-// slated to move to `compose` (task 7.1). This read-only article view reuses it
-// as-is rather than duplicating the grammar — the import is expected to be
-// repointed when 7.1/8.2 relocate the helper. Do NOT fork a divergent parser.
-import { parseOptions } from "../adr-editor/options.js";
+// The pure option parser was relocated from the adr-editor feature into
+// `compose` by task 7.1. This read-only article view reuses it as-is rather than
+// duplicating the grammar. Do NOT fork a divergent parser.
+import { parseOptions } from "../compose/options.js";
 import "../../styles/article.css";
 
 export interface OptionCompareCardsProps {

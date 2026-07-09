@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { PeopleEditor } from "./PeopleEditor.js";
-import type { PersonRow } from "./people.js";
+import type { PersonRow } from "../compose/people.js";
 
 afterEach(() => cleanup());
 

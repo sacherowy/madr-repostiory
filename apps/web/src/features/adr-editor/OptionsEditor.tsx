@@ -1,4 +1,4 @@
-import type { OptionRow } from "./options.js";
+import type { OptionRow } from "../compose/options.js";
 
 /**
  * Stateless list of option rows with add/remove and description/pros/cons

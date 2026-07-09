@@ -7,9 +7,9 @@ import { MonoChip } from "../../components/MonoChip.js";
 import { RelationChip } from "../../components/RelationChip.js";
 import { CollapsibleSection } from "./CollapsibleSection.js";
 import { PeopleEditor } from "./PeopleEditor.js";
-import { rowsFromStakeholders, stakeholdersFromRows, type PersonRow, type StakeholderRole } from "./people.js";
+import { rowsFromStakeholders, stakeholdersFromRows, type PersonRow, type StakeholderRole } from "../compose/people.js";
 import { OptionsEditor } from "./OptionsEditor.js";
-import { parseOptions, serializeOptions, type OptionRow } from "./options.js";
+import { parseOptions, serializeOptions, type OptionRow } from "../compose/options.js";
 
 const ADR_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
 const RELATION_TYPES: RelationType[] = [
