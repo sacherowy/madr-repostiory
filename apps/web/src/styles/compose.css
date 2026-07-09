@@ -340,3 +340,145 @@
   font-size: 0.88rem;
   color: var(--ink-700);
 }
+
+/* ----------------------------------------------------------------------- */
+/* Option cards + Mark-as-chosen + Decision Outcome lock (task 7.3)         */
+/* ----------------------------------------------------------------------- */
+
+.option-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-cards__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.option-cards__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.option-cards__tag {
+  font-size: 0.72rem;
+  color: var(--ink-600);
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+}
+
+.option-cards__helper {
+  flex-basis: 100%;
+  font-size: 0.88rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.option-cards__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+}
+
+.option-card.is-chosen {
+  border-color: var(--accent-strong, var(--accent));
+  box-shadow: 0 0 0 1px var(--accent-strong, var(--accent));
+}
+
+.option-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.option-card__desc-field {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.option-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .option-card__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.option-card__reasons {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.option-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.option-card__chosen {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+}
+
+.option-card__remove {
+  margin-left: auto;
+}
+
+.option-cards__outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.option-cards__outcome-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.option-cards__lock-hint {
+  font-size: 0.82rem;
+  color: var(--ink-600);
+  margin: 0;
+}
+
+.option-cards__outcome-input {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.option-cards__outcome-input:disabled {
+  background: var(--surface-sunk);
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
