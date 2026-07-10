@@ -1,19 +1,25 @@
-// Journey: migrated example fixture content displays consistently as
-// catch-all content across the app (Req 3.7, 5.5). Seeds the REAL example
-// fixture's body (examples/0001-uzycie-gita-jako-zrodla-prawdy.md, migrated
-// in task 8.1) directly into the shared e2e repo via a real git commit --
-// same direct-git-commit technique as migrated-fixture-title.spec.ts's
-// commitMigratedFixture, bypassing the API (whose serializeAdr can only ever
-// emit canonical new-style frontmatter). The fixture's three Polish headings
-// (## Kontekst, ## Decyzja, ## Konsekwencje) match none of the 8 canonical
-// MADR headings, so per splitSections's contract its entire post-H1 body
-// lands verbatim in additionalContent on read, leaving all 8 section fields
-// empty. Confirms that holds identically on two independent surfaces, each
-// backed by a distinct production code path through parseAdr: the editor
-// (GET /api/adrs/:id -> AdrEditingService) and the history viewer (GET
-// history + GET version-at -> HistoryTimeline).
+// Journey: migrated example fixture content displays consistently as verbatim
+// catch-all content across the portal (Req 3.7, 5.5; behavior preserved through
+// the portal, Req 15.2 / 16.4). Seeds the REAL example fixture's body
+// (examples/0001-uzycie-gita-jako-zrodla-prawdy.md, migrated in task 8.1)
+// directly into the shared e2e repo via a real git commit — the same direct-git
+// technique as migrated-fixture-title.spec.ts — bypassing the API (whose
+// serializeAdr can only ever emit canonical new-style frontmatter). The fixture's
+// three Polish headings (## Kontekst, ## Decyzja, ## Konsekwencje) match none of
+// the 8 canonical MADR headings, so per splitSections's contract its entire
+// post-H1 body lands verbatim in additionalContent on read, leaving all 8 MADR
+// section fields empty.
+//
+// In the portal that split surfaces on two read paths: the friendly ARTICLE
+// renders only the (empty) canonical MADR sections — so none of the Polish
+// content is mis-rendered as a friendly section — while the TECHNICAL view shows
+// the raw record verbatim, where the full Polish body appears exactly as stored.
+// Confirms both, each backed by a distinct production code path through parseAdr:
+// GET /api/adrs/:id (AdrEditingService, the article) and GET /api/adrs/:id/raw
+// (the Technical view's raw pane).
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { simpleGit } from "simple-git";
@@ -24,40 +30,11 @@ import { unique, shot } from "../harness/helpers.js";
 
 const AUTHOR = "E2E Author <e2e@example.com>";
 
-/** Kebab-case testid segments for the 8 MADR section fields, canonical order. */
-const SECTION_TESTID_KEYS = [
-  "context-and-problem-statement",
-  "decision-drivers",
-  "considered-options",
-  "decision-outcome",
-  "consequences",
-  "confirmation",
-  "pros-and-cons-of-the-options",
-  "more-information",
-];
-
-/**
- * Editor-side subset of SECTION_TESTID_KEYS: excludes "considered-options"
- * and "pros-and-cons-of-the-options", which (post adr-form-structured-input)
- * no longer render as plain `${key}-textarea` fields in EditAdrForm -- they
- * were replaced by the row-based OptionsEditor (a "Considered Options"
- * CollapsibleSection containing zero-or-more option rows, each with its own
- * description/pros/cons fields, rather than one flat textarea per key). The
- * history-viewer loop below is unaffected and still checks all 8 keys, since
- * HistoryTimeline still renders one `${key}-block` per canonical
- * MADR_SECTIONS entry unconditionally.
- */
-const EDITOR_SECTION_TESTID_KEYS = SECTION_TESTID_KEYS.filter(
-  (key) => key !== "considered-options" && key !== "pros-and-cons-of-the-options",
-);
-
 /**
  * Commit a raw, migrated-style ADR file directly into the shared e2e repo,
- * bypassing the API, whose body is the given raw Markdown content verbatim.
- * Mirrors migrated-fixture-title.spec.ts's commitMigratedFixture but accepts
- * an arbitrary body so callers can seed real fixture content (here: the
- * actual example fixture's non-MADR Polish heading structure) instead of a
- * synthetic placeholder.
+ * bypassing the API, whose body is the given raw Markdown verbatim. Mirrors
+ * migrated-fixture-title.spec.ts's commit helper but accepts an arbitrary body so
+ * it can seed the real example fixture's non-MADR Polish heading structure.
  */
 async function commitRawAdr(relPath: string, id: string, raw: string): Promise<void> {
   const absPath = join(paths.repoPath, relPath);
@@ -69,7 +46,7 @@ async function commitRawAdr(relPath: string, id: string, raw: string): Promise<v
   await git.commit(`seed migrated fixture content ${id}`, undefined, { "--author": AUTHOR });
 }
 
-test("displays the migrated example fixture's non-MADR content consistently as catch-all content in the editor and the history viewer", async ({
+test("displays the migrated fixture's non-MADR content as verbatim catch-all content: absent from the friendly article, verbatim in the Technical view", async ({
   page,
 }) => {
   const tag = unique("migrated-content");
@@ -79,9 +56,7 @@ test("displays the migrated example fixture's non-MADR content consistently as c
 
   // Load the real example fixture and reuse its body (H1 title + three
   // non-matching Polish ## headings) verbatim, swapping only the frontmatter
-  // id/date for test isolation -- this run's repo is fresh, so collision
-  // isn't a real concern, but distinct values keep the seeded ADR
-  // unambiguous against any other fixture data in the same run.
+  // id/date for test isolation.
   const exampleFixturePath = join(
     import.meta.dirname,
     "..",
@@ -109,96 +84,39 @@ test("displays the migrated example fixture's non-MADR content consistently as c
   await commitRawAdr(relPath, migratedId, raw);
 
   await page.goto("/");
-  await expect(page.getByTestId("folder-tree")).toBeVisible();
+  await expect(page.getByTestId("home-page")).toBeVisible();
 
-  // 1. Editor: open the migrated fixture (selecting any ADR auto-switches the
-  // active aspect to "editor"). All 8 section fields must be empty, and
-  // additional-content must hold the full original Polish body verbatim.
-  await page.getByTestId(`adr-select-${migratedId}`).click();
-  await expect(page.getByTestId("adr-editor-edit")).toBeVisible();
+  // Open the migrated fixture's article from its Home feed card.
+  await expect(page.getByTestId(`home-card-${migratedId}`)).toBeVisible();
+  await page.getByTestId(`home-card-${migratedId}`).click();
+  await expect(page.getByTestId("article-page")).toBeVisible();
 
-  for (const key of EDITOR_SECTION_TESTID_KEYS) {
-    await expect(page.getByTestId(`${key}-textarea`)).toHaveValue("");
-  }
+  // 1. Article: the non-MADR Polish body is NOT mis-rendered as a friendly MADR
+  // section. The canonical sections are empty (their headings didn't match), so
+  // none of the Polish content appears in the friendly sections region.
+  await expect(page.getByTestId("article-section-contextAndProblemStatement")).toHaveCount(0);
+  const sections = page.getByTestId("article-sections");
+  await expect(sections).not.toContainText("Kontekst");
+  await expect(sections).not.toContainText("Decyzja");
+  await expect(sections).not.toContainText("Konsekwencje");
+  await shot(page, `migrated-fixture-content-article-${tag}`);
 
-  // Considered Options / Pros and Cons of the Options are excluded from the
-  // loop above -- they're no longer plain textareas, but the row-based
-  // OptionsEditor. Confirm equivalent coverage (Options-derived content is
-  // really empty in the editor UI) by asserting zero option rows are
-  // rendered when the ADR has no considered options.
-  await expect(page.locator('[data-testid^="option-description-input-"]')).toHaveCount(0);
+  // 2. Technical view: the raw record shows the full Polish body verbatim — the
+  // catch-all content surfaces here exactly as stored (Req 3.7, 1.6).
+  await page.getByTestId("article-technical-enter").click();
+  await expect(page.getByTestId("technical-view")).toBeVisible();
+  await expect(page.getByTestId("technical-view-path")).toContainText(migratedId);
 
-  const editorAdditionalContent = await page
-    .getByTestId("additional-content-textarea")
-    .inputValue();
-
-  expect(editorAdditionalContent).toContain("Kontekst");
-  expect(editorAdditionalContent).toContain("Decyzja");
-  expect(editorAdditionalContent).toContain("Konsekwencje");
-  expect(editorAdditionalContent).toContain(
+  const rawPane = page.getByTestId("technical-view-raw");
+  await expect(rawPane).toContainText("Kontekst");
+  await expect(rawPane).toContainText("Decyzja");
+  await expect(rawPane).toContainText("Konsekwencje");
+  await expect(rawPane).toContainText(
     "Aplikacja zarządza ADR-ami i potrzebuje wersjonowania, historii oraz porównań.",
   );
-  expect(editorAdditionalContent).toContain(
+  await expect(rawPane).toContainText(
     "Trzymamy ADR-y jako pliki Markdown z frontmatterem YAML w repozytorium git.",
   );
-  expect(editorAdditionalContent).toContain(
-    "Pełna historia i diff za darmo z gita.",
-  );
-  // No duplication: each heading must appear exactly once.
-  expect(editorAdditionalContent.split("Kontekst")).toHaveLength(2);
-  expect(editorAdditionalContent.split("Decyzja")).toHaveLength(2);
-  expect(editorAdditionalContent.split("Konsekwencje")).toHaveLength(2);
-
-  await shot(page, `migrated-fixture-content-editor-${tag}`);
-
-  // 2. History viewer: switch to the history aspect, select the single
-  // seeded commit, and confirm the same emptiness/content split holds there.
-  await page.getByTestId("panel-tab-history").click();
-  await expect(page.getByTestId("history-timeline")).toBeVisible();
-
-  const entryEls = await page.locator('[data-testid^="history-entry-"]').all();
-  const shas = new Set<string>();
-  for (const el of entryEls) {
-    const sha = await el.getAttribute("data-sha");
-    if (sha) shas.add(sha);
-  }
-  expect(shas.size).toBe(1);
-  const [sha] = [...shas];
-
-  await page.getByTestId(`history-select-${sha}`).click();
-  await expect(page.getByTestId("history-version-content")).toBeVisible();
-
-  for (const key of SECTION_TESTID_KEYS) {
-    // Each block always renders a non-empty label
-    // (e.g. "Context and Problem Statement (required)"); only the section
-    // content paragraph itself must be empty.
-    await expect(page.getByTestId(`${key}-block`).locator(".history__section-content")).toHaveText("");
-  }
-
-  await expect(page.getByTestId("additional-content-block")).toBeVisible();
-  // The block also renders a label ("Additional Content") ahead of the
-  // content paragraph, so scope to the paragraph itself for an exact
-  // cross-surface comparison against the editor's raw textarea value.
-  const historyAdditionalContent = await page
-    .getByTestId("additional-content-block")
-    .locator(".history__section-content")
-    .innerText();
-
-  expect(historyAdditionalContent).toContain("Kontekst");
-  expect(historyAdditionalContent).toContain("Decyzja");
-  expect(historyAdditionalContent).toContain("Konsekwencje");
-  expect(historyAdditionalContent).toContain(
-    "Aplikacja zarządza ADR-ami i potrzebuje wersjonowania, historii oraz porównań.",
-  );
-
-  // No content lost or duplicated between the two surfaces: the history
-  // viewer's additionalContent text matches the editor's exactly, modulo
-  // whitespace -- the history block renders the content inside a single
-  // <p>, which collapses newlines to spaces in the browser's accessibility
-  // tree (innerText), unlike the editor's <textarea> value, which preserves
-  // them verbatim.
-  const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
-  expect(normalize(historyAdditionalContent)).toBe(normalize(editorAdditionalContent));
-
-  await shot(page, `migrated-fixture-content-history-${tag}`);
+  await expect(rawPane).toContainText("Pełna historia i diff za darmo z gita.");
+  await shot(page, `migrated-fixture-content-technical-${tag}`);
 });
