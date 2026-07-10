@@ -82,11 +82,13 @@ function DecisionView({
   adrId,
   technical,
   onOpenDecision,
+  onEdit,
 }: {
   apiClient: ApiClient;
   adrId: AdrId;
   technical: boolean;
   onOpenDecision: (id: AdrId) => void;
+  onEdit: (id: AdrId) => void;
 }) {
   const toggleTechnicalView = usePortalStore((state) => state.toggleTechnicalView);
   const decision = useDecision(apiClient, adrId);
@@ -100,6 +102,14 @@ function DecisionView({
   return (
     <div className="portal__article-view">
       <div className="portal__article-actions">
+        <button
+          type="button"
+          className="btn btn--primary"
+          data-testid="article-edit"
+          onClick={() => onEdit(adrId)}
+        >
+          Edit
+        </button>
         <button
           type="button"
           className="btn btn--secondary"
@@ -251,6 +261,7 @@ export function App({ apiClient: injectedApiClient }: AppProps = {}) {
           adrId={view.id}
           technical={view.technical}
           onOpenDecision={openDecision}
+          onEdit={(id) => navigate({ kind: "compose", id })}
         />
       );
       break;

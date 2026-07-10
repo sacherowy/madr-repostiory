@@ -182,6 +182,26 @@ describe("App (portal shell — task 8.1 / Req 2.1, 2.6, 15.5)", () => {
     expect(screen.queryByTestId("technical-view")).not.toBeInTheDocument();
   });
 
+  it("opens compose edit mode from the article Edit action, seeded with the decision (Req 15.2, 8.1)", async () => {
+    const { id } = await seedAdr({ title: "Adopt event sourcing" });
+
+    renderApp(<App apiClient={client} />);
+
+    await waitFor(() => expect(screen.getByTestId(`home-card-${id}`)).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId(`home-card-${id}`));
+    await waitFor(() => expect(screen.getByTestId("article-summary")).toBeInTheDocument());
+
+    // The article Edit action opens the compose form in EDIT mode for this
+    // decision — the entry point that makes edit/save (and its 409 conflict
+    // recovery, task 7.6) reachable through the portal (Req 15.2).
+    fireEvent.click(screen.getByTestId("article-edit"));
+    await waitFor(() => expect(screen.getByTestId("compose-page")).toBeInTheDocument());
+    // Edit mode is seeded from the loaded decision (its title in the title field).
+    await waitFor(() =>
+      expect(screen.getByTestId("compose-title-input")).toHaveValue("Adopt event sourcing")
+    );
+  });
+
   it("wires the top-nav author-name field to the portal store", async () => {
     renderApp(<App apiClient={client} />);
     await waitFor(() => expect(screen.getByTestId("home-empty")).toBeInTheDocument());
