@@ -113,6 +113,14 @@ export interface SimilarityResult {
 
 export interface CreateAdrRequest {
   title: string;
+  /**
+   * Optional author-owned one-line short description (11.1). Additive HTTP-DTO
+   * field (15.3): the create route already forwards it to the editing service
+   * (via its body spread), and the compose save flow sends it; declaring it here
+   * makes the contract type-safe end-to-end. Blank/whitespace values normalize
+   * to absent server-side, and records without it stay valid (11.3).
+   */
+  summary?: string;
   decisionMakers?: string[];
   consulted?: string[];
   informed?: string[];
@@ -124,6 +132,13 @@ export interface UpdateAdrRequest extends AdrSections {
   title: string;
   status: AdrStatus;
   date: string;
+  /**
+   * Optional author-owned one-line short description (11.1). Additive HTTP-DTO
+   * field (15.3): a full-document save, so an update omitting `summary` clears a
+   * previously stored one (blank/whitespace values normalize to absent
+   * server-side). Records without it stay valid (11.3).
+   */
+  summary?: string;
   decisionMakers?: string[];
   consulted?: string[];
   informed?: string[];

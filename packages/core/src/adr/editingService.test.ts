@@ -718,6 +718,43 @@ describe("AdrEditingService", () => {
       expect(parseAdr(raw, "adr-0001.md", "sha-irrelevant").summary).toBeUndefined();
     });
 
+    it("clears a previously stored summary when a later update omits it (full-document save semantics, 2.1)", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      // First save stores an author summary in the frontmatter.
+      const base1 = await git.currentBlobSha("adr-0001.md");
+      const withSummary = await svc.save(
+        "adr-0001",
+        { title: "T", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS, summary: "Stored framing." },
+        base1 as string,
+        "Bob"
+      );
+      expect(withSummary.kind).toBe("saved");
+      expect(await git.read("adr-0001.md")).toContain("summary:");
+
+      // A later save that OMITS summary must drop the stored key: save() builds
+      // the record purely from `input` (no read-merge of existing frontmatter),
+      // so full-document semantics clear a field the payload no longer carries.
+      const base2 = await git.currentBlobSha("adr-0001.md");
+      const without = await svc.save(
+        "adr-0001",
+        { title: "T2", status: "accepted", date: "2024-02-03", ...FULL_SECTIONS },
+        base2 as string,
+        "Bob"
+      );
+
+      expect(without.kind).toBe("saved");
+      if (without.kind !== "saved") throw new Error("expected saved");
+      expect(without.adr.summary).toBeUndefined();
+      const raw = await git.read("adr-0001.md");
+      expect(raw).not.toContain("summary:");
+      expect(parseAdr(raw, "adr-0001.md", "sha-irrelevant").summary).toBeUndefined();
+    });
+
     it("drops a blank summary in the update payload — the saved frontmatter carries no summary key", async () => {
       const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
       const git = new FakeGitPort(files);
