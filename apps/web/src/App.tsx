@@ -1,283 +1,305 @@
-import { useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, type ReactNode } from "react";
+import type { AdrId } from "@adr/shared";
 
 import { createApiClient } from "./api/client.js";
 import type { ApiClient } from "./api/client.js";
-import { useWorkspaceStore } from "./state/workspaceStore.js";
-import { ContextHeader } from "./components/ContextHeader.js";
-import { AspectSwitcher } from "./components/AspectSwitcher.js";
-import { ExplorerRail } from "./features/explorer/ExplorerRail.js";
-import { CommandPalette } from "./features/command-palette/CommandPalette.js";
-import { InspectorRail } from "./features/inspector/InspectorRail.js";
-import { useAspectCounts } from "./hooks/useAspectCounts.js";
-import { AdrEditor } from "./features/adr-editor/AdrEditor.js";
-import { RelationsPanel } from "./features/relations-graph/RelationsPanel.js";
-import { HistoryTimeline } from "./features/history-timeline/HistoryTimeline.js";
-import { SimilarityPanel } from "./features/similarity-panel/SimilarityPanel.js";
-import { CompareLauncher } from "./features/diff-viewer/CompareLauncher.js";
+import { usePortalStore, type PortalView } from "./state/portalStore.js";
+import { TopNav, type TopNavDestination } from "./components/TopNav.js";
+import { HomePage } from "./features/home/HomePage.js";
+import { TopicsRail } from "./features/home/TopicsRail.js";
+import { AttentionDigest } from "./features/home/AttentionDigest.js";
+import { TopicsPage } from "./features/topics/TopicsPage.js";
+import { PeoplePage } from "./features/people/PeoplePage.js";
+import { ArticlePage } from "./features/article/ArticlePage.js";
+import { OptionCompareCards } from "./features/article/OptionCompareCards.js";
+import { ContextRail } from "./features/article/ContextRail.js";
+import { TechnicalView } from "./features/article/TechnicalView.js";
+import { ComposeContainer } from "./features/compose/ComposeContainer.js";
+import type { RelationTarget } from "./features/compose/RelationsEditor.js";
+import { useDecision } from "./hooks/useDecision.js";
+import { useFeed } from "./hooks/useFeed.js";
+import "./styles/portal.css";
 
-// Contextual four-zone shell (Req 1.1). All cross-zone view-state (selection,
-// active aspect, comparison/palette/inspector flags, session author) lives in
-// the Zustand `workspaceStore`; zones dispatch intent-named actions and never
-// co-own state. Each feature panel still owns its own ApiClient calls.
+// Editorial-portal composition root (design.md "Implementation Notes (web)":
+// App.tsx becomes TopNav + switch on `view.kind`). There is no client-side
+// router (Req 15.5): `portalStore.view` IS the navigation model and this shell
+// switches over its `kind`. The default view is Home (Req 2.1). All server
+// state stays in TanStack Query via the per-feature hooks; the store owns only
+// the view union + the session author name.
 
 interface AppProps {
-  /** Optional injection seam mirroring AdrEditor's own DI pattern, used by tests to provide a
-   * real test-server-backed client instead of the default relative-URL client (which can't
-   * resolve in jsdom). Defaults to the production client when omitted. */
+  /** Optional injection seam mirroring the feature components' own DI pattern,
+   * used by tests to provide a real test-server-backed client instead of the
+   * default relative-URL client (which can't resolve in jsdom). Defaults to the
+   * production client when omitted. */
   apiClient?: ApiClient;
 }
 
 /**
- * Lightweight ADR summary for the context header. Derives a real title/status
- * from the backend when reachable, falling back to the id as title and a neutral
- * status while loading or on failure (the design treats title/status as inputs
- * wired by App, and explicitly does not block the header on a fetch — the id
- * chip is the essential element).
+ * Maps the active `view.kind` to the three top-level destinations the TopNav can
+ * mark current: a `topic` still counts as being in Topics, a `person` as being
+ * in People (Impl Note 5.1: `active` typed home|topics|people so 8.1 maps
+ * topic→topics, person→people). Reading an article or composing marks none.
  */
-function useAdrSummary(
-  apiClient: ApiClient,
-  adrId: string | null,
-): { title: string; status: string } {
-  const query = useQuery({
-    queryKey: ["context-header", adrId],
-    enabled: adrId !== null,
-    queryFn: async () => {
-      const result = await apiClient.getAdr(adrId as string);
-      if (!result.ok) {
-        return null;
-      }
-      return { title: result.adr.title, status: result.adr.status };
-    },
-  });
-
-  if (adrId === null) {
-    return { title: "", status: "" };
+function activeDestination(view: PortalView): TopNavDestination | undefined {
+  switch (view.kind) {
+    case "home":
+      return "home";
+    case "topics":
+    case "topic":
+      return "topics";
+    case "people":
+    case "person":
+      return "people";
+    default:
+      return undefined;
   }
-  if (query.data == null) {
-    // Loading or unreachable: fall back to the id as title and a neutral status.
-    return { title: adrId, status: "" };
-  }
-  return { title: query.data.title, status: query.data.status };
 }
 
+/**
+ * A feed-backed `id → title` resolver. Shared by the article's context rail
+ * ("Replaced by <title>") and the compose form's derived-summary title
+ * resolution. Reuses the single `["feed"]` query so no extra endpoint is hit.
+ */
+function useResolveTitle(apiClient: ApiClient): (id: AdrId) => string | undefined {
+  const feed = useFeed(apiClient);
+  return useMemo(() => {
+    const byId = new Map((feed.data ?? []).map((card) => [card.id, card.title]));
+    return (id: AdrId): string | undefined => byId.get(id);
+  }, [feed.data]);
+}
+
+/**
+ * The decision article view: loads the decision's data once via `useDecision`
+ * and fills ArticlePage's `optionCompareCards` / `contextRail` slots from it
+ * (Impl Note 6.4: all 6.x article components get wired into the article view in
+ * 8.1). It also owns the Technical-view ENTRY toggle — `toggleTechnicalView`
+ * flips `view.technical` (4.1), and while it is set the raw-record TechnicalView
+ * replaces the article (7.1/7.5 return-to-article is TechnicalView's `onClose`).
+ */
+function DecisionView({
+  apiClient,
+  adrId,
+  technical,
+  onOpenDecision,
+  onEdit,
+}: {
+  apiClient: ApiClient;
+  adrId: AdrId;
+  technical: boolean;
+  onOpenDecision: (id: AdrId) => void;
+  onEdit: (id: AdrId) => void;
+}) {
+  const toggleTechnicalView = usePortalStore((state) => state.toggleTechnicalView);
+  const decision = useDecision(apiClient, adrId);
+  const resolveTitle = useResolveTitle(apiClient);
+  const adr = decision.adr.data;
+
+  if (technical) {
+    return <TechnicalView apiClient={apiClient} adrId={adrId} onClose={toggleTechnicalView} />;
+  }
+
+  return (
+    <div className="portal__article-view">
+      <div className="portal__article-actions">
+        <button
+          type="button"
+          className="btn btn--primary"
+          data-testid="article-edit"
+          onClick={() => onEdit(adrId)}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          data-testid="article-technical-enter"
+          onClick={toggleTechnicalView}
+        >
+          Technical view
+        </button>
+      </div>
+
+      <ArticlePage
+        apiClient={apiClient}
+        adrId={adrId}
+        optionCompareCards={
+          adr ? (
+            <OptionCompareCards
+              consideredOptions={adr.consideredOptions}
+              prosAndConsOfTheOptions={adr.prosAndConsOfTheOptions}
+              decisionOutcome={adr.decisionOutcome}
+            />
+          ) : null
+        }
+        contextRail={
+          <ContextRail
+            relations={decision.relations.data ?? []}
+            history={decision.history.data ?? []}
+            similar={decision.similar.data ?? []}
+            resolveTitle={resolveTitle}
+            onOpenDecision={onOpenDecision}
+          />
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * The compose view: mounts the 7.6 save wrapper (ComposeContainer) with the feed
+ * supplying the relation-target candidates and the derived-summary title
+ * resolver, and navigates to the freshly saved decision on publish.
+ *
+ * `adrId` absent = create mode; present = edit mode (Impl Note 7.6). The App
+ * switch keys this on the decision id so the seed-once slot editors (7.2 seed
+ * their rows at mount) refresh per decision when navigating edit → edit.
+ */
+function ComposeView({
+  apiClient,
+  authorName,
+  adrId,
+  onSaved,
+}: {
+  apiClient: ApiClient;
+  authorName: string;
+  adrId?: AdrId;
+  onSaved: (id: AdrId) => void;
+}) {
+  const feed = useFeed(apiClient);
+  const relationTargets = useMemo<RelationTarget[]>(
+    () =>
+      (feed.data ?? [])
+        // A decision can't relate to itself; drop the edited decision from the
+        // candidate list.
+        .filter((card) => card.id !== adrId)
+        .map((card) => ({ id: card.id, title: card.title })),
+    [feed.data, adrId]
+  );
+  const resolveTitle = useResolveTitle(apiClient);
+
+  return (
+    <ComposeContainer
+      apiClient={apiClient}
+      authorName={authorName}
+      adrId={adrId}
+      relationTargets={relationTargets}
+      resolveTitle={resolveTitle}
+      onSaved={(adr) => onSaved(adr.id)}
+    />
+  );
+}
+
+/**
+ * Editorial-portal shell: a top navigation plus a switch over the view union.
+ * Home / Topics / People / decision article / compose all render from
+ * `portalStore.view`; the TopNav author-name field is bound to the store's
+ * `authorName` / `setAuthorName` and feeds save payloads (the digest matching
+ * off it is owned by AttentionDigest — task 5.5), and New decision opens the
+ * compose form.
+ */
 export function App({ apiClient: injectedApiClient }: AppProps = {}) {
   const apiClient = useMemo(() => injectedApiClient ?? createApiClient(), [injectedApiClient]);
 
-  const selectedFolder = useWorkspaceStore((s) => s.selectedFolder);
-  const selectedAdrId = useWorkspaceStore((s) => s.selectedAdrId);
-  const authorName = useWorkspaceStore((s) => s.authorName);
-  const activeAspect = useWorkspaceStore((s) => s.activeAspect);
-  const comparisonOpen = useWorkspaceStore((s) => s.comparisonOpen);
-  const paletteOpen = useWorkspaceStore((s) => s.paletteOpen);
-  const inspectorOpen = useWorkspaceStore((s) => s.inspectorOpen);
+  const view = usePortalStore((state) => state.view);
+  const authorName = usePortalStore((state) => state.authorName);
+  const navigate = usePortalStore((state) => state.navigate);
+  const setAuthorName = usePortalStore((state) => state.setAuthorName);
 
-  const selectFolder = useWorkspaceStore((s) => s.selectFolder);
-  const selectAdr = useWorkspaceStore((s) => s.selectAdr);
-  const clearSelection = useWorkspaceStore((s) => s.clearSelection);
-  const setAuthorName = useWorkspaceStore((s) => s.setAuthorName);
-  const setAspect = useWorkspaceStore((s) => s.setAspect);
-  const openCompare = useWorkspaceStore((s) => s.openCompare);
-  const closeCompare = useWorkspaceStore((s) => s.closeCompare);
-  const setPaletteOpen = useWorkspaceStore((s) => s.setPaletteOpen);
-  const toggleInspector = useWorkspaceStore((s) => s.toggleInspector);
+  // Every decision destination lands on the plain-language article (navigate
+  // normalizes technical:false — Impl Note 4.1).
+  const openDecision = (id: AdrId) => navigate({ kind: "decision", id, technical: false });
 
-  const counts = useAspectCounts(apiClient, selectedAdrId, selectedFolder);
-  const summary = useAdrSummary(apiClient, selectedAdrId);
-
-  // Global Cmd/Ctrl-K opens the command palette from anywhere (Req 4.1).
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "K")) {
-        event.preventDefault();
-        setPaletteOpen(true);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setPaletteOpen]);
-
-  return (
-    <div className="shell">
-      <header className="shell__command-bar">
-        <div className="command-bar" role="toolbar" aria-label="Command bar">
-          <h1 className="command-bar__brand">ADR Manager</h1>
-
-          <div className="field command-bar__author">
-            <label className="field__label" htmlFor="author-name-input">
-              Session author name
-            </label>
-            <input
-              id="author-name-input"
-              data-testid="author-name-input"
-              className="field__input"
-              type="text"
-              value={authorName}
-              onChange={(event) => setAuthorName(event.target.value)}
+  let content: ReactNode;
+  switch (view.kind) {
+    case "home":
+      content = (
+        <HomePage
+          apiClient={apiClient}
+          onOpenDecision={openDecision}
+          topicsRail={
+            <TopicsRail
+              apiClient={apiClient}
+              onSelectTopic={(path) => navigate({ kind: "topic", path })}
             />
-          </div>
+          }
+          attentionDigest={<AttentionDigest apiClient={apiClient} onOpenDecision={openDecision} />}
+        />
+      );
+      break;
 
-          <button
-            type="button"
-            data-testid="command-palette-open"
-            className="btn"
-            onClick={() => setPaletteOpen(true)}
-          >
-            Search (⌘K)
-          </button>
+    case "topics":
+    case "topic":
+      content = (
+        <TopicsPage
+          apiClient={apiClient}
+          selectedTopic={view.kind === "topic" ? view.path : undefined}
+          onSelectTopic={(path) => navigate({ kind: "topic", path })}
+          onOpenDecision={openDecision}
+        />
+      );
+      break;
 
-          <button
-            type="button"
-            data-testid="command-bar-new-adr"
-            className="btn btn--primary"
-            onClick={() => clearSelection()}
-          >
-            New ADR
-          </button>
+    case "people":
+    case "person":
+      content = (
+        <PeoplePage
+          apiClient={apiClient}
+          // PeoplePage keys off the normalized person key, which is exactly what
+          // its `onSelectPerson` emits and what the `person` view carries.
+          selectedPerson={view.kind === "person" ? view.name : undefined}
+          onSelectPerson={(key) => navigate({ kind: "person", name: key })}
+          onOpenDecision={openDecision}
+        />
+      );
+      break;
 
-          {/* Compare is exposed as an action, reachable with no selection
-              (Req 2.5). Carries the migrated `panel-tab-comparison` hook. */}
-          <button
-            type="button"
-            data-testid="panel-tab-comparison"
-            className="btn"
-            onClick={() => openCompare()}
-          >
-            Compare
-          </button>
-        </div>
-      </header>
+    case "decision":
+      content = (
+        <DecisionView
+          apiClient={apiClient}
+          adrId={view.id}
+          technical={view.technical}
+          onOpenDecision={openDecision}
+          onEdit={(id) => navigate({ kind: "compose", id })}
+        />
+      );
+      break;
 
-      <aside className="shell__explorer">
-        <ExplorerRail
+    case "compose":
+      content = (
+        <ComposeView
+          // Remount per decision so the seed-once slot editors (7.2) refresh
+          // when navigating between edit targets (create keyed as "new").
+          key={view.id ?? "new"}
           apiClient={apiClient}
           authorName={authorName}
-          selectedAdrId={selectedAdrId}
-          selectedFolder={selectedFolder}
-          onSelectFolder={selectFolder}
-          onSelectAdr={selectAdr}
+          adrId={view.id}
+          onSaved={openDecision}
         />
-      </aside>
+      );
+      break;
 
-      <section className="shell__object">
-        {selectedAdrId === null ? (
-          // Welcoming browse/create state (Req 1.3): NO aspect switcher, NO
-          // "select an ADR first" placeholder. The create flow stays reachable
-          // here so a new ADR can be authored directly.
-          <div className="shell__object-browse" data-testid="center-browse">
-            <div className="state state--empty">
-              <p className="state__message">
-                No ADR selected. Browse the explorer to open a decision, or create a new one
-                below.
-              </p>
-            </div>
-            <AdrEditor
-              adrId={null}
-              folder={selectedFolder}
-              authorName={authorName}
-              apiClient={apiClient}
-              onAdrSaved={(adr) => selectAdr(adr.id)}
-            />
-          </div>
-        ) : (
-          <>
-            <ContextHeader
-              adrId={selectedAdrId}
-              title={summary.title}
-              status={summary.status}
-              onEdit={() => setAspect("editor")}
-              onCompare={openCompare}
-            />
+    default: {
+      // Exhaustiveness guard: every `view.kind` is handled above.
+      const _exhaustive: never = view;
+      content = _exhaustive;
+    }
+  }
 
-            <AspectSwitcher
-              activeAspect={activeAspect}
-              counts={counts}
-              onSelectAspect={setAspect}
-            />
-
-            {activeAspect === "editor" ? (
-              <div className="shell__aspect" role="tabpanel" data-testid="panel-editor">
-                <AdrEditor
-                  adrId={selectedAdrId}
-                  folder={selectedFolder}
-                  authorName={authorName}
-                  apiClient={apiClient}
-                  onAdrSaved={(adr) => selectAdr(adr.id)}
-                />
-              </div>
-            ) : activeAspect === "relations" ? (
-              <div className="shell__aspect" role="tabpanel" data-testid="panel-relations">
-                <RelationsPanel apiClient={apiClient} adrId={selectedAdrId} />
-              </div>
-            ) : activeAspect === "history" ? (
-              <div className="shell__aspect" role="tabpanel" data-testid="panel-history">
-                <HistoryTimeline apiClient={apiClient} adrId={selectedAdrId} />
-              </div>
-            ) : (
-              <div className="shell__aspect" role="tabpanel" data-testid="panel-similarity">
-                <SimilarityPanel
-                  apiClient={apiClient}
-                  adrId={selectedAdrId}
-                  folder={selectedFolder}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </section>
-
-      <aside className="shell__inspector">
-        <InspectorRail
-          apiClient={apiClient}
-          adrId={selectedAdrId}
-          folder={selectedFolder}
-          open={inspectorOpen}
-          onToggle={toggleInspector}
-          onOpenAspect={(aspect) => setAspect(aspect === "similar" ? "similar" : "history")}
-        />
-      </aside>
-
-      <CommandPalette
-        open={paletteOpen}
-        apiClient={apiClient}
-        onClose={() => setPaletteOpen(false)}
-        onSelectAdr={selectAdr}
-        onNewAdr={clearSelection}
-        onCompare={openCompare}
+  return (
+    <div className="portal">
+      <TopNav
+        active={activeDestination(view)}
+        onNavigateHome={() => navigate({ kind: "home" })}
+        onNavigateTopics={() => navigate({ kind: "topics" })}
+        onNavigatePeople={() => navigate({ kind: "people" })}
+        authorName={authorName}
+        onAuthorNameChange={setAuthorName}
+        onNewDecision={() => navigate({ kind: "compose" })}
       />
 
-      {comparisonOpen ? (
-        // Comparison-as-action overlay (Req 2.5, 3.4, 11.2). Reachable with no
-        // selection (command-bar Compare) and scoped from the header (header
-        // Compare) — both call `openCompare()`. CompareLauncher owns its own id
-        // entry. The container keeps the migrated `panel-comparison` hook.
-        <div className="comparison-overlay" role="presentation">
-          <div
-            className="comparison-overlay__backdrop"
-            data-testid="comparison-overlay-backdrop"
-            onClick={() => closeCompare()}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Comparison"
-            className="comparison-overlay__panel"
-            data-testid="panel-comparison"
-          >
-            <div className="comparison-overlay__bar">
-              <button
-                type="button"
-                data-testid="comparison-close"
-                className="btn btn--ghost"
-                onClick={() => closeCompare()}
-              >
-                Close
-              </button>
-            </div>
-            <CompareLauncher apiClient={apiClient} />
-          </div>
-        </div>
-      ) : null}
+      <main className="portal__main">{content}</main>
     </div>
   );
 }

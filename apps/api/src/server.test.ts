@@ -121,6 +121,49 @@ describe("buildServer", () => {
     expect(res.statusCode).toBe(200);
   });
 
+  it("wires feedRoutes: GET /api/feed returns 200 with an array", async () => {
+    await createAdr("Feed wiring ADR");
+
+    const res = await app.inject({ method: "GET", url: "/api/feed" });
+
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.json())).toBe(true);
+    expect(res.json()).toHaveLength(1);
+  });
+
+  it("wires the raw route: GET /api/adrs/:id/raw returns 200 with path and markdown", async () => {
+    const created = await createAdr("Raw wiring ADR");
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/adrs/${created.id}/raw`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(typeof body.path).toBe("string");
+    expect(typeof body.markdown).toBe("string");
+  });
+
+  it("wires summariesRoutes: GET /api/adrs/:id/summary-suggestion returns 200 (cache pre-seeded, no network)", async () => {
+    const created = await createAdr("Suggestion wiring ADR");
+    // Pre-seed the real summary cache with this revision's blob SHA so the
+    // route resolves as a cache hit — the fake-key GeminiSummaryProvider is
+    // never reached, keeping this test offline.
+    container.summaryStore.set(created.blobSha, "Cached wiring sentence.");
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/adrs/${created.id}/summary-suggestion`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      available: true,
+      suggestion: "Cached wiring sentence.",
+    });
+  });
+
   it("wires similarityRoutes: GET /api/adrs/:id/similar returns 200 + emptyScope", async () => {
     const created = await createAdr("Alone in scope ADR");
 

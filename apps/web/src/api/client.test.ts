@@ -654,4 +654,84 @@ describe("createApiClient", () => {
       expect(result.status).toBe(404);
     });
   });
+
+  describe("getFeed (GET /api/feed)", () => {
+    it("returns ok:true with typed FeedCard[] over a seeded repo", async () => {
+      const a = await createAdrViaClient("Feed card A");
+      const b = await createAdrViaClient("Feed card B");
+
+      const result = await client.getFeed();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected success");
+      expect(result.cards).toHaveLength(2);
+      const card = result.cards.find((c) => c.id === a.id);
+      if (!card) throw new Error("expected a card for the first seeded ADR");
+      expect(card.title).toBe("Feed card A");
+      expect(card.status).toBe("proposed");
+      expect(card.path).toBe(a.path);
+      expect(card.topic).toBe("decisions");
+      expect(typeof card.date).toBe("string");
+      expect(Array.isArray(card.decisionMakers)).toBe(true);
+      expect(Array.isArray(card.consulted)).toBe(true);
+      expect(Array.isArray(card.informed)).toBe(true);
+      expect(typeof card.shortDescription.text).toBe("string");
+      expect(["summary", "derived"]).toContain(card.shortDescription.source);
+      expect(result.cards.some((c) => c.id === b.id)).toBe(true);
+    });
+
+    it("returns ok:true with an empty array for a repo without ADRs", async () => {
+      const result = await client.getFeed();
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected success");
+      expect(result.cards).toEqual([]);
+    });
+  });
+
+  describe("getRawAdr (GET /api/adrs/:id/raw)", () => {
+    it("returns ok:true with the stored path and markdown", async () => {
+      const created = await createAdrViaClient("Raw ADR");
+
+      const result = await client.getRawAdr(created.id);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected success");
+      expect(result.raw.path).toBe(created.path);
+      expect(result.raw.markdown).toContain("Raw ADR");
+      expect(result.raw.markdown.startsWith("---")).toBe(true);
+    });
+
+    it("returns ok:false with status 404 for an unknown id", async () => {
+      const result = await client.getRawAdr("adr-9999");
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error("expected failure");
+      expect(result.status).toBe(404);
+    });
+  });
+
+  describe("getSummarySuggestion (GET /api/adrs/:id/summary-suggestion)", () => {
+    it("returns ok:true with the available variant for a cached suggestion", async () => {
+      const created = await createAdrViaClient("Suggestible ADR");
+      // Pre-seed the real SqliteSummaryStore for this blob sha so the wired
+      // provider (fake creds) is never reached — mirrors `seedVector` above.
+      container.summaryStore.set(created.blobSha, "One cached sentence.");
+
+      const result = await client.getSummarySuggestion(created.id);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected success");
+      if (!result.suggestion.available) throw new Error("expected available:true");
+      expect(result.suggestion.suggestion).toBe("One cached sentence.");
+    });
+
+    it("returns ok:false with status 404 for an unknown id", async () => {
+      const result = await client.getSummarySuggestion("adr-9999");
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error("expected failure");
+      expect(result.status).toBe(404);
+    });
+  });
 });

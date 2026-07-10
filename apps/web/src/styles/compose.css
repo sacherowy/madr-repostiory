@@ -1,0 +1,637 @@
+/* =======================================================================
+   Friendly decision compose form (adr-manager-decision-feed, task 7.1).
+
+   Styling for the single-page create/edit form: the prompt-card sections, the
+   plain-word status segmented control, the title field, the publish gate, and
+   the labeled mount slots that later tasks (7.2-7.5) fill. Additive only —
+   every value is drawn from the existing token system in tokens.css; this file
+   re-values nothing in tokens.css/base.css/soft-ui.css and reuses the shared
+   `.btn`, `.field__label`, and `.field__input` primitives from base.css.
+   ======================================================================= */
+
+.compose {
+  padding: 24px 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.compose__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .compose__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.compose__main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Header                                                                   */
+/* ----------------------------------------------------------------------- */
+
+.compose__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compose__title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.compose__lead {
+  font-size: 0.9rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Title + status fields                                                    */
+/* ----------------------------------------------------------------------- */
+
+.compose__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Plain-word status segmented control (Req 8.2). */
+.compose__segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  width: fit-content;
+}
+
+.compose__segment-option {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-700);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.compose__segment-option:hover {
+  background: var(--teal-50);
+}
+
+.compose__segment-option.is-active,
+.compose__segment-option[aria-pressed="true"] {
+  background: var(--teal-600);
+  color: #fff;
+}
+
+.compose__segment-option:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Prompt cards (Req 8.1)                                                    */
+/* ----------------------------------------------------------------------- */
+
+.prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.prompt-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prompt-card__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.prompt-card__required {
+  color: var(--danger);
+}
+
+/* The canonical MADR heading, kept as a subtle tag beside the friendly name. */
+.prompt-card__tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  background: var(--teal-50);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.prompt-card__helper {
+  font-size: 0.85rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.prompt-card__input {
+  min-height: 84px;
+  resize: vertical;
+  font-family: var(--font-body);
+}
+
+/* ----------------------------------------------------------------------- */
+/* Mount slots (7.2-7.5) + publish gate                                      */
+/* ----------------------------------------------------------------------- */
+
+/* Slots collapse to nothing until a later task fills them, so an empty seam
+   adds no visual weight. */
+.compose__slot:empty {
+  display: none;
+}
+
+.compose__rail {
+  position: sticky;
+  top: 20px;
+}
+
+.compose__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.compose__gate-hint {
+  font-size: 0.82rem;
+  color: var(--ink-500);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Topic / people / relations editors (task 7.2, Req 8.4)                    */
+/* ----------------------------------------------------------------------- */
+
+.topic-picker,
+.people-editor,
+.relations-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.topic-picker__head,
+.people-editor__head,
+.relations-editor__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topic-picker__title,
+.people-editor__title,
+.relations-editor__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.topic-picker__helper,
+.people-editor__helper,
+.relations-editor__helper {
+  font-size: 0.85rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+/* Topic picker: folder options as a plain-word chooser. */
+.topic-picker__options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topic-picker__option {
+  appearance: none;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-700);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  /* Depth-based indent driven by the --topic-depth custom prop set per option. */
+  padding-left: calc(12px + var(--topic-depth, 0) * 16px);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.topic-picker__option:hover {
+  background: var(--teal-50);
+}
+
+.topic-picker__option.is-active,
+.topic-picker__option[aria-pressed="true"] {
+  background: var(--teal-600);
+  color: #fff;
+}
+
+.topic-picker__option:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.topic-picker__create-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.topic-picker__create-row .field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* People editor rows. */
+.people-editor__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.people-editor__row .field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+/* Relations editor. */
+.relations-editor__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.relations-editor__add .field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.relations-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.relations-editor__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.relations-editor__target-title {
+  font-size: 0.88rem;
+  color: var(--ink-700);
+}
+
+/* ----------------------------------------------------------------------- */
+/* Option cards + Mark-as-chosen + Decision Outcome lock (task 7.3)         */
+/* ----------------------------------------------------------------------- */
+
+.option-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-cards__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.option-cards__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.option-cards__tag {
+  font-size: 0.72rem;
+  color: var(--ink-600);
+  background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+}
+
+.option-cards__helper {
+  flex-basis: 100%;
+  font-size: 0.88rem;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.option-cards__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+}
+
+.option-card.is-chosen {
+  border-color: var(--accent-strong, var(--accent));
+  box-shadow: 0 0 0 1px var(--accent-strong, var(--accent));
+}
+
+.option-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.option-card__desc-field {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.option-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .option-card__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.option-card__reasons {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.option-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.option-card__chosen {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+}
+
+.option-card__remove {
+  margin-left: auto;
+}
+
+.option-cards__outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.option-cards__outcome-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.option-cards__lock-hint {
+  font-size: 0.82rem;
+  color: var(--ink-600);
+  margin: 0;
+}
+
+.option-cards__outcome-input {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.option-cards__outcome-input:disabled {
+  background: var(--surface-sunk);
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
+
+/* --- SummaryControl (task 7.4): short-description field, source ladder, AI suggestion --- */
+.summary-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-control__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.summary-control__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.summary-control__helper {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-600);
+}
+
+.summary-control__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, var(--surface-sunk));
+  border-radius: 8px;
+  background: var(--surface-sunk);
+}
+
+.summary-control__source-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+}
+
+.summary-control__source-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+}
+
+.summary-control__source[data-source="derived"] .summary-control__source-badge {
+  color: var(--ink-600);
+}
+
+.summary-control__source-text {
+  font-size: 0.85rem;
+  color: var(--ink-700);
+}
+
+.summary-control__suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent, var(--border));
+  border-radius: 8px;
+}
+
+.summary-control__suggestion-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-strong, var(--accent));
+}
+
+.summary-control__suggestion-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-800, var(--ink-700));
+}
+
+.summary-control__suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-control__ai-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-600);
+}
+
+.summary-control__ai-hint.is-subdued {
+  color: var(--ink-500);
+}
+
+/* ----------------------------------------------------------------------- */
+/* Live feed-card preview rail (task 7.5, Req 10.1-10.3)                     */
+/* ----------------------------------------------------------------------- */
+
+.preview-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-rail__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview-rail__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-800, var(--ink-700));
+}
+
+.preview-rail__helper {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-600);
+}
+
+.preview-rail__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, var(--surface-sunk));
+  border-radius: 8px;
+  background: var(--surface-sunk);
+}
+
+.preview-rail__source-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+}
+
+.preview-rail__source-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-strong, var(--accent));
+}
+
+.preview-rail__source[data-source="derived"] .preview-rail__source-badge {
+  color: var(--ink-600);
+}

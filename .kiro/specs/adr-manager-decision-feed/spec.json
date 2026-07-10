@@ -1,22 +1,27 @@
 {
   "feature_name": "adr-manager-decision-feed",
   "created_at": "2026-07-03T04:01:35Z",
-  "updated_at": "2026-07-03T04:01:35Z",
+  "updated_at": "2026-07-09T00:00:00Z",
   "language": "en",
-  "phase": "initialized",
+  "phase": "implemented",
   "approvals": {
     "requirements": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "design": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "tasks": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     }
   },
-  "ready_for_implementation": false
+  "ready_for_implementation": true,
+  "implementation": {
+    "tasks_completed": "31/31",
+    "validation": "GO",
+    "known_limitation": "Backend-preserving resolution of the 8.3 vs 9.5/15.3 contradiction: a new In-discussion decision persists title/topic/people/summary but not context/options until it has a Decision Outcome (existing save API requires one; 9.5/15.3 forbid changing it). Relaxing save() for status=proposed would need a requirements amendment."
+  }
 }

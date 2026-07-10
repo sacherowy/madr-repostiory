@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import type { AdrStatus } from "@adr/shared";
+import { STATUS_LABELS, type AdrStatus } from "@adr/shared";
 import { StatusBadge } from "./StatusBadge.js";
 
 const KNOWN_STATUSES: AdrStatus[] = ["proposed", "accepted", "deprecated", "superseded", "rejected"];
@@ -28,20 +28,38 @@ describe("StatusBadge", () => {
     }
   );
 
-  it.each(KNOWN_STATUSES)("renders a dot element and a human-readable label for %s", (status) => {
-    render(<StatusBadge status={status} data-testid="status-badge" />);
-    const badge = getBadge();
+  it.each(KNOWN_STATUSES)(
+    "renders a dot element and the plain-language vocabulary label for %s",
+    (status) => {
+      render(<StatusBadge status={status} data-testid="status-badge" />);
+      const badge = getBadge();
 
-    // Req 4.2: colored dot element.
-    expect(badge.querySelector(".badge__dot")).not.toBeNull();
+      // Req 4.2: colored dot element (dot colors unchanged).
+      expect(badge.querySelector(".badge__dot")).not.toBeNull();
 
-    // Req 4.2: a human-readable label — non-empty, and a proper display label
-    // (capitalized) rather than the bare lowercase raw key.
-    const label = badge.querySelector(".badge__label");
-    expect(label).not.toBeNull();
-    expect(label?.textContent?.trim()).toBeTruthy();
-    expect(label?.textContent?.trim()).not.toBe(status);
-    expect(label?.textContent?.trim()?.toLowerCase()).toBe(status);
+      // Requirement 1.1: the label is the plain-language vocabulary label from
+      // @adr/shared (e.g. "In discussion", "Decided"), NOT the raw status key.
+      const label = badge.querySelector(".badge__label");
+      expect(label).not.toBeNull();
+      expect(label?.textContent?.trim()).toBe(STATUS_LABELS[status]);
+      expect(label?.textContent?.trim()).not.toBe(status);
+    }
+  );
+
+  it("renders the exact plain-language label for each known status (Req 1.1)", () => {
+    const expected: Record<AdrStatus, string> = {
+      proposed: "In discussion",
+      accepted: "Decided",
+      deprecated: "Retired",
+      superseded: "Replaced",
+      rejected: "Rejected",
+    };
+    for (const status of KNOWN_STATUSES) {
+      render(<StatusBadge status={status} data-testid={`badge-${status}`} />);
+      expect(screen.getByTestId(`badge-${status}`).querySelector(".badge__label")?.textContent).toBe(
+        expected[status]
+      );
+    }
   });
 
   it("renders an unknown status with the neutral badge treatment (no status modifier)", () => {

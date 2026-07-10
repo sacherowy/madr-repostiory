@@ -1,0 +1,232 @@
+# Implementation Plan
+
+- [ ] 1. Foundation: shared vocabulary, types, and derivation
+- [x] 1.1 Provide the plain-language vocabulary tables in the shared package
+  - Status labels for all five stored statuses (including Rejected), direction-aware relation labels, and the three people-role labels, exported through the shared package barrel
+  - Unit tests assert the exact label strings the design specifies, so E2E and UI consume one source of truth
+  - Observable: vocabulary unit tests pass asserting every mapping from the design's vocabulary contract
+  - _Requirements: 1.1, 1.2, 1.5_
+- [x] 1.2 Add the typed author summary frontmatter field and the new data-transfer types
+  - Optional `summary` on the frontmatter type; feed-card, short-description, summary-suggestion-result, and raw-content types exported
+  - Existing parse/serialize tests stay green — the field rides the established unknown-key round-trip, and records without it remain valid
+  - Observable: shared and core packages typecheck and their existing test suites pass with the new types exported
+  - _Requirements: 11.1, 11.3_
+- [x] 1.3 Implement deterministic short-description resolution in the shared package
+  - Author summary always wins when present; otherwise derive by status: Decided from the canonical outcome phrasing (with first-sentence fallback), In discussion from considered options plus optional first driver, Replaced from the replacing decision's title and date, otherwise outcome text falling back to the first sentence of the context
+  - Pure function with a caller-supplied title resolver; no network or file access; returns the source layer alongside the text
+  - Observable: unit tests cover each derivation branch, summary precedence, the canonical-outcome parser, and empty-input tolerance
+  - _Requirements: 11.2, 12.1, 12.2, 12.3, 12.4, 12.5_
+
+- [ ] 2. Core services and summary passthrough
+- [x] 2.1 (P) Accept the author summary through the editing service
+  - Create and update payloads carry the optional summary onto the record; saving persists it into the file's frontmatter and it survives a read-modify-write cycle
+  - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
+  - Observable: round-trip test proves a saved summary reappears on re-read, and records without one remain valid
+  - _Requirements: 11.1, 11.3_
+  - _Boundary: AdrEditingService_
+- [x] 2.2 (P) Build the feed assembly service
+  - Scan the repository, parse each record, and assemble cards with title, status, topic (from folder location), date, people fields, and the resolved short description using the shared derivation with a repository-wide title resolver
+  - Cards sorted by date descending then id; unparseable files skipped with the same tolerance as existing services
+  - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
+  - Observable: unit tests over an in-memory repository fake verify card assembly, topic derivation, sort order, per-status descriptions, and skip behavior
+  - _Requirements: 2.3, 12.1, 12.2, 12.3, 12.4_
+  - _Boundary: FeedService_
+- [x] 2.3 (P) Build the summary-suggestion orchestration service and its ports
+  - Provider and store ports defined in core; cache-first by the saved revision's blob identity; provider errors surface as unavailable and are not cached; absent provider reports unavailable without touching the store
+  - Core barrel export is an additive single-line edit (accepted trivial overlap between parallel siblings)
+  - Observable: unit tests prove a cache hit performs zero provider calls, a miss generates and stores, an error is not cached, and a null provider yields the no-provider result
+  - _Requirements: 13.1, 13.2, 13.5_
+  - _Boundary: SummarySuggestionService_
+
+- [ ] 3. API surface
+- [x] 3.1 Add the summary cache store and the Gemini summary provider adapters
+  - Cache table keyed by blob identity as a sibling of the embedding cache, in the existing database file with its own connection
+  - Text-generation adapter calling the same API family as the existing embeddings adapter, returning one trimmed plain-language sentence; summary model configurable by environment variable with the design's default
+  - Observable: adapter tests pass; the cache store honors get/set semantics identical to the embedding-cache precedent
+  - _Depends: 2.3_
+  - _Requirements: 13.1, 13.2_
+- [x] 3.2 Expose feed, raw-content, and suggestion endpoints wired through the container
+  - Feed endpoint returns the assembled cards; raw endpoint returns the exact stored file bytes and path; suggestion endpoint returns the availability union with both variants as success responses
+  - Container wires the new services; the provider is absent when no API key is configured, mirroring the embeddings selection
+  - Observable: integration tests cover enriched cards over a seeded repository, byte-exact raw content, offline no-provider result, a cached second suggestion call, and a guard that existing endpoints' responses are byte-compatible before and after
+  - _Depends: 2.2, 2.3, 3.1_
+  - _Requirements: 2.3, 7.2, 13.1, 13.2, 13.5, 15.3_
+
+- [ ] 4. Web foundation
+- [x] 4.1 (P) Build the portal view store
+  - Discriminated view union (home, topics, topic, people, person, decision with technical flag, compose with optional id), author name, navigation and technical-view toggle actions; default view is Home
+  - Observable: store unit tests verify navigation transitions, the default Home view, and the technical-view toggle constraint
+  - _Requirements: 2.1, 5.1, 15.5_
+  - _Boundary: portalStore_
+- [x] 4.2 (P) Extend the API client and add the portal query hooks
+  - Client methods for feed, raw content, and summary suggestion using the existing discriminated result envelope; query hooks for feed, per-decision data, and on-demand suggestion with the design's query keys
+  - Observable: hook tests against the real backend return typed feed cards, raw content, and the suggestion union
+  - _Depends: 3.2_
+  - _Requirements: 2.3, 7.2, 13.1_
+  - _Boundary: ApiClient, query hooks_
+- [x] 4.3 (P) Apply plain-language labels to the shared primitives
+  - Status badge shows the plain-language label (dot colors unchanged); relation chip shows direction-aware plain labels
+  - Observable: full web unit suite remains green — existing shell/panel tests asserting raw status or relation strings are updated in this task
+  - _Requirements: 1.1, 1.2_
+  - _Boundary: StatusBadge, RelationChip_
+
+- [ ] 5. Home, Topics, and People surfaces
+- [x] 5.1 Build the decision card and top navigation components
+  - Presentational card showing title, plain-language status, one-line short description, topic, people, and a friendly relative timestamp; no data fetching inside the card so it is reusable for search results, topic/person lists, and the live preview
+  - Top navigation with Home, Topics, People destinations, the author-name field, and a New decision action
+  - Observable: component tests render a card from a feed payload with every field visible and the status in plain language
+  - _Requirements: 1.5, 2.3_
+- [x] 5.2 Build the Home page with hero search, filter chips, feed, and empty states
+  - Hero search submits to the existing keyword search and renders hits as decision cards; plain-word chips (including Rejected) filter the feed; selecting a card navigates to the decision
+  - HomePage renders explicit rail mount slots (topics rail, attention digest) as empty placeholders so sibling tasks plug in additively without editing each other's code
+  - Observable: component tests cover feed rendering, chip filtering, search-result cards, card navigation, and the inviting empty state
+  - _Requirements: 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 14.1, 14.2_
+- [x] 5.3 (P) Build the topics rail and the Topics destination
+  - Topics listed from folders including nested sub-topics; selecting a topic shows its decisions including sub-topics; empty topics show an empty state; the Home rail links into the destination
+  - Fills the topics-rail slot additively (own component files; the HomePage edit is a one-line slot fill)
+  - Observable: component tests cover nested topic listing, per-topic filtering, the empty-topic state, and rail navigation
+  - _Depends: 5.1, 5.2_
+  - _Requirements: 1.3, 3.1, 3.2, 3.3, 3.4_
+  - _Boundary: TopicsPage, TopicsRail_
+- [x] 5.4 (P) Build the People directory
+  - Distinct people gathered across owner/input/informed fields with case-insensitive, whitespace-trimmed grouping; selecting a person lists their decisions
+  - Observable: component tests verify distinct-person listing, normalized name grouping, and per-person decision lists
+  - _Depends: 5.1_
+  - _Requirements: 4.1, 4.2, 4.3_
+  - _Boundary: PeoplePage_
+- [x] 5.5 (P) Build the Needs-your-attention digest
+  - Lists In-discussion decisions whose people fields match the session author name (case-insensitive, trimmed); blank author name shows a prompt state; selecting an entry opens the decision
+  - Owns the digest matching logic, reading the author name from the portal store; fills the digest slot additively (own component files)
+  - Observable: component tests cover matching semantics including case and whitespace, the blank-author prompt, and entry navigation
+  - _Depends: 5.1, 5.2_
+  - _Requirements: 5.1, 5.2, 5.3_
+  - _Boundary: AttentionDigest_
+
+- [ ] 6. Decision article and Technical view
+- [x] 6.1 Build the article page core
+  - Outcome-first summary box before any section content; each section under a friendly name with the canonical MADR heading as a subtle tag; people shown with plain-language labels
+  - ArticlePage creates mount slots for the option compare cards and the context rail
+  - Observable: component tests verify the summary box leads the page, friendly names carry canonical tags, and people labels are plain-language
+  - _Requirements: 6.1, 6.2, 6.3, 6.6_
+- [x] 6.2 (P) Build the option compare cards with chosen highlight
+  - Options render as compare cards; the chosen option is identified via the canonical outcome parse and visually highlighted
+  - Additive slot fill; own component files
+  - Observable: component test shows the chosen card highlighted and non-canonical outcomes rendering without a false highlight
+  - _Depends: 6.1_
+  - _Requirements: 6.4_
+  - _Boundary: OptionCompareCards_
+- [x] 6.3 (P) Build the context rail with plain-sentence relations, story, and related reading
+  - Relations and history rendered as plain-language sentences; related reading from the existing similarity data with meters
+  - Additive slot fill; own component files
+  - Observable: component tests verify relation/history sentences use the vocabulary labels and related-reading entries carry similarity meters
+  - _Depends: 6.1_
+  - _Requirements: 1.4, 6.5, 15.2_
+  - _Boundary: ContextRail_
+- [x] 6.4 Build the Technical view
+  - Toggle from the article shows the raw Markdown file content and path, canonical status/relation values verbatim, the real git history with version diffs, and the ADR-to-ADR comparison entry, reusing the existing history/diff/compare components; toggling off returns to the article
+  - Observable: component tests verify raw content and path display, canonical values shown verbatim, reused history/diff/compare rendering, and the return toggle
+  - _Depends: 4.2, 6.1_
+  - _Requirements: 1.6, 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [ ] 7. Compose form
+- [x] 7.1 Build the compose skeleton with prompt cards, status segment, and publish gate
+  - Each MADR section as a prompt card with friendly heading, helper text, example placeholder, and the canonical heading tag; plain-word status segment; creating requires only title and context and publishes as In discussion
+  - ComposePage lays out labeled section slots for topic/people/relations, options, summary control, and preview rail
+  - Relocates the pure option/people helpers into the compose feature and updates remaining imports so the old editor keeps compiling until its removal; web unit suite stays green
+  - Observable: component tests verify the publish gate (title+context only), prompt-card structure with canonical tags, and the plain-word status segment
+  - _Requirements: 8.1, 8.2, 8.3_
+- [x] 7.2 (P) Build the topic picker, people editor, and relations editor
+  - Topic choice wraps existing folder listing/creation; changing topic on edit moves the record; people and relations edited with plain-language labels
+  - Additive slot fill; own component files
+  - Observable: component tests cover topic create/choose, move-on-edit, and people/relation add/remove with plain labels
+  - _Depends: 7.1_
+  - _Requirements: 8.4_
+  - _Boundary: TopicPicker, PeopleEditor, RelationsEditor_
+- [x] 7.3 (P) Build option cards with Mark-as-chosen and the outcome lock/prefill
+  - Marking an option chosen pre-fills the outcome in the canonical "Chosen option: X, because Y" phrasing; the outcome stays locked while In discussion with no chosen option and unlocks on choose or Decided; enforcement is UI-only, leaving save validation untouched
+  - Additive slot fill; own component files
+  - Observable: component tests cover the lock matrix, the prefill phrasing round-tripping through the canonical parser, and unlock transitions
+  - _Depends: 7.1_
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+  - _Boundary: OptionCardsEditor, outcome helpers_
+- [x] 7.4 (P) Build the summary control with the AI suggestion
+  - Source-ladder indicator, author summary field, and the suggestion offered in edit mode only for the last-saved revision; Use this copies the sentence into the summary field, Write my own overrides it; when unavailable the AI affordance is absent with a quiet hint
+  - Additive slot fill; own component files
+  - Observable: component tests cover the ladder indicator, accept-copies-to-field, author override, and the degraded no-provider state
+  - _Depends: 4.2, 7.1_
+  - _Requirements: 10.3, 11.2, 13.1, 13.3, 13.4, 13.5_
+  - _Boundary: SummaryControl_
+- [x] 7.5 (P) Build the live feed-card preview rail
+  - Renders the decision card from unsaved form state through the shared derivation with a feed-backed title resolver; updates as fields change; shows which layer sources the preview text
+  - Additive slot fill; own component files
+  - Observable: component tests verify live updates on edits and the correct source indicator for authored vs derived text
+  - _Depends: 5.1, 7.1_
+  - _Requirements: 10.1, 10.2, 10.3_
+  - _Boundary: PreviewRail_
+- [x] 7.6 Wire the compose save flows with conflict recovery
+  - Create and edit save through the existing endpoints including the summary field; the stale-write conflict recovery flow and message are preserved; saves invalidate the feed and per-decision queries
+  - Observable: tests against the real backend prove create, edit with summary persistence, 409 recovery, and query invalidation refreshing the feed
+  - _Requirements: 8.5, 11.1_
+
+- [ ] 8. Integration: portal swap and shell removal
+- [x] 8.1 Assemble the portal in the application root
+  - Top navigation plus a switch over the view union renders Home, Topics, People, article, and compose; portal styles built on the existing tokens; default view is Home
+  - Wires the top-nav author-name field to the portal store and save payloads only; digest matching is owned by 5.5
+  - Observable: app-level tests navigate between all destinations, land on Home by default, and reach a decision article from a card
+  - _Requirements: 2.1, 2.6, 15.5_
+- [x] 8.2 Remove the contextual-shell navigation
+  - Delete the command palette, explorer, inspector, folder tree, aspect switcher, context header, workspace store, aspect/inspector hooks, the superseded card primitive, the old search/relations/similarity panels, the old editor UI files, and the shell stylesheets; sweep all remaining references
+  - Observable: typecheck and the full web unit suite are green (helpers already relocated in 7.1); E2E journey specs are intentionally red until 9.1 migrates them — per the design's same-change-set migration strategy
+  - _Requirements: 15.1, 15.2_
+
+- [ ] 9. E2E validation
+- [x] 9.1 Migrate the existing journey specs to the portal navigation
+  - Re-target the lifecycle, search, tree (to Topics), similarity (to article related reading), both migrated-fixture specs, and the design-system spec to drive the portal; harness, config, and runners untouched
+  - Observable: all seven migrated specs pass offline against the portal with the existing run lifecycle
+  - _Depends: 8.1, 8.2_
+  - _Requirements: 15.2, 16.3, 16.4_
+- [x] 9.2 Add the decision-feed journey spec
+  - Asserts feed rendering with plain-language labels, chip filtering, topic browsing, the people directory, the author-matched digest, the article with summary box, the Technical view showing canonical values verbatim, compose create with title+context only appearing in the feed with a derived description, and mark-as-chosen producing a Decided card
+  - Observable: the new spec passes offline in the pre-provisioned browser with no snapshot assertions
+  - _Requirements: 16.1, 16.2, 16.3, 16.4_
+- [x] 9.3 Run the full offline regression and constraint verification
+  - Web unit suite and build, api tests, and the full E2E suite green offline without an API key; package manifests show no new dependencies; the stored file format is unchanged except the additive summary frontmatter
+  - Observable: all suites pass in one fresh offline run and the dependency/format constraints are verified against the manifests and a saved record
+  - _Requirements: 15.3, 15.4, 15.5, 16.3, 16.4_
+
+## Implementation Notes
+- INFRA (after 5.4/5.5): Two entangled web-suite instabilities, both fixed test-only:
+  1. **fd exhaustion** — every real-backend test makes git commits and the sandbox gitconfig forces `commit.gpgsign true` via `/tmp/code-sign`; signing subprocesses exhaust the 4096 fd cap under parallel load ("too many open files"). Fixed in `apps/web/src/test/setup.ts` by APPENDING `commit.gpgsign=false` to the sandbox's pre-existing `GIT_CONFIG_*` env set (it already ships `GIT_CONFIG_COUNT=3` for credential/url-rewrite config — so the override must append at index `count` and bump the count, NOT overwrite and NOT skip-if-present; an earlier skip-if-present guard silently no-opped and the green runs were luck). Does not touch app commit behavior. Contributing factor: the container opens 3 unclosed better-sqlite3 connections per build (the 3rd, summaryStore, added by this feature). If the e2e suite (9.x) hits this, append the same override in its harness.
+  2. **teardown race** — HomePage.test.tsx's two mount-slot tests asserted only the (immediate) slots without awaiting the in-flight `useFeed` `/api/feed` request, so `afterEach app.close()` stalled draining the open socket (intermittent 10s→∞ hook hang). Fixed by awaiting `home-empty` (feed settled) before each ends. General rule for these real-backend component tests: never end a test while a query it triggered is still in flight — await a settled marker.
+  Full web suite: 432/432 green across 3 consecutive runs, zero signing/fd errors.
+
+
+- 1.1: Pre-existing `RelationView.direction` uses "outbound"/"inbound" (packages/shared/src/types.ts) while the new `RelationDirection` vocabulary type uses "outgoing"/"incoming" per design. Core's relationGraphService already derives reciprocal types for inbound relations — UI tasks must map directions without double-flipping relation labels (pass "outgoing" for already-reciprocal-typed views).
+- 1.3: Decided-branch derivation renders "We chose <option> — <reason>" (em dash, per approved proposal), not the comma form in 12.1's example. Single-option In-discussion renders "Considering <option>"; Retired WITH a resolvable superseded-by uses the 12.3 "Replaced by" derivation. Derived text is plain (bold markers stripped). Downstream tasks (PreviewRail 7.5, feed rendering 5.x, E2E string assertions 9.x) must assert these exact renderings via the shared function, not re-derive.
+- 2.2: gray-matter parses unquoted YAML dates (`date: 2026-06-17`) into JS Date objects at runtime despite `Adr.date: string` typing. FeedService normalizes at its boundary (`toISOString().slice(0,10)`, UTC-safe). Root-cause fix belongs in parseAdr (out of feed boundary) — any task touching parse.ts or date display should be aware; `GET /api/adrs/:id` serializes such dates as full ISO timestamps.
+- 7.1: options.ts/people.ts RELOCATED (git mv, verbatim) from features/adr-editor/ → features/compose/; all importers repointed (adr-editor AdrEditor/OptionsEditor/PeopleEditor +tests, and article/OptionCompareCards). ComposePage owns title/status/narrative-section draft + publish gate (title+context → proposed) + 4 additive ReactNode slots: `topicPeopleRelations` (7.2), `optionCards` (7.3), `summaryControl` (7.4), `previewRail` (7.5). consideredOptions/prosAndConsOfTheOptions/decisionOutcome are NOT prompt cards — they belong to the optionCards slot (7.3 owns outcome lock/prefill). onPublish(draft) callback + initialDraft preload seam; real save is 7.6. Tag phrasing "saved as MADR: <heading>". 8.1 wires ComposePage into the compose view; 7.6 assembles the full draft from sibling slots.
+- 9.3: FULL OFFLINE REGRESSION — one fresh run, all green: shared 71, core 145, api 143, web unit 323 (682 unit tests), web tsc clean, web build OK, full e2e 14 passed / 1 gated skip / 0 failed (offline, CI=true). CONSTRAINTS VERIFIED against manifests + a saved record: (15.5) ZERO package.json changes across the entire feature branch (merge-base 28ff007→HEAD) = no new runtime/dev deps, no CSS framework/component library/router (grep clean); (15.4) file format gains ONLY the additive `summary?` frontmatter key — parse.ts unchanged, summary rides the existing unknown-key round-trip; the other new types.ts additions are feed/suggestion DTO *types*, not stored keys; (15.3) existing API contracts unchanged except the additive summary field + summary-suggestion cache (guarded by the feed.test.ts byte-compat integration test); (16.3/16.4) e2e offline in pre-provisioned Chromium, no live key, no pixel snapshots.
+- 9.2: New apps/e2e/tests/decision-feed.spec.ts (6 tests) — flagship journey: feed plain-labels (present + raw-enum absent, 16.2), chip filtering, Topics/People, author-matched digest, outcome-first article ("We chose Managed Postgres" derivation), Technical-view canonical-verbatim (status: accepted/supersedes/## headings present, plain labels absent), anti-double-flip (rail "Replaces" not "supersedes" + inbound "Replaced by"), compose create (title+context, In-discussion card — no derived text asserted per 7.6 limitation), mark-as-chosen prefill via article-edit→compose (compose-outcome-input = "Chosen option: Beta…") → Decided card with single chosen badge. No pixel snapshots. Full e2e suite: 14 passed / 1 skipped (gated real-provider) / 0 failed, offline, fresh CI=true run. No fd/signing issue in this env (GIT_CONFIG has no forced gpgsign).
+- 9.1: 7 E2E specs migrated to portal navigation (real testids: top-nav, home-search/feed/card/chip, topics-page, article-page/status/summary/sections/technical-enter, option-compare-*, context-rail related-reading + meters, technical-view-*, compose-*). Design-system spec retargeted computed-rgb/focus/shadow/mono checks to portal DOM; shell-only checks dropped. Real-provider similarity variant still gated via requiresGemini() (offline: 8 passed / 1 skipped / 0 failed, fresh CI=true no-reuse run). Reused-server (reuseExistingServer:!CI) can cause migrated-fixture specs to read a stale repo if a warm server lingers — run with CI=true or kill stale servers for a clean pass; not a spec-logic issue. **GAP SURFACED: compose EDIT mode is unreachable from the portal — App.tsx only navigates to compose CREATE ({kind:"compose"} no id); nothing calls navigate({kind:"compose", id}), so editing an existing decision + the 7.6 409-recovery UI can't be reached, violating 15.2 (preserve create/EDIT/save-with-conflict-recovery). Fixed next as an 8.1-omission remediation: add an Edit action on the article (DecisionView) → navigate compose edit.**
+- FIX (after 9.1): Added the missing edit entry point — App.tsx DecisionView now renders an `article-edit` button → `navigate({kind:"compose", id})`, making compose EDIT mode + the 7.6 409-recovery UI reachable (15.2 satisfied). App.test.tsx covers article→Edit→compose-edit-seeded. Web suite 322→323.
+- 8.2: 38 shell files deleted (command-palette/explorer/inspector/folder-tree/search/relations-graph/similarity-panel/adr-editor UI + AspectSwitcher/ContextHeader/AdrCard + useAspectCounts/useInspectorPreviews + workspaceStore + 4 shell CSS, all with tests) + main.tsx shell-CSS imports removed. Keep-list (primitives, diff-viewer, HistoryTimeline, compose/home/topics/people/article, portalStore, hooks, api/client.ts full) intact. Zero dangling imports; tsc clean; web unit suite 517→322 (net −195 deleted shell tests, zero failures). E2E is now INTENTIONALLY RED until 9.1 migrates the specs (same-change-set migration). Reviewed inline (subagent hit session limit mid-check).
+- 8.1: App.tsx rewritten to the portal — TopNav + `switch(view.kind)` over all 7 kinds (home/topics/topic/people/person/decision/compose) with a `never` exhaustiveness guard; default Home. DecisionView fills ArticlePage's optionCompareCards + contextRail slots from useDecision + a useFeed-backed resolveTitle, and renders the `article-technical-enter` toggle → TechnicalView (onClose returns). ComposeView keyed on `view.id ?? "new"` (edit-mode remount for seed-once editors). Author field ↔ portalStore. main.tsx now imports the 6 portal stylesheets AND still the old shell CSS (8.2 removes the shell CSS). Old shell files (CommandPalette/ExplorerRail/InspectorRail/AspectSwitcher/ContextHeader/FolderTree/workspaceStore + their tests) are now UNREFERENCED by App but still compile — 8.2 deletes them + their CSS + updates main.tsx. Web suite 528→517 (old App.test.tsx 17 shell tests → 6 portal tests).
+- 7.6: Shared DTOs gained additive `summary?` (Create/UpdateAdrRequest); editingService.ts UNCHANGED (only a pin test added for update-omits-summary-clears). useComposeSave.ts assembles create/update payloads (incl. summary), exposes the discriminated outcome + verbatim `CONFLICT_COPY` (matches old AdrEditor exactly, 8.5), and invalidate() invalidates `["feed"]` + per-id keys. ComposeContainer.tsx lifts slot state, mounts ComposePage + editor slots, loads in edit mode, renders the 409 reload-recovery. Proven real-backend.
+- *** DECISION / KNOWN LIMITATION (create-mode context persistence) ***: The existing backend `create()` accepts NO section content (title/folder/people/tags/summary only) and `save()` REQUIRES a non-empty `decisionOutcome` (editingService.ts:142). So a brand-new "In discussion" decision (locked/empty outcome per 9.3) CANNOT persist its context — every path is blocked by a requirement: 8.3 wants title+context publish, but 9.5+15.3 forbid changing the save API validation. This is an upstream requirements contradiction, not a 7.6 defect. RESOLUTION (autonomous — the user-decision tool was unavailable): took the BACKEND-PRESERVING path (honor 15.3/9.5, the feature's central "presentation-layer only" commitment; reversible). Consequence: create-mode publish persists title/topic/people/summary; a decision's context/options/relations persist through edit/save only once it has a decisionOutcome (i.e., as it moves toward Decided). Decided decisions persist fully. **8.1 must present create-mode honestly (do not imply an open decision's context/sections persist on first publish).** **9.2 E2E create-journey must assert against what actually persists** (a Decided decision shows a derived description from its outcome; a bare open decision shows title/summary-derived text, not context). If the user later wants full open-decision content, relaxing `save()` to make `decisionOutcome` optional when status==="proposed" is an additive follow-up that needs a requirements amendment (8.3 vs 9.5/15.3).
+- 7.5: PreviewRail.tsx is pure — renders the reused FeedCard from unsaved draft state via shared resolveShortDescription; `resolveTitle` is an INJECTED optional prop (8.1 supplies a useFeed-backed id→title resolver). Source indicator uses SOURCE_LABELS identical to SummaryControl (author→"Your summary"/"summary", empty→"Auto-derived"/"derived"). Unsaved card uses placeholder id "New", inert onOpen. Props mirror SummaryControl (`summary` + `derivation: Omit<DerivationInput,"summary">`) so 8.1 feeds both from the same lifted state. Fills ComposePage's previewRail slot. All four compose slots (7.2 topicPeopleRelations, 7.3 optionCards, 7.4 summaryControl, 7.5 previewRail) are now built; 7.6 assembles the full draft + save; 8.1 mounts ComposePage with all slots filled + the lifted state.
+- 7.4: SummaryControl.tsx props for 8.1: `summary`+`onSummaryChange` (layer-1 field), `derivation: Omit<DerivationInput,"summary">`+optional `resolveTitle` (layer-2 inputs), `adrId?`/`blobSha?` (edit-mode saved-revision gate), `apiClient`. AI area shows iff `adrId && blobSha` present (saved revision) — 8.1 must WITHHOLD blobSha while the form is dirty (unsaved) so the AI affordance hides per the availability boundary. Source ladder uses shared resolveShortDescription (author→"summary", empty→"derived"). "Use this" is the ONLY write path (13.3); "Write my own" dismisses. Fills ComposePage's summaryControl slot. Requires a QueryClientProvider in context (App provides one).
+- 7.3: features/compose/outcome.ts (pure) — `isOutcomeLocked(status, hasChosenOption)` = `status==="proposed" && !hasChosenOption`; `buildChosenOutcome(title, because?)` emits "Chosen option: X, because Y" (parser-exact, round-trips through parseCanonicalOutcome). OptionCardsEditor.tsx hosts the option cards (Mark-as-chosen, aria-pressed) AND the Decision Outcome textarea (disabled by the lock), emitting serialized options markdown for 7.6. `chosenOptionId` matches option rows only within a mount (options.ts ids are crypto.randomUUID) — 7.6/8.1 must handle edit-mode preselection of a stored chosen option. Lock is UI-only (9.5). Fills ComposePage's optionCards slot (wired in 8.1).
+- 7.2: Three prop-driven compose editors (features/compose/{TopicPicker,PeopleEditor,RelationsEditor}.tsx), value+onChange, filling ComposePage's topicPeopleRelations slot (composed by 8.1/7.6). State shapes for 7.6 assembly: PeopleEditor `{decisionMakers,consulted,informed}`, RelationsEditor `AdrRelation[]`, TopicPicker topic path `string`. PeopleEditor seeds rows once at mount — 8.1 must remount per decision via React `key` in edit mode. TopicPicker create-mode calls createFolder eagerly (folder exists before save); edit-mode changes call moveAdr (physical move). Uses PEOPLE_LABELS + relationLabel(type,"outgoing"). TopicPicker is real-backend (getTree/createFolder/moveAdr) — its test uses the settled-marker + closeAllConnections()+close() teardown.
+- NOTE: subagent dispatch briefly hit the account weekly limit around task 7.1 (resets Jul 11 1pm UTC) but recovered — dispatch is working again; fall back to inline review only if it fails.
+- 6.4: TechnicalView (features/article/TechnicalView.tsx) is standalone (apiClient+adrId+onClose), owns only the EXIT toggle (7.5); the ENTRY toggle on the article + the article↔technical switch over portalStore.view.technical/toggleTechnicalView is 8.1's App wiring (7.1). Renders raw bytes verbatim in a `<pre>` via useRawAdr (`["raw", id]` key), reuses HistoryTimeline + CompareLauncher (which hosts VersionDiffView + AdrCompareView). 8.1 MUST mount TechnicalView (currently inert/unmounted) and add the article's "Technical view" entry button. All 6.x article components (ArticlePage, OptionCompareCards, ContextRail, TechnicalView) get wired into the article view in 8.1.
+- 6.2/6.3: OptionCompareCards + ContextRail are pure prop-driven components filling ArticlePage's optionCompareCards/contextRail slots (wired in 8.1 from useDecision's adr/relations/history/similar). OptionCompareCards imports `parseOptions` from adr-editor/options.js (repoint when 7.1/8.2 relocate it) and highlights via parseCanonicalOutcome (null → no highlight). ContextRail uses relationLabel(type,"outgoing") unconditionally, reuses SimilarityMeter/relativeTime, resolves relation target titles from similar→resolveTitle→id. E2E (9.x) should assert an inbound superseded-by → "Replaced by" to lock the anti-double-flip property.
+- 6.1: ArticlePage exposes optional `optionCompareCards?` and `contextRail?` ReactNode slots (additive seam for 6.2/6.3, wired in 8.1). It does NOT render `consideredOptions` as raw text — the option-compare-cards slot sits at the Considered Options position so 6.2's cards replace it (options data still on the ADR for 6.2 to read; nothing lost). Friendly section names come from `features/article/sectionNames.ts` (FRIENDLY_SECTIONS derived from @adr/shared MADR_SECTIONS; canonical heading preserved as a "MADR: <heading>" tag). Outcome-first summary box via resolveShortDescription (layer-2 here; layer-1 summary precedence lands with task 11/compose). Real-backend tests await a settled marker + closeAllConnections()+close() for useDecision's 4-query fan-out.
+- 5.3: Topics are a pure client projection over FeedCard.topic (design-mandated, no folder endpoint) — folders with zero decisions in their subtree never appear (acceptable per design Traceability row 3). `deriveTopics`/`filterCardsForTopic` exported from features/topics/TopicsPage.tsx; TopicsRail imports them (same-layer DRY, single-source projection). Per-topic filter is `"/"`-delimited prefix match (parent includes sub-topics; root "" is distinct/General). Empty-topic state is a graceful-degradation guard for a viewed topic that empties via cache invalidation. TopicsRail fills HomePage's topicsRail slot (wired in 8.1). People directory (5.4) should mirror this projection style over the card people fields.
+- 5.2: HomePage exposes two optional `ReactNode` props — `topicsRail` and `attentionDigest` — rendered into separate `home__slot` divs (data-slot="topics-rail"/"attention-digest"). 5.3 fills topicsRail, 5.5 fills attentionDigest; each is a one-line addition with no edit to HomePage or each other (wired for real in 8.1). HomePage owns `useFeed` + the search query and passes cards to presentational FeedCards; search JOINs hits→cards by id preserving rank; chips filter within active search results (`baseCards = searchedCards ?? cards`). Takes `onOpenDecision(id)` callback, not the store.
+- 5.1: FeedCard is presentational (props `card: FeedCard` + `onOpen(id)` + injectable `now?`), no fetching — reuse it directly in HomePage/Topics/People/search results (5.x) and the live preview (7.5), never re-fetch inside it. TopNav is props-driven (does NOT import portalStore — 8.1 wires it); active destination via `aria-current`; `active` typed home|topics|people|undefined so 8.1 maps topic→topics, person→people. Root-level topic==="" renders as "General" chip. relativeTime.ts is a pure dependency-free helper. portal.css imported as a side-effect from the components (not yet in main.tsx).
+- 4.3: RelationChip renders `relationLabel(type, "outgoing")` UNCONDITIONALLY — correct because core's relationGraphService pre-resolves the reciprocal type for inbound views (RECIPROCAL[type] at relationGraphService.ts:49), so passing "outgoing" yields the right human label (inbound superseded-by → "Replaced by"). Feed/article relation rendering (6.3) must feed already-reciprocal-resolved types the same way — do NOT flip again. StatusBadge unknown-status falls back to raw text with neutral treatment.
+- 4.2: ApiClient gained getFeed (payload `cards`), getRawAdr (`raw`), getSummarySuggestion (`suggestion`) — both suggestion union variants ride ok:true/200; ok:false → query error. useDecision's similar key is `["similar", id, null]` (matches useInspectorPreviews' folder-slot convention for warm-cache sharing; design's `["similar", id]` still works as invalidation prefix). getRawAdr has no hook yet — the `["raw", id]` hook belongs to TechnicalView (6.4). Widening the ApiClient interface forced a 3-line stub in AdrEditor.test.tsx (only typed `ApiClient` fake in the suite; others spread a real client or cast `as unknown`); web build is vite-only so run `tsc --noEmit` to catch interface regressions.
+- 4.1: portalStore.navigate() NORMALIZES decision entry to technical:false — toggleTechnicalView is the sole entry into Technical view (justified by requirements 2.6/5.3/6.1/7.1: all decision navigation lands on the article page). toggleTechnicalView is a pinned no-op outside decision views. No reset() action exists (contract-faithful); tests isolate via setState.
+- 3.2: `ContainerConfig.gemini.summaryModel` is optional with fallback to global config (required would break existing buildContainer callers incl. web's client.test.ts); prod path always passes it. Suggestion endpoint returns both union variants as HTTP 200; raw endpoint returns git.read bytes (never re-serialized).
+- 2.3: Blank/whitespace provider output → provider-error, NOT cached — a persistently-blank provider is re-called per suggest() for the same blobSha (intentional: no cache poisoning). The Gemini adapter (3.1) should return a trimmed single sentence and let genuinely-empty responses surface as errors.
+- 2.1: Shared HTTP DTOs (CreateAdrRequest/UpdateAdrRequest) deliberately NOT extended — the editing service accepts `summary` via local intersection types (SummaryCarrier). Whoever wires routes/form (3.2 request passthrough is server-side only; the PUT/POST body field lands with 7.6) must add `summary?` to the shared DTOs then and should add a pin test that an update payload omitting summary clears a stored one (full-document save semantics). Blank/whitespace summaries normalize to absent.

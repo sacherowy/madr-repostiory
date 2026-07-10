@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { GitPort, AdrFile, CommitMeta, DiffResult, TreeEntry } from "../ports/git.js";
 import type { SearchDoc, SearchIndex, SearchHit } from "../ports/search.js";
 import { RelationGraphService } from "../relations/relationGraphService.js";
-import { serializeAdr } from "./parse.js";
+import { parseAdr, serializeAdr } from "./parse.js";
 import { combinedSectionText } from "./sections.js";
 import { AdrEditingService } from "./editingService.js";
 
@@ -270,6 +270,51 @@ describe("AdrEditingService", () => {
       expect(without.consulted).toBeUndefined();
       expect(without.informed).toBeUndefined();
       expect(without.tags).toBeUndefined();
+    });
+
+    it("carries an optional author summary from the create payload onto the record and into the committed frontmatter (11.1)", async () => {
+      const git = new FakeGitPort(new Map());
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const adr = await svc.create(
+        { title: "New decision", folder: ".", summary: "We picked X for speed." },
+        "Alice"
+      );
+
+      expect(adr.summary).toBe("We picked X for speed.");
+      const reRead = parseAdr(await git.read(adr.path), adr.path, adr.blobSha);
+      expect(reRead.summary).toBe("We picked X for speed.");
+    });
+
+    it("omits the summary key entirely when the create payload has none — the record stays valid without one (11.3)", async () => {
+      const git = new FakeGitPort(new Map());
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const adr = await svc.create({ title: "New decision", folder: "." }, "Alice");
+
+      expect(adr.summary).toBeUndefined();
+      const raw = await git.read(adr.path);
+      expect(raw).not.toContain("summary:");
+      expect(parseAdr(raw, adr.path, adr.blobSha).summary).toBeUndefined();
+    });
+
+    it("drops a blank (whitespace-only) summary in the create payload instead of persisting an empty frontmatter key", async () => {
+      const git = new FakeGitPort(new Map());
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const adr = await svc.create(
+        { title: "New decision", folder: ".", summary: "   " },
+        "Alice"
+      );
+
+      expect(adr.summary).toBeUndefined();
+      expect(await git.read(adr.path)).not.toContain("summary:");
     });
   });
 
@@ -598,6 +643,137 @@ describe("AdrEditingService", () => {
       const reRead = await git.read("adr-0001.md");
       expect(reRead).toContain("Brand new content.");
       expect(reRead).toContain("Updated title");
+    });
+
+    it("persists an author summary from the update payload into frontmatter, and it survives a read-modify-write cycle (11.1)", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const baseBlobSha = await git.currentBlobSha("adr-0001.md");
+      const result = await svc.save(
+        "adr-0001",
+        {
+          title: "Updated title",
+          status: "accepted",
+          date: "2024-02-02",
+          ...FULL_SECTIONS,
+          summary: "Chose Y because it scales.",
+        },
+        baseBlobSha as string,
+        "Bob"
+      );
+
+      expect(result.kind).toBe("saved");
+      if (result.kind !== "saved") throw new Error("expected saved");
+      expect(result.adr.summary).toBe("Chose Y because it scales.");
+
+      // Read: the saved summary reappears when the stored file is parsed back.
+      const reRead = parseAdr(await git.read("adr-0001.md"), "adr-0001.md", "sha-irrelevant");
+      expect(reRead.summary).toBe("Chose Y because it scales.");
+
+      // Modify-write: a second save carrying the re-read summary keeps it intact.
+      const base2 = await git.currentBlobSha("adr-0001.md");
+      const result2 = await svc.save(
+        "adr-0001",
+        {
+          title: "Retitled later",
+          status: reRead.status,
+          date: reRead.date,
+          ...FULL_SECTIONS,
+          summary: reRead.summary,
+        },
+        base2 as string,
+        "Bob"
+      );
+
+      expect(result2.kind).toBe("saved");
+      const reRead2 = parseAdr(await git.read("adr-0001.md"), "adr-0001.md", "sha-irrelevant");
+      expect(reRead2.title).toBe("Retitled later");
+      expect(reRead2.summary).toBe("Chose Y because it scales.");
+    });
+
+    it("keeps records without a summary valid: an update payload with no summary saves fine and writes no summary key (11.3)", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const baseBlobSha = await git.currentBlobSha("adr-0001.md");
+      const result = await svc.save(
+        "adr-0001",
+        { title: "Updated title", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS },
+        baseBlobSha as string,
+        "Bob"
+      );
+
+      expect(result.kind).toBe("saved");
+      if (result.kind !== "saved") throw new Error("expected saved");
+      expect(result.adr.summary).toBeUndefined();
+      const raw = await git.read("adr-0001.md");
+      expect(raw).not.toContain("summary:");
+      expect(parseAdr(raw, "adr-0001.md", "sha-irrelevant").summary).toBeUndefined();
+    });
+
+    it("clears a previously stored summary when a later update omits it (full-document save semantics, 2.1)", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      // First save stores an author summary in the frontmatter.
+      const base1 = await git.currentBlobSha("adr-0001.md");
+      const withSummary = await svc.save(
+        "adr-0001",
+        { title: "T", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS, summary: "Stored framing." },
+        base1 as string,
+        "Bob"
+      );
+      expect(withSummary.kind).toBe("saved");
+      expect(await git.read("adr-0001.md")).toContain("summary:");
+
+      // A later save that OMITS summary must drop the stored key: save() builds
+      // the record purely from `input` (no read-merge of existing frontmatter),
+      // so full-document semantics clear a field the payload no longer carries.
+      const base2 = await git.currentBlobSha("adr-0001.md");
+      const without = await svc.save(
+        "adr-0001",
+        { title: "T2", status: "accepted", date: "2024-02-03", ...FULL_SECTIONS },
+        base2 as string,
+        "Bob"
+      );
+
+      expect(without.kind).toBe("saved");
+      if (without.kind !== "saved") throw new Error("expected saved");
+      expect(without.adr.summary).toBeUndefined();
+      const raw = await git.read("adr-0001.md");
+      expect(raw).not.toContain("summary:");
+      expect(parseAdr(raw, "adr-0001.md", "sha-irrelevant").summary).toBeUndefined();
+    });
+
+    it("drops a blank summary in the update payload — the saved frontmatter carries no summary key", async () => {
+      const files = new Map<string, string>([["adr-0001.md", adrRaw("adr-0001", "Original")]]);
+      const git = new FakeGitPort(files);
+      const relations = new RelationGraphService(git);
+      const search = new FakeSearchIndex();
+      const svc = new AdrEditingService(git, relations, search);
+
+      const baseBlobSha = await git.currentBlobSha("adr-0001.md");
+      const result = await svc.save(
+        "adr-0001",
+        { title: "Updated title", status: "accepted", date: "2024-02-02", ...FULL_SECTIONS, summary: "" },
+        baseBlobSha as string,
+        "Bob"
+      );
+
+      expect(result.kind).toBe("saved");
+      if (result.kind !== "saved") throw new Error("expected saved");
+      expect(result.adr.summary).toBeUndefined();
+      expect(await git.read("adr-0001.md")).not.toContain("summary:");
     });
 
     it("commits via writeAndCommit using the existing serializeAdr function for the produced content", async () => {

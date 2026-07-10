@@ -371,6 +371,85 @@ describe("adrRoutes", () => {
     expect(res.statusCode).toBe(404);
   });
 
+  describe("GET /api/adrs/:id/raw", () => {
+    it("returns 200 with the file path and the exact stored bytes, including summary frontmatter (req 7.2)", async () => {
+      const raw = [
+        "---",
+        "id: raw-2",
+        "status: proposed",
+        'date: "2026-01-01"',
+        'summary: "Authored one-liner."',
+        "---",
+        "# Raw Fixture Title",
+        "",
+        "## Context and Problem Statement",
+        "Some   deliberately\todd    spacing preserved verbatim.",
+        "",
+      ].join("\n");
+      await container.git.writeAndCommit("decisions/raw-2.md", raw, "seed raw adr", AUTHOR);
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/adrs/raw-2/raw",
+      });
+
+      expect(res.statusCode).toBe(200);
+      // Byte-exact: the endpoint returns the stored file content verbatim,
+      // NOT a parse/re-serialize round trip.
+      expect(res.json()).toEqual({
+        path: "decisions/raw-2.md",
+        markdown: raw,
+      });
+    });
+
+    it("returns the exact committed bytes (per the git adapter) after a save that wrote a summary", async () => {
+      const createRes = await app.inject({
+        method: "POST",
+        url: "/api/adrs",
+        payload: { title: "Rawly saved", folder: "decisions", author: AUTHOR },
+      });
+      const created = createRes.json();
+
+      const putRes = await app.inject({
+        method: "PUT",
+        url: `/api/adrs/${created.id}`,
+        payload: {
+          title: "Rawly saved",
+          status: "accepted",
+          date: "2026-01-01",
+          contextAndProblemStatement: "Raw body.",
+          decisionOutcome: "Raw outcome.",
+          ...OPTIONAL_SECTIONS,
+          summary: "Accepted suggestion sentence.",
+          author: AUTHOR,
+          baseBlobSha: created.blobSha,
+        },
+      });
+      expect(putRes.statusCode).toBe(200);
+      const saved = putRes.json();
+
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/adrs/${created.id}/raw`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.path).toBe(saved.path);
+      expect(body.markdown).toBe(await container.git.read(saved.path));
+      expect(body.markdown).toContain("summary: Accepted suggestion sentence.");
+    });
+
+    it("returns 404 for GET /api/adrs/:id/raw when the id does not exist", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/adrs/adr-9999/raw",
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
   it("serializes two concurrent saves against the same ADR: one 200 and one 409, with the 409's latest matching the 200's adr exactly", async () => {
     const createRes = await app.inject({
       method: "POST",

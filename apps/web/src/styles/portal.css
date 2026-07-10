@@ -1,0 +1,225 @@
+/* =======================================================================
+   Portal surfaces (adr-manager-decision-feed).
+
+   Styling for the editorial-portal shell components introduced by task 5.1:
+   the top navigation (`TopNav`) and the presentational decision card
+   (`FeedCard`). Additive only — every value is drawn from the existing token
+   system in tokens.css; this file re-values nothing in tokens.css/base.css/
+   soft-ui.css. Later portal tasks extend this file with the Home / article /
+   compose surfaces.
+   ======================================================================= */
+
+/* ----------------------------------------------------------------------- */
+/* Top navigation                                                          */
+/* ----------------------------------------------------------------------- */
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--sh-sm);
+}
+
+.top-nav__brand {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--teal-700);
+  letter-spacing: 0.01em;
+}
+
+.top-nav__destinations {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.top-nav__link {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-700);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.top-nav__link:hover {
+  background: var(--surface);
+  color: var(--ink-900);
+}
+
+.top-nav__link.is-active,
+.top-nav__link[aria-current="page"] {
+  background: var(--teal-50);
+  color: var(--teal-800);
+  border-color: var(--teal-200);
+}
+
+.top-nav__link:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.top-nav__author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.top-nav__author-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+.top-nav__author-input {
+  max-width: 200px;
+}
+
+.top-nav__new {
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------------- */
+/* Decision card (FeedCard)                                                */
+/* ----------------------------------------------------------------------- */
+
+.feed-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.feed-card:hover {
+  box-shadow: var(--sh-md);
+  border-color: var(--line-strong);
+}
+
+.feed-card:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: 2px;
+}
+
+.feed-card__accent {
+  display: block;
+  height: 4px;
+  width: 100%;
+  background: var(--teal-500);
+  border-top: 4px solid var(--teal-500);
+}
+
+.feed-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.feed-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.feed-card__title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.feed-card__description {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--ink-700);
+  margin: 0;
+}
+
+.feed-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--ink-500);
+}
+
+.feed-card__topic {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+}
+
+.feed-card__topic-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-300);
+}
+
+.feed-card__topic-value {
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.feed-card__people {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.feed-card__people-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.feed-card__people-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-300);
+}
+
+.feed-card__people-names {
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.feed-card__time {
+  margin-left: auto;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
