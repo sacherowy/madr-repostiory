@@ -26,11 +26,12 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 import { shot } from "../harness/helpers.js";
 
 // Token values the components actually consume (apps/web/src/styles/tokens.css),
-// expressed as the computed `rgb()` the browser resolves them to.
-//   --proposed: #5063CE  → rgb(80, 99, 206)   (freshly created ADRs are "proposed")
-//   --teal-500: #0E9E8E  → rgb(14, 158, 142)  (the feed-card accent treatment)
-const PROPOSED_RGB = "rgb(80, 99, 206)";
-const TEAL_500_RGB = "rgb(14, 158, 142)";
+// expressed as the computed `rgb()` the browser resolves them to. These track
+// the active "Dark Console" theme's brand tokens.
+//   --proposed: #8B93F5  → rgb(139, 147, 245)  (freshly created ADRs are "proposed")
+//   --teal-500: #2DD4BF  → rgb(45, 212, 191)   (the feed-card accent treatment)
+const PROPOSED_RGB = "rgb(139, 147, 245)";
+const TEAL_500_RGB = "rgb(45, 212, 191)";
 
 const AUTHOR = "E2E Author <e2e@example.com>";
 

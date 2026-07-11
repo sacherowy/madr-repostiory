@@ -374,7 +374,7 @@ hr {
 
 .badge--proposed {
   background: var(--proposed-bg);
-  color: #3a40a0;
+  color: #b6bcfb;
 }
 
 .badge--proposed .badge__dot {
@@ -383,7 +383,7 @@ hr {
 
 .badge--accepted {
   background: var(--accepted-bg);
-  color: #1d6b2a;
+  color: #86e6ae;
 }
 
 .badge--accepted .badge__dot {
@@ -392,7 +392,7 @@ hr {
 
 .badge--deprecated {
   background: var(--deprecated-bg);
-  color: #8a5a09;
+  color: #f2c879;
 }
 
 .badge--deprecated .badge__dot {
@@ -401,7 +401,7 @@ hr {
 
 .badge--superseded {
   background: var(--superseded-bg);
-  color: #535d58;
+  color: #b7c0c6;
 }
 
 .badge--superseded .badge__dot {
@@ -451,7 +451,7 @@ hr {
 }
 
 .chip--depends-on {
-  color: #3a40a0;
+  color: #b6bcfb;
 }
 
 .chip--depends-on .chip__marker {

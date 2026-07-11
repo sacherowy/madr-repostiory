@@ -89,7 +89,7 @@
 .home__chip.is-active,
 .home__chip[aria-pressed="true"] {
   background: var(--teal-500);
-  color: #fff;
+  color: var(--bg);
   border-color: var(--teal-500);
 }
 

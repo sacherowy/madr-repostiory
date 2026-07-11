@@ -103,7 +103,7 @@
 .compose__segment-option.is-active,
 .compose__segment-option[aria-pressed="true"] {
   background: var(--teal-600);
-  color: #fff;
+  color: var(--bg);
 }
 
 .compose__segment-option:focus-visible {
@@ -274,7 +274,7 @@
 .topic-picker__option.is-active,
 .topic-picker__option[aria-pressed="true"] {
   background: var(--teal-600);
-  color: #fff;
+  color: var(--bg);
 }
 
 .topic-picker__option:focus-visible {
