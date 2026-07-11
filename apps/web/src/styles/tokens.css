@@ -1,103 +1,111 @@
 /* =========================================================================
-   tokens.css — "Dark Console" design system (visual re-skin).
+   tokens.css — "Backstage" design system (visual re-skin).
 
-   This is a VISUAL-ONLY re-theme: it re-values the existing design tokens to a
-   dark, technical, console-inspired palette. Every custom-property NAME is kept
-   exactly as before (the historic `--teal-*` brand ramp, `--ink-*`, `--surface`,
-   `--line`, status/diff/danger, shape, shadow, depth, glass) so NO component,
-   layout, flow or form has to change — every consuming CSS file keeps resolving
-   the same variable names, now to dark values.
+   A VISUAL-ONLY re-theme modelled on Spotify's Backstage developer-portal
+   presentation (its Material-based look: dark navigation chrome, a light-gray
+   content canvas, white "InfoCard" surfaces, a teal brand accent, a blue
+   primary action color, the Spotify/Backstage status palette, and Roboto
+   type). Every custom-property NAME is preserved so NO component, layout, flow
+   or form changes — each consuming CSS file keeps resolving the same variables,
+   now to Backstage values.
+
+   Backstage reference values (from @backstage/theme's light palette):
+     - navigation.background #171717, navigation.indicator #9BF0E1 (mint),
+       navigation.color #b5b5b5
+     - background.default #F8F8F8, surface/paper #FFFFFF, border #E6E6E6
+     - primary.main #1f5493 (blue), brand teal #4BB8A5
+     - status: success #1db855 (Spotify green), info #2e77d0, warning #f49b20,
+       error #E22134
 
    Palette identity:
-     - Background   : charcoal (#14181B) with slightly-raised elevated surfaces.
-     - Ink          : light neutrals (near-white → muted slate) on the charcoal.
-     - Brand ramp   : the `--teal-*` names now carry an ELECTRIC CYAN accent. The
-                      ramp is intentionally NON-monotonic because each step keeps
-                      the ROLE it had in the light theme:
-                        * teal-50/100 are used only as BACKGROUNDS / halos → dark
-                          cyan-tinted fills.
-                        * teal-500/600 are used as bright FILLS that now carry
-                          DARK text → electric cyan.
-                        * teal-700/800 are used only as FOREGROUND text → light
-                          cyan so they stay legible on the charcoal.
-     - Contrast     : text tokens target WCAG-AA on the charcoal surfaces; depth
-                      is expressed through elevation + border + glow, never by
-                      dropping text contrast.
+     - Canvas       : light gray #F8F8F8; cards are white with #E6E6E6 borders.
+     - Ink          : Backstage near-black #171717 → muted grays.
+     - Brand ramp   : the historic `--teal-*` names now carry the Backstage TEAL
+                      accent (card accent bars, meters, focus, hovers, selected
+                      fills). Roles are preserved: 50/100 are light mint
+                      backgrounds/halos, 500 the accent, 600/700 the darker teal
+                      used behind white text / as link text.
+     - Primary      : `--primary` is the Backstage BLUE used for primary buttons.
+     - Nav          : `--nav-*` drive the dark navigation chrome + mint indicator.
 
    New tokens added here (previously referenced by compose/article CSS with
-   silent fallbacks): --ink-800, --ink-600, --ink-50, --surface-raised,
-   --surface-sunk, --border, --accent, --accent-strong. Defining them makes the
-   compose form's option / summary / preview surfaces render intentionally in
-   the dark theme. These are additive — they add no new markup or behaviour.
+   silent fallbacks, plus the new primary/nav groups): --ink-800, --ink-600,
+   --ink-50, --surface-raised, --surface-sunk, --border, --accent[-strong],
+   --primary[-600], --nav-bg, --nav-fg, --nav-fg-active, --nav-indicator.
+   These are additive — they add no new markup or behaviour.
    ========================================================================= */
 
 :root{
-  /* Render native controls (selects, scrollbars, form widgets) dark. */
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* marka — electric cyan (historic `--teal-*` names; see ramp note above) */
-  --teal-50:#102826;  --teal-100:#173F3A; --teal-200:#2A6E64; --teal-300:#3FB9A7;
-  --teal-400:#31D4BE; --teal-500:#2DD4BF; --teal-600:#22C3AE; --teal-700:#6FEAD8;
-  --teal-800:#9BF2E4; --teal-900:#C7F8EF;
+  /* marka — Backstage teal accent (historic `--teal-*` names; see ramp note) */
+  --teal-50:#E8F5F2;  --teal-100:#CDEBE4; --teal-200:#9DD8CD; --teal-300:#6BC6B6;
+  --teal-400:#4BB8A5; --teal-500:#4BB8A5; --teal-600:#0E6B5E; --teal-700:#0E6B5E;
+  --teal-800:#0B554A; --teal-900:#08403A;
 
-  /* neutralne — light ink on charcoal */
-  --ink-900:#E9EEF1; --ink-800:#D6DEE3; --ink-700:#B3BEC5; --ink-600:#98A4AC;
-  --ink-500:#7E8A92; --ink-300:#5A656C;
-  --ink-50:#0F1316;
-  --line:#2A3137; --line-strong:#3B454C; --border:#2A3137;
-  --surface:#1B2126; --surface-raised:#222A30; --surface-sunk:#0F1316;
-  --bg:#14181B;
+  /* neutralne — Backstage ink on the light canvas */
+  --ink-900:#171717; --ink-800:#2B2B2B; --ink-700:#424242; --ink-600:#616161;
+  --ink-500:#757575; --ink-300:#9E9E9E;
+  --ink-50:#F5F5F5;
+  --line:#E6E6E6; --line-strong:#D6D6D6; --border:#E6E6E6;
+  --surface:#FFFFFF; --surface-raised:#FFFFFF; --surface-sunk:#F0F0F0;
+  --bg:#F8F8F8;
 
-  /* statusy ADR — dark-tinted fills, light dots */
-  --accepted:#3ECF8E;   --accepted-bg:#123024;
-  --proposed:#8B93F5;   --proposed-bg:#1E2140;
-  --deprecated:#E0A32E; --deprecated-bg:#3A2C12;
-  --superseded:#8A949B; --superseded-bg:#262C31;
+  /* primary action — Backstage blue */
+  --primary:#1F5493; --primary-600:#17406F;
 
-  /* destrukcja */
-  --danger:#F4728A; --danger-600:#F98BA0; --danger-bg:#331A20;
+  /* navigation chrome — dark sidebar look + mint indicator */
+  --nav-bg:#171717; --nav-fg:#B5B5B5; --nav-fg-active:#FFFFFF; --nav-indicator:#9BF0E1;
+
+  /* statusy ADR — Backstage/Spotify status palette (light tints + dot color) */
+  --accepted:#1DB855;   --accepted-bg:#E3F7EB;
+  --proposed:#2E77D0;   --proposed-bg:#E4EEFB;
+  --deprecated:#F49B20; --deprecated-bg:#FCEFDA;
+  --superseded:#757575; --superseded-bg:#ECECEC;
+
+  /* destrukcja — Backstage error red */
+  --danger:#E22134; --danger-600:#B4121F; --danger-bg:#FBE4E6;
 
   /* diff */
-  --add:#3ECF8E; --add-bg:#132A20; --del:#F4728A; --del-bg:#301A20;
+  --add:#1DB855; --add-bg:#E3F7EB; --del:#E22134; --del-bg:#FBE4E6;
 
-  /* accent (compose highlights) — brand cyan */
-  --accent:#2DD4BF; --accent-strong:#5EEAD4;
+  /* accent (compose highlights) — brand teal */
+  --accent:#4BB8A5; --accent-strong:#0E6B5E;
 
-  /* typografia — console-forward: geometric grotesque + neutral sans + mono */
-  --font-display:"Space Grotesk",system-ui,sans-serif;
-  --font-body:"Inter",system-ui,sans-serif;
+  /* typografia — Material default stack (Roboto) + mono */
+  --font-display:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --font-body:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,monospace;
 
-  /* kształt */
-  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-full:999px;
-  --sh-sm:0 1px 2px rgba(0,0,0,.45),0 1px 1px rgba(0,0,0,.35);
-  --sh-md:0 18px 40px -20px rgba(0,0,0,.75),0 2px 8px rgba(0,0,0,.5);
-  --glow:0 8px 24px -10px rgba(45,212,191,.5);
+  /* kształt — Material squarer radii */
+  --r-sm:4px; --r-md:6px; --r-lg:8px; --r-full:999px;
+  --sh-sm:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
+  --sh-md:0 6px 16px -6px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12);
+  --glow:0 2px 4px rgba(0,0,0,.22);
 
   /* =======================================================================
-     Soft UI depth layer — ADDITIVE ONLY (re-tuned for the dark surfaces).
-     Custom properties consumed by soft-ui.css to give surfaces a tactile,
-     layered feel. Depth is expressed purely through shadow / gradient / glass —
-     never by lowering text contrast.
+     Soft UI depth layer — ADDITIVE ONLY (tuned for the light Material surfaces).
+     Depth is expressed purely through shadow / gradient / glass — never by
+     lowering text contrast.
      ======================================================================= */
 
   /* Recessed input — inner inset shadow so fields read carved-in. */
-  --depth-inset:inset 0 1px 2px rgba(0,0,0,.55),inset 0 1px 1px rgba(0,0,0,.4);
+  --depth-inset:inset 0 1px 2px rgba(0,0,0,.10),inset 0 1px 1px rgba(0,0,0,.06);
 
-  /* Raised, tactile button — elevation + a soft highlight rim. */
-  --depth-raised:0 2px 4px rgba(0,0,0,.5),0 8px 18px -8px rgba(0,0,0,.7);
+  /* Raised, tactile button — Material elevation + a soft highlight rim. */
+  --depth-raised:0 1px 3px rgba(0,0,0,.20),0 2px 6px -2px rgba(0,0,0,.24);
   /* Subtle top-light gradient overlay for the raised material. */
-  --depth-raised-grad:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 55%);
+  --depth-raised-grad:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%);
   /* Pressed (depressed) button — flattened + slight inner shadow. */
-  --depth-pressed:inset 0 2px 5px rgba(0,0,0,.6),0 1px 1px rgba(0,0,0,.4);
+  --depth-pressed:inset 0 2px 4px rgba(0,0,0,.28),0 1px 1px rgba(0,0,0,.10);
 
   /* Layered card material — soft floating elevation; deeper on hover. */
-  --depth-card:0 1px 2px rgba(0,0,0,.4),0 14px 30px -18px rgba(0,0,0,.7);
-  --depth-card-hover:0 2px 4px rgba(0,0,0,.45),0 22px 48px -20px rgba(0,0,0,.8);
+  --depth-card:0 1px 3px rgba(0,0,0,.12),0 8px 22px -14px rgba(0,0,0,.22);
+  --depth-card-hover:0 2px 5px rgba(0,0,0,.16),0 14px 30px -14px rgba(0,0,0,.28);
 
-  /* Frosted glass — translucent surface + blur for command bar / aspect bar. */
-  --glass-bg:rgba(20,24,27,.72);
+  /* Frosted glass — translucent surface + blur. */
+  --glass-bg:rgba(255,255,255,.78);
   --glass-blur:saturate(140%) blur(12px);
-  --glass-border:rgba(255,255,255,.10);
-  --glass-shadow:0 8px 24px -16px rgba(0,0,0,.7);
+  --glass-border:rgba(230,230,230,.9);
+  --glass-shadow:0 8px 24px -16px rgba(0,0,0,.22);
 }

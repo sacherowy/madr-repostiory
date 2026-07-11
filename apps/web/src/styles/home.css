@@ -88,9 +88,9 @@
 
 .home__chip.is-active,
 .home__chip[aria-pressed="true"] {
-  background: var(--teal-500);
-  color: var(--bg);
-  border-color: var(--teal-500);
+  background: var(--teal-600);
+  color: #fff;
+  border-color: var(--teal-600);
 }
 
 .home__chip:focus-visible {

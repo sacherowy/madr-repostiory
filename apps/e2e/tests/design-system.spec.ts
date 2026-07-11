@@ -27,11 +27,11 @@ import { shot } from "../harness/helpers.js";
 
 // Token values the components actually consume (apps/web/src/styles/tokens.css),
 // expressed as the computed `rgb()` the browser resolves them to. These track
-// the active "Dark Console" theme's brand tokens.
-//   --proposed: #8B93F5  → rgb(139, 147, 245)  (freshly created ADRs are "proposed")
-//   --teal-500: #2DD4BF  → rgb(45, 212, 191)   (the feed-card accent treatment)
-const PROPOSED_RGB = "rgb(139, 147, 245)";
-const TEAL_500_RGB = "rgb(45, 212, 191)";
+// the active "Backstage" theme's brand tokens.
+//   --proposed: #2E77D0  → rgb(46, 119, 208)   (freshly created ADRs are "proposed")
+//   --teal-500: #4BB8A5  → rgb(75, 184, 165)   (the feed-card accent treatment)
+const PROPOSED_RGB = "rgb(46, 119, 208)";
+const TEAL_500_RGB = "rgb(75, 184, 165)";
 
 const AUTHOR = "E2E Author <e2e@example.com>";
 

@@ -149,9 +149,12 @@ hr {
   border: 1px solid transparent;
   border-radius: var(--r-md);
   font-family: var(--font-body);
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
   line-height: 1.2;
+  /* Material/Backstage buttons carry uppercase, letter-spaced labels. */
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   cursor: pointer;
   background: transparent;
   color: var(--ink-900);
@@ -166,15 +169,15 @@ hr {
 }
 
 .btn--primary {
-  background: var(--teal-500);
-  border-color: var(--teal-500);
-  color: var(--bg);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
   box-shadow: var(--glow);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--teal-600);
-  border-color: var(--teal-600);
+  background: var(--primary-600);
+  border-color: var(--primary-600);
 }
 
 .btn--secondary {
@@ -280,7 +283,7 @@ hr {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   box-shadow: var(--sh-sm);
@@ -374,7 +377,7 @@ hr {
 
 .badge--proposed {
   background: var(--proposed-bg);
-  color: #b6bcfb;
+  color: #1f5493;
 }
 
 .badge--proposed .badge__dot {
@@ -383,7 +386,7 @@ hr {
 
 .badge--accepted {
   background: var(--accepted-bg);
-  color: #86e6ae;
+  color: #177a3d;
 }
 
 .badge--accepted .badge__dot {
@@ -392,7 +395,7 @@ hr {
 
 .badge--deprecated {
   background: var(--deprecated-bg);
-  color: #f2c879;
+  color: #8a5a0e;
 }
 
 .badge--deprecated .badge__dot {
@@ -401,7 +404,7 @@ hr {
 
 .badge--superseded {
   background: var(--superseded-bg);
-  color: #b7c0c6;
+  color: #565656;
 }
 
 .badge--superseded .badge__dot {
@@ -451,7 +454,7 @@ hr {
 }
 
 .chip--depends-on {
-  color: #b6bcfb;
+  color: #1f5493;
 }
 
 .chip--depends-on .chip__marker {
