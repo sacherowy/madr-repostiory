@@ -26,11 +26,12 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 import { shot } from "../harness/helpers.js";
 
 // Token values the components actually consume (apps/web/src/styles/tokens.css),
-// expressed as the computed `rgb()` the browser resolves them to.
-//   --proposed: #5063CE  → rgb(80, 99, 206)   (freshly created ADRs are "proposed")
-//   --teal-500: #0E9E8E  → rgb(14, 158, 142)  (the feed-card accent treatment)
-const PROPOSED_RGB = "rgb(80, 99, 206)";
-const TEAL_500_RGB = "rgb(14, 158, 142)";
+// expressed as the computed `rgb()` the browser resolves them to. These track
+// the active "Backstage" theme's brand tokens.
+//   --proposed: #2E77D0  → rgb(46, 119, 208)   (freshly created ADRs are "proposed")
+//   --teal-500: #4BB8A5  → rgb(75, 184, 165)   (the feed-card accent treatment)
+const PROPOSED_RGB = "rgb(46, 119, 208)";
+const TEAL_500_RGB = "rgb(75, 184, 165)";
 
 const AUTHOR = "E2E Author <e2e@example.com>";
 

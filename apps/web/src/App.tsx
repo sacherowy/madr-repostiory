@@ -101,22 +101,29 @@ function DecisionView({
 
   return (
     <div className="portal__article-view">
-      <div className="portal__article-actions">
+      <div className="portal__view-switch">
+        <div className="portal__tabs" role="tablist" aria-label="Decision view">
+          <span className="portal__tab is-active" role="tab" aria-selected="true">
+            Article
+          </span>
+          <button
+            type="button"
+            className="portal__tab"
+            role="tab"
+            aria-selected="false"
+            data-testid="article-technical-enter"
+            onClick={toggleTechnicalView}
+          >
+            Technical view
+          </button>
+        </div>
         <button
           type="button"
-          className="btn btn--primary"
+          className="btn btn--secondary portal__view-action"
           data-testid="article-edit"
           onClick={() => onEdit(adrId)}
         >
           Edit
-        </button>
-        <button
-          type="button"
-          className="btn btn--secondary"
-          data-testid="article-technical-enter"
-          onClick={toggleTechnicalView}
-        >
-          Technical view
         </button>
       </div>
 
