@@ -227,3 +227,83 @@
   color: var(--ink-500);
   white-space: nowrap;
 }
+
+/* ----------------------------------------------------------------------- */
+/* Article/Technical view tabs                                             */
+/* A Material/Backstage tab strip that switches between the friendly        */
+/* article and the raw Technical view. The current view is the selected     */
+/* tab (colored label + underline indicator); the other tab is the toggle.  */
+/* `Edit` sits to the right as a contextual action, not a tab.              */
+/* ----------------------------------------------------------------------- */
+
+.portal__view-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Article context: no padded wrapper of its own, so align the strip with the
+   centered article content and give it top/bottom breathing room. */
+.portal__article-view > .portal__view-switch {
+  max-width: 1100px;
+  margin: 0 auto 24px;
+  padding: 20px 20px 0;
+}
+
+/* Technical context: the `.technical` container already provides the
+   max-width + padding and a column gap, so the strip only needs to sit flush. */
+.technical > .portal__view-switch {
+  margin-bottom: 0;
+}
+
+.portal__tabs {
+  display: flex;
+  align-items: stretch;
+}
+
+/* A single tab: uppercase Material label, muted when inactive, with room for
+   the 2px underline indicator that overlaps the strip's divider. */
+.portal__tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 12px 16px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-600);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.portal__tab:hover {
+  color: var(--ink-900);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Selected tab = the current view: primary label + primary underline. */
+.portal__tab.is-active,
+.portal__tab[aria-selected="true"] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: transparent;
+  cursor: default;
+}
+
+.portal__tab:focus-visible {
+  outline: 2px solid var(--teal-500);
+  outline-offset: -2px;
+}
+
+.portal__view-action {
+  flex: 0 0 auto;
+}

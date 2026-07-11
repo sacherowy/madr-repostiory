@@ -52,6 +52,24 @@ export function TechnicalView({ apiClient, adrId, onClose }: TechnicalViewProps)
 
   return (
     <div className="technical" data-testid="technical-view">
+      {/* View tabs — the "Article" tab is the return-to-article toggle (Req 7.5). */}
+      <div className="portal__view-switch">
+        <div className="portal__tabs" role="tablist" aria-label="Decision view">
+          <button
+            type="button"
+            className="portal__tab"
+            role="tab"
+            aria-selected="false"
+            data-testid="technical-view-return"
+            onClick={onClose}
+          >
+            Article
+          </button>
+          <span className="portal__tab is-active" role="tab" aria-selected="true">
+            Technical view
+          </span>
+        </div>
+      </div>
       <header className="technical__header">
         <div className="technical__heading-group">
           <h1 className="technical__title">Technical view</h1>
@@ -59,15 +77,6 @@ export function TechnicalView({ apiClient, adrId, onClose }: TechnicalViewProps)
             The raw MADR record and its real git history, shown verbatim.
           </p>
         </div>
-        {/* Return-to-article toggle (Req 7.5). */}
-        <button
-          type="button"
-          data-testid="technical-view-return"
-          className="btn btn--secondary"
-          onClick={onClose}
-        >
-          Return to article
-        </button>
       </header>
 
       {/* Raw Markdown content + file path (Req 7.2); canonical values verbatim (1.6). */}
