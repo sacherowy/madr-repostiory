@@ -145,21 +145,30 @@ hr {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 6px 16px;
+  min-height: 36px;
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   font-family: var(--font-body);
   font-size: 0.875rem;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.35;
   /* Material/Backstage buttons carry uppercase, letter-spaced labels. */
   text-transform: uppercase;
   letter-spacing: 0.03em;
   cursor: pointer;
   background: transparent;
-  color: var(--ink-900);
+  /* A variant-less `.btn` is a neutral Material text button (muted ink); the
+     variants below override this color/background. */
+  color: var(--ink-600);
   transition: background-color 0.15s ease, border-color 0.15s ease,
     color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Neutral hover wash for a variant-less text button. Variant buttons declare
+   their own higher-specificity hover, so this only reaches bare `.btn`. */
+.btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .btn:disabled,
@@ -180,38 +189,45 @@ hr {
   border-color: var(--primary-600);
 }
 
+/* Outlined button (Material/Backstage): primary-tinted border + primary text on
+   a transparent field, with a faint primary wash on hover — no fill, no shadow. */
 .btn--secondary {
-  background: var(--bg);
-  border-color: var(--line-strong);
-  color: var(--ink-900);
+  background: transparent;
+  border-color: rgba(31, 84, 147, 0.5);
+  color: var(--primary);
 }
 
 .btn--secondary:hover:not(:disabled) {
-  border-color: var(--teal-500);
-  color: var(--teal-700);
+  border-color: var(--primary);
+  background: rgba(31, 84, 147, 0.06);
+  color: var(--primary);
 }
 
+/* Text button (Material/Backstage): primary text, no border, faint primary
+   wash on hover. */
 .btn--ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--teal-700);
+  color: var(--primary);
 }
 
 .btn--ghost:hover:not(:disabled) {
-  background: var(--teal-50);
+  background: rgba(31, 84, 147, 0.06);
 }
 
-/* Destructive red used here ONLY — irreversible actions (Req 1.4, 9.3). */
+/* Destructive outlined button — reserved for irreversible actions (Req 1.4,
+   9.3). Mirrors the Material outlined-error style: error-tinted border + text,
+   a faint error wash on hover (no full fill). */
 .btn--danger {
-  background: var(--bg);
-  border-color: var(--danger);
+  background: transparent;
+  border-color: rgba(226, 33, 52, 0.5);
   color: var(--danger);
 }
 
 .btn--danger:hover:not(:disabled) {
-  background: var(--danger);
-  border-color: var(--danger-600);
-  color: var(--bg);
+  border-color: var(--danger);
+  background: rgba(226, 33, 52, 0.08);
+  color: var(--danger);
 }
 
 /* -------------------------------------------------------------------------

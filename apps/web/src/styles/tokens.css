@@ -81,7 +81,8 @@
   --r-sm:4px; --r-md:6px; --r-lg:8px; --r-full:999px;
   --sh-sm:0 1px 3px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);
   --sh-md:0 6px 16px -6px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12);
-  --glow:0 2px 4px rgba(0,0,0,.22);
+  /* Material contained-button resting elevation (MUI elevation 2). */
+  --glow:0 3px 1px -2px rgba(0,0,0,.2),0 2px 2px 0 rgba(0,0,0,.14),0 1px 5px 0 rgba(0,0,0,.12);
 
   /* =======================================================================
      Soft UI depth layer — ADDITIVE ONLY (tuned for the light Material surfaces).
@@ -92,10 +93,11 @@
   /* Recessed input — inner inset shadow so fields read carved-in. */
   --depth-inset:inset 0 1px 2px rgba(0,0,0,.10),inset 0 1px 1px rgba(0,0,0,.06);
 
-  /* Raised, tactile button — Material elevation + a soft highlight rim. */
-  --depth-raised:0 1px 3px rgba(0,0,0,.20),0 2px 6px -2px rgba(0,0,0,.24);
-  /* Subtle top-light gradient overlay for the raised material. */
-  --depth-raised-grad:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%);
+  /* Raised, tactile button — kept minimal so the primary reads as a flat MUI
+     contained button (its elevation comes from --glow, not this layer). */
+  --depth-raised:0 1px 2px rgba(0,0,0,.14);
+  /* Material contained buttons are flat fills — no top-light sheen. */
+  --depth-raised-grad:none;
   /* Pressed (depressed) button — flattened + slight inner shadow. */
   --depth-pressed:inset 0 2px 4px rgba(0,0,0,.28),0 1px 1px rgba(0,0,0,.10);
 
