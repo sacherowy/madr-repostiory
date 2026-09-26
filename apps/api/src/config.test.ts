@@ -41,3 +41,35 @@ describe("config.gemini.summaryModel", () => {
     expect(config.gemini).toHaveProperty("model");
   });
 });
+
+describe("similarityConfigResult", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is a separate export parsed from process.env, not a property of config", async () => {
+    vi.stubEnv("SIMILARITY_STRATEGY", "jev");
+    vi.stubEnv("JEV_ENDPOINT", "http://127.0.0.1:4010");
+    vi.stubEnv("JEV_API_KEY", "k");
+
+    vi.resetModules();
+    const mod = await import("./config.js");
+
+    expect(mod.config).not.toHaveProperty("similarity");
+    expect(mod.similarityConfigResult.ok).toBe(true);
+    if (mod.similarityConfigResult.ok) expect(mod.similarityConfigResult.config.strategy).toBe("jev");
+  });
+
+  it("does not throw on an invalid configuration; it carries the issues", async () => {
+    vi.stubEnv("SIMILARITY_STRATEGY", "foo");
+
+    vi.resetModules();
+    const mod = await import("./config.js");
+
+    expect(mod.similarityConfigResult.ok).toBe(false);
+  });
+});

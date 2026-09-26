@@ -90,6 +90,14 @@ API wystawia na start `GET /health`. Web proxuje `/api` na `http://localhost:300
 | `SQLITE_PATH` | plik projekcji SQLite |
 | `GEMINI_API_KEY` | klucz do embeddingów Gemini |
 | `GEMINI_EMBED_MODEL` | model embeddingów (domyślnie `text-embedding-004`) |
+| `SIMILARITY_STRATEGY` | strategia podobnych ADR: `embedding` (domyślnie, gdy puste) lub `jev`; wielkość liter bez znaczenia; zmiana wymaga restartu, błędna wartość blokuje start |
+| `JEV_ENDPOINT` | tylko przy `jev`, wymagany, bez domyślnej wartości: absolutny URL `https` (`http` tylko dla `localhost`/`127.0.0.1`/`[::1]`), np. `https://api.tokenrouter.com/api/alpha/decisions`; przy `jev` tytuły i treść ADR trafiają do TokenRouter i TypeSafe |
+| `JEV_API_KEY` | tylko przy `jev`, wymagany: klucz API TokenRouter (nigdy nie jest logowany ani zwracany) |
+| `JEV_MODEL` | tylko przy `jev`: model Jev (domyślnie `typesafe/jev-1.13`) |
+| `JEV_TIMEOUT_MS` | tylko przy `jev`: timeout pojedynczego zapytania, 100–60000 ms (domyślnie `10000`) |
+| `JEV_MAX_CANDIDATES` | tylko przy `jev`: limit porównywanych kandydatów, 1–1000 (domyślnie `100`; „porównaj wszystkie” go pomija) |
+| `JEV_CONCURRENCY` | tylko przy `jev`: równoległe zapytania do Jev, 1–16 (domyślnie `4`) |
+| `JEV_REQUEST_BUDGET_MS` | tylko przy `jev`: budżet czasu całego żądania, 1000–600000 ms i nie krótszy niż `JEV_TIMEOUT_MS` (domyślnie `120000`) |
 | `OIDC_*` | konfiguracja logowania zespołowego (do uzupełnienia) |
 | `PORT` | port API |
 

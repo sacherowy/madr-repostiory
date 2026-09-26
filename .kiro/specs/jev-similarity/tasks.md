@@ -46,7 +46,7 @@
   - _Requirements: 6.5, 7.1, 7.2, 7.4, 7.6, 7.7, 8.1_
 
 - [ ] 3. API: similarity configuration and Jev adapters
-- [ ] 3.1 (P) Implement the similarity configuration parser with aggregated validation and document the variables
+- [x] 3.1 (P) Implement the similarity configuration parser with aggregated validation and document the variables
   - Parse the strategy setting (trimmed, case-insensitive; absent or blank means embedding) and, only under jev, the endpoint, API key, model and the four numeric settings with their defaults and bounds
   - Accept only absolute https endpoints, or http with a loopback host; enforce the budget-not-shorter-than-timeout rule only when both values are individually valid
   - Collect every issue into one result and render them as a single multi-line message naming each variable and rule, never the API key value; ignore all Jev settings under embedding
