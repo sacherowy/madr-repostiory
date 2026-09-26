@@ -1,0 +1,478 @@
+{
+ "model": "typesafe/jev-1.13",
+ "endpoint": "https://api.tokenrouter.com/api/alpha/decisions",
+ "date": "2026-09-26",
+ "note": "Each target compared exhaustively against the other 9 ADRs (all in one folder); score = Jev probability of similarity.",
+ "results": {
+  "adr-1": [
+   {
+    "id": "adr-7",
+    "score": 0.92,
+    "relation": "related"
+   },
+   {
+    "id": "adr-10",
+    "score": 0.05,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.05,
+    "relation": "related"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.03,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-2": [
+   {
+    "id": "adr-10",
+    "score": 0.87,
+    "relation": "related"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.08,
+    "relation": "related"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.08,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.05,
+    "relation": "related"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.04,
+    "relation": "related"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.02,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-3": [
+   {
+    "id": "adr-10",
+    "score": 0.62,
+    "relation": "related"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.05,
+    "relation": "related"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.03,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-4": [
+   {
+    "id": "adr-5",
+    "score": 0.05,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-10",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.03,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-5": [
+   {
+    "id": "adr-9",
+    "score": 0.06,
+    "relation": "related"
+   },
+   {
+    "id": "adr-10",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.03,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-6": [
+   {
+    "id": "adr-2",
+    "score": 0.05,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.05,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-10",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.03,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-7": [
+   {
+    "id": "adr-1",
+    "score": 0.87,
+    "relation": "related"
+   },
+   {
+    "id": "adr-10",
+    "score": 0.05,
+    "relation": "related"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.05,
+    "relation": "related"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.05,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.03,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-8": [
+   {
+    "id": "adr-10",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.02,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-9": [
+   {
+    "id": "adr-5",
+    "score": 0.07,
+    "relation": "related"
+   },
+   {
+    "id": "adr-2",
+    "score": 0.06,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-10",
+    "score": 0.04,
+    "relation": "related"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.04,
+    "relation": "unrelated"
+   }
+  ],
+  "adr-10": [
+   {
+    "id": "adr-2",
+    "score": 0.73,
+    "relation": "related"
+   },
+   {
+    "id": "adr-3",
+    "score": 0.6,
+    "relation": "related"
+   },
+   {
+    "id": "adr-1",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-5",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-7",
+    "score": 0.04,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-6",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-8",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-9",
+    "score": 0.03,
+    "relation": "unrelated"
+   },
+   {
+    "id": "adr-4",
+    "score": 0.02,
+    "relation": "unrelated"
+   }
+  ]
+ }
+}

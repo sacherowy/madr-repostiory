@@ -23,6 +23,7 @@ import { chromium } from "@playwright/test";
 import { simpleGit } from "simple-git";
 
 import { paths } from "./paths.js";
+import type { SimilarityMode } from "./similarityMode.js";
 
 /** Git identity used for the temp repo's initial commit (mirrors App.test.tsx). */
 const GIT_USER_NAME = "ADR E2E";
@@ -96,11 +97,14 @@ export function assertBrowserInstalled(): void {
  *
  * Empty key → offline (deterministic fake provider); non-empty → real-provider.
  */
-export function logMode(geminiApiKey: string): void {
+export function logMode(geminiApiKey: string, similarity?: SimilarityMode): void {
   if (geminiApiKey === "") {
     console.log("[e2e] mode: offline (no GEMINI_API_KEY)");
   } else {
     console.log("[e2e] mode: real-provider (GEMINI_API_KEY set)");
+  }
+  if (similarity?.strategy === "jev") {
+    console.log("[e2e] similarity: live Jev API (SIMILARITY_STRATEGY=jev)");
   }
 }
 

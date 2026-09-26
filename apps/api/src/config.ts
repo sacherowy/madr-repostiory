@@ -1,3 +1,5 @@
+import { parseSimilarityConfig, type SimilarityConfigResult } from "./similarityConfig.js";
+
 export const config = {
   repoPath: process.env.ADR_REPO_PATH ?? "./data/adr-repo",
   sqlitePath: process.env.SQLITE_PATH ?? "./data/index.sqlite",
@@ -8,3 +10,7 @@ export const config = {
   },
   port: Number(process.env.PORT ?? 3000),
 };
+
+// Parsed separately (never throws) so `config` stays assignable to ContainerConfig;
+// the server entrypoint decides whether to abort on issues.
+export const similarityConfigResult: SimilarityConfigResult = parseSimilarityConfig(process.env);

@@ -6,7 +6,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --exclude \"**/*.integration.test.ts\"",
-    "test:integration": "vitest run \"src/**/*.integration.test.ts\"",
+    "test:integration": "vitest run --dir src .integration.test.ts",
     "reindex": "tsx src/scripts/reindex.ts"
   },
   "dependencies": {

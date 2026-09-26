@@ -2,8 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import Database from "better-sqlite3";
 import { simpleGit } from "simple-git";
 import {
+  JevSimilarityService,
+  SimilarityProviderError,
   AdrEditingService,
   FolderService,
   RelationGraphService,
@@ -20,6 +25,7 @@ import { GeminiEmbeddingProvider } from "./infrastructure/embeddings/gemini.js";
 import { GeminiSummaryProvider } from "./infrastructure/summaries/geminiSummaryProvider.js";
 import { SqliteSummaryStore } from "./infrastructure/persistence/sqliteSummaryStore.js";
 import { buildContainer } from "./container.js";
+import { parseSimilarityConfig, type SimilarityConfig } from "./similarityConfig.js";
 
 const AUTHOR = "Test Author <test@example.com>";
 
@@ -214,5 +220,122 @@ describe("buildContainer", () => {
 
     expect(container.summaryProvider).toBeInstanceOf(GeminiSummaryProvider);
     expect((container.summaryProvider as GeminiSummaryProvider).model).toBe("summary-model-x");
+  });
+
+  describe("similarity strategy selection", () => {
+    function jevConfig(endpoint: string): SimilarityConfig {
+      const result = parseSimilarityConfig({
+        SIMILARITY_STRATEGY: "jev",
+        JEV_ENDPOINT: endpoint,
+        JEV_API_KEY: "test-jev-key",
+      });
+      if (!result.ok) throw new Error("expected a valid jev config");
+      return result.config;
+    }
+
+    function judgmentTableExists(sqlitePath: string): boolean {
+      const db = new Database(sqlitePath);
+      try {
+        return (
+          db
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'jev_judgment_cache'")
+            .get() !== undefined
+        );
+      } finally {
+        db.close();
+      }
+    }
+
+    it("wires today's embedding SimilarityService with strategy embedding when no similarity config is given (1.3, 8.3)", () => {
+      const sqlitePath = join(repoPath, "test.sqlite");
+      const container = buildContainer({
+        repoPath,
+        sqlitePath,
+        gemini: { model: "fake-model", apiKey: "" },
+      });
+
+      expect(container.similarity).toBeInstanceOf(SimilarityService);
+      expect(container.similarityStrategy).toBe("embedding");
+      // The judgment cache is jev-only derived data (6.4).
+      expect(judgmentTableExists(sqlitePath)).toBe(false);
+    });
+
+    it("wires the embedding SimilarityService for an explicit embedding config (1.3)", () => {
+      const container = buildContainer({
+        repoPath,
+        sqlitePath: join(repoPath, "test.sqlite"),
+        gemini: { model: "fake-model", apiKey: "" },
+        similarity: { strategy: "embedding" },
+      });
+
+      expect(container.similarity).toBeInstanceOf(SimilarityService);
+      expect(container.similarityStrategy).toBe("embedding");
+    });
+
+    it("wires JevSimilarityService with strategy jev and the SQLite judgment store for a parsed jev config (1.4, 2.9, 6.4)", () => {
+      const sqlitePath = join(repoPath, "test.sqlite");
+      const container = buildContainer({
+        repoPath,
+        sqlitePath,
+        gemini: { model: "fake-model", apiKey: "" },
+        similarity: jevConfig("http://127.0.0.1:9/api/alpha/decisions"),
+      });
+
+      expect(container.similarity).toBeInstanceOf(JevSimilarityService);
+      expect(container.similarity).not.toBeInstanceOf(SimilarityService);
+      expect(container.similarityStrategy).toBe("jev");
+      expect(judgmentTableExists(sqlitePath)).toBe(true);
+    });
+
+    describe("jev wiring against a loopback Jev endpoint", () => {
+      let server: Server;
+      let endpoint: string;
+      let hits: number;
+
+      beforeEach(async () => {
+        hits = 0;
+        server = createServer((req, res) => {
+          req.resume();
+          req.on("end", () => {
+            hits += 1;
+            res.writeHead(500, { "content-type": "application/json" });
+            res.end("{}");
+          });
+        });
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+        endpoint = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/alpha/decisions`;
+      });
+
+      afterEach(async () => {
+        server.closeAllConnections();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      });
+
+      it("judges through the configured HTTP endpoint and never falls back to embeddings on failure (1.4, 7.2)", async () => {
+        const container = buildContainer({
+          repoPath,
+          sqlitePath: join(repoPath, "test.sqlite"),
+          gemini: { model: "fake-model", apiKey: "" },
+          similarity: jevConfig(endpoint),
+        });
+        await container.git.writeAndCommit(
+          "decisions/0001-first.md",
+          adrRaw("adr-0001", "First decision"),
+          "add first",
+          AUTHOR
+        );
+        await container.git.writeAndCommit(
+          "decisions/0002-second.md",
+          adrRaw("adr-0002", "Second decision"),
+          "add second",
+          AUTHOR
+        );
+
+        await expect(container.similarity.findSimilar("adr-0001", ".")).rejects.toBeInstanceOf(
+          SimilarityProviderError
+        );
+        expect(hits).toBeGreaterThan(0);
+      });
+    });
   });
 });

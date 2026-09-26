@@ -3,6 +3,7 @@ import type {
   EmbeddingStore,
   GitPort,
   SearchIndex,
+  SimilarityFinder,
   SummaryProvider,
   SummaryStore,
 } from "@adr/core";
@@ -12,6 +13,7 @@ import {
   FeedService,
   FolderService,
   HistoryService,
+  JevSimilarityService,
   RelationGraphService,
   SearchService,
   SimilarityService,
@@ -22,10 +24,13 @@ import { WriteQueue } from "./infrastructure/concurrency/writeQueue.js";
 import { FakeEmbeddingProvider } from "./infrastructure/embeddings/fake.js";
 import { GeminiEmbeddingProvider } from "./infrastructure/embeddings/gemini.js";
 import { GeminiSummaryProvider } from "./infrastructure/summaries/geminiSummaryProvider.js";
+import { JevSimilarityJudge } from "./infrastructure/jev/jevSimilarityJudge.js";
 import { SimpleGitAdapter } from "./infrastructure/git/simpleGitAdapter.js";
 import { SqliteEmbeddingStore } from "./infrastructure/persistence/sqlite.js";
 import { SqliteSearchIndex } from "./infrastructure/persistence/sqliteSearchIndex.js";
 import { SqliteSummaryStore } from "./infrastructure/persistence/sqliteSummaryStore.js";
+import { SqliteJudgmentStore } from "./infrastructure/persistence/sqliteJudgmentStore.js";
+import type { SimilarityConfig, SimilarityStrategyName } from "./similarityConfig.js";
 
 export interface ContainerConfig {
   repoPath: string;
@@ -33,9 +38,15 @@ export interface ContainerConfig {
   /**
    * `summaryModel` is optional so pre-existing callers (tests, reindex
    * tooling) that predate the summary feature keep compiling; when omitted,
-   * `buildContainer` falls back to the process-level `config` default.
+   * `buildContainer` falls back to the process-level `config.gemini.summaryModel`.
    */
   gemini: { model: string; apiKey: string; summaryModel?: string };
+  /**
+   * Absent → `{ strategy: "embedding" }`, so existing callers compile
+   * unchanged (8.3). A `jev` config can only come from
+   * `parseSimilarityConfig` (branded `ValidatedJevConfig`, 2.9).
+   */
+  similarity?: SimilarityConfig;
 }
 
 export interface Container {
@@ -54,7 +65,9 @@ export interface Container {
   history: HistoryService;
   compare: ComparisonService;
   search: SearchService;
-  similarity: SimilarityService;
+  similarity: SimilarityFinder;
+  /** Selected once at startup for the process lifetime (1.5). */
+  similarityStrategy: SimilarityStrategyName;
   feed: FeedService;
   summarySuggestion: SummarySuggestionService;
 }
@@ -75,8 +88,13 @@ export interface Container {
  * plugins) so that future route plugins serializing writes against this
  * repository (ADR create/save, folder create, ADR move) all share the same
  * queue instance.
+ *
+ * Similarity is selected from `cfg.similarity` (absent → embedding): the
+ * embedding strategy keeps today's wiring (1.3); the jev strategy wires the
+ * HTTP judge and the SQLite judgment store, and never the embedding adapters
+ * (1.4, 7.2) — those are still built for their other consumers.
  */
-export function buildContainer(cfg: ContainerConfig = config): Container {
+export function buildContainer(cfg: ContainerConfig): Container {
   const git = new SimpleGitAdapter(cfg.repoPath);
   const searchIndex = new SqliteSearchIndex(cfg.sqlitePath);
   const embeddingStore = new SqliteEmbeddingStore(cfg.sqlitePath);
@@ -105,7 +123,20 @@ export function buildContainer(cfg: ContainerConfig = config): Container {
   const history = new HistoryService(git);
   const compare = new ComparisonService(git);
   const search = new SearchService(searchIndex);
-  const similarity = new SimilarityService(git, embeddingStore, embeddingProvider);
+  const similarityConfig = cfg.similarity ?? { strategy: "embedding" };
+  const similarity: SimilarityFinder =
+    similarityConfig.strategy === "jev"
+      ? new JevSimilarityService(
+          git,
+          new JevSimilarityJudge(similarityConfig.jev),
+          new SqliteJudgmentStore(cfg.sqlitePath),
+          {
+            maxCandidates: similarityConfig.jev.maxCandidates,
+            concurrency: similarityConfig.jev.concurrency,
+            requestBudgetMs: similarityConfig.jev.requestBudgetMs,
+          }
+        )
+      : new SimilarityService(git, embeddingStore, embeddingProvider);
   const feed = new FeedService(git);
   const summarySuggestion = new SummarySuggestionService(summaryProvider, summaryStore);
 
@@ -124,6 +155,7 @@ export function buildContainer(cfg: ContainerConfig = config): Container {
     compare,
     search,
     similarity,
+    similarityStrategy: similarityConfig.strategy,
     feed,
     summarySuggestion,
   };

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -174,9 +174,13 @@ describe("useDecision", () => {
       // create + save = at least two commits touching the file.
       expect(result.current.history.data?.length).toBeGreaterThanOrEqual(2);
       expect(typeof result.current.history.data?.[0].sha).toBe("string");
-      expect(result.current.similar.data).toHaveLength(1);
-      expect(result.current.similar.data?.[0].adr.id).toBe(source.id);
-      expect(typeof result.current.similar.data?.[0].score).toBe("number");
+      expect(result.current.similar.data?.results).toHaveLength(1);
+      expect(result.current.similar.data?.results[0].adr.id).toBe(source.id);
+      expect(typeof result.current.similar.data?.results[0].score).toBe("number");
+      // Embedding strategy never reports coverage.
+      expect(result.current.similar.data?.coverage).toBeNull();
+      expect(result.current.similar.errorStatus).toBeNull();
+      expect(result.current.similar.isComparingAll).toBe(false);
     });
   });
 
@@ -219,9 +223,9 @@ describe("useDecision", () => {
     await waitFor(() => {
       expect(result.current.similar.isPending).toBe(false);
     });
-    expect(getSimilar).toHaveBeenCalledWith("adr-1", "team/platform");
+    expect(getSimilar).toHaveBeenCalledWith("adr-1", "team/platform", { exhaustive: false });
     expect(result.current.similar.isError).toBe(false);
-    expect(result.current.similar.data).toEqual([]);
+    expect(result.current.similar.data).toEqual({ results: [], coverage: null });
   });
 
   it("surfaces a non-ok result as a query error on the failing dataset only", async () => {
@@ -232,7 +236,7 @@ describe("useDecision", () => {
     const getHistory = vi.fn().mockResolvedValue({ ok: true, history: [commit("s1")] });
     const getSimilar = vi
       .fn()
-      .mockResolvedValue({ ok: true, kind: "ranked", results: [similarity("x")] });
+      .mockResolvedValue({ ok: true, kind: "ranked", results: [similarity("x")], coverage: null });
     const apiClient = makeStubClient({ getAdr, getRelations, getHistory, getSimilar });
 
     const { result } = renderHook(() => useDecision(apiClient, "adr-1"), {
@@ -245,7 +249,7 @@ describe("useDecision", () => {
     await waitFor(() => {
       expect(result.current.adr.data?.id).toBe("adr-1");
       expect(result.current.history.data).toHaveLength(1);
-      expect(result.current.similar.data).toHaveLength(1);
+      expect(result.current.similar.data?.results).toHaveLength(1);
     });
     expect(result.current.adr.isError).toBe(false);
     expect(result.current.history.isError).toBe(false);
@@ -259,7 +263,7 @@ describe("useDecision", () => {
       { type: "superseded-by", target: "adr-2", direction: "inbound" } as unknown as RelationView,
     ];
     const seededHistory = [commit("s1")];
-    const seededSimilar = [similarity("adr-2")];
+    const seededSimilar = { results: [similarity("adr-2")], coverage: null };
     queryClient.setQueryData(["adr", "adr-1"], seededAdr);
     queryClient.setQueryData(["relations", "adr-1"], seededRelations);
     // These two are exactly the keys `useInspectorPreviews` uses (history is
@@ -283,5 +287,212 @@ describe("useDecision", () => {
     expect(result.current.relations.data).toEqual(seededRelations);
     expect(result.current.history.data).toEqual(seededHistory);
     expect(result.current.similar.data).toEqual(seededSimilar);
+  });
+  describe("similar: error status, compare-all and retry", () => {
+    function okClient(getSimilar: ApiClient["getSimilar"]): ApiClient {
+      return makeStubClient({
+        getAdr: vi
+          .fn()
+          .mockImplementation(async (id: string) => ({
+            ok: true,
+            adr: adrWithPath(id, `decisions/${id}.md`),
+          })),
+        getRelations: vi.fn().mockResolvedValue({ ok: true, relations: [] }),
+        getHistory: vi.fn().mockResolvedValue({ ok: true, history: [] }),
+        getSimilar,
+      });
+    }
+
+    function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void } {
+      let resolve!: (v: T) => void;
+      const promise = new Promise<T>((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    }
+
+    it("exposes the failure flag and HTTP status without retrying automatically", async () => {
+      const getSimilar = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+      const { result } = renderHook(() => useDecision(okClient(getSimilar), "adr-1"), {
+        wrapper: createQueryWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.similar.isError).toBe(true);
+      });
+      expect(result.current.similar.errorStatus).toBe(503);
+      expect(result.current.similar.data).toBeUndefined();
+      // App-wide `retry: false` stays: exactly one request.
+      expect(getSimilar).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports status 0 for a network failure", async () => {
+      const getSimilar = vi.fn().mockResolvedValue({ ok: false, status: 0 });
+      const { result } = renderHook(() => useDecision(okClient(getSimilar), "adr-1"), {
+        wrapper: createQueryWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.similar.isError).toBe(true);
+      });
+      expect(result.current.similar.errorStatus).toBe(0);
+    });
+
+    it("retry() refetches the active query and clears the failure on success", async () => {
+      const getSimilar = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({
+          ok: true,
+          kind: "ranked",
+          results: [similarity("adr-2")],
+          coverage: { judged: 1, total: 1 },
+        });
+      const { result } = renderHook(() => useDecision(okClient(getSimilar), "adr-1"), {
+        wrapper: createQueryWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.similar.errorStatus).toBe(503);
+      });
+
+      act(() => result.current.similar.retry());
+
+      await waitFor(() => {
+        expect(result.current.similar.isError).toBe(false);
+        expect(result.current.similar.data?.results).toHaveLength(1);
+      });
+      expect(result.current.similar.errorStatus).toBeNull();
+      expect(result.current.similar.data?.coverage).toEqual({ judged: 1, total: 1 });
+      expect(getSimilar).toHaveBeenCalledTimes(2);
+      expect(getSimilar).toHaveBeenLastCalledWith("adr-1", "decisions", { exhaustive: false });
+    });
+
+    it("compareAll() requests an exhaustive comparison, keeps the capped data while pending, then replaces it", async () => {
+      const exhaustive = deferred<unknown>();
+      const capped = {
+        ok: true,
+        kind: "ranked",
+        results: [similarity("adr-2")],
+        coverage: { judged: 1, total: 3 },
+      };
+      const full = {
+        ok: true,
+        kind: "ranked",
+        results: [similarity("adr-2"), similarity("adr-3"), similarity("adr-4")],
+        coverage: { judged: 3, total: 3 },
+      };
+      const getSimilar = vi
+        .fn()
+        .mockImplementation((_id: string, _scope: string, options?: { exhaustive?: boolean }) =>
+          options?.exhaustive ? exhaustive.promise : Promise.resolve(capped),
+        );
+      const queryClient = createQueryClient();
+      const { result } = renderHook(() => useDecision(okClient(getSimilar), "adr-1"), {
+        wrapper: wrapperFor(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.similar.data?.coverage).toEqual({ judged: 1, total: 3 });
+      });
+      expect(result.current.similar.isComparingAll).toBe(false);
+
+      act(() => result.current.similar.compareAll());
+
+      await waitFor(() => {
+        expect(result.current.similar.isComparingAll).toBe(true);
+      });
+      expect(getSimilar).toHaveBeenLastCalledWith("adr-1", "decisions", { exhaustive: true });
+      // The capped list stays visible during the long comparison.
+      expect(result.current.similar.data?.results).toHaveLength(1);
+      expect(result.current.similar.isPending).toBe(false);
+
+      exhaustive.resolve(full);
+
+      await waitFor(() => {
+        expect(result.current.similar.isComparingAll).toBe(false);
+        expect(result.current.similar.data?.results).toHaveLength(3);
+      });
+      expect(result.current.similar.data?.coverage).toEqual({ judged: 3, total: 3 });
+      // Both keys sit under the `["similar", id]` prefix useComposeSave invalidates.
+      expect(queryClient.getQueryData(["similar", "adr-1", null])).toEqual({
+        results: capped.results,
+        coverage: capped.coverage,
+      });
+      expect(queryClient.getQueryData(["similar", "adr-1", null, "exhaustive"])).toEqual({
+        results: full.results,
+        coverage: full.coverage,
+      });
+      expect(queryClient.getQueryCache().findAll({ queryKey: ["similar", "adr-1"] })).toHaveLength(2);
+    });
+
+    it("retry() after a failed exhaustive comparison repeats the exhaustive request", async () => {
+      const getSimilar = vi
+        .fn()
+        .mockImplementation(async (_id: string, _scope: string, options?: { exhaustive?: boolean }) =>
+          options?.exhaustive
+            ? { ok: false, status: 503 }
+            : { ok: true, kind: "ranked", results: [similarity("adr-2")], coverage: { judged: 1, total: 2 } },
+        );
+      const { result } = renderHook(() => useDecision(okClient(getSimilar), "adr-1"), {
+        wrapper: createQueryWrapper(),
+      });
+      await waitFor(() => {
+        expect(result.current.similar.data?.results).toHaveLength(1);
+      });
+
+      act(() => result.current.similar.compareAll());
+      await waitFor(() => {
+        expect(result.current.similar.errorStatus).toBe(503);
+      });
+      // The failure replaces the capped list.
+      expect(result.current.similar.data).toBeUndefined();
+      expect(result.current.similar.isComparingAll).toBe(false);
+      const callsBefore = getSimilar.mock.calls.length;
+
+      act(() => result.current.similar.retry());
+      await waitFor(() => {
+        expect(getSimilar.mock.calls.length).toBe(callsBefore + 1);
+      });
+      expect(getSimilar).toHaveBeenLastCalledWith("adr-1", "decisions", { exhaustive: true });
+    });
+
+    it("resets the compare-all flag when the viewed ADR changes", async () => {
+      const getSimilar = vi
+        .fn()
+        .mockImplementation(async (id: string) => ({
+          ok: true,
+          kind: "ranked",
+          results: [similarity(`${id}-peer`)],
+          coverage: { judged: 1, total: 2 },
+        }));
+      const { result, rerender } = renderHook(
+        ({ id }: { id: string }) => useDecision(okClient(getSimilar), id),
+        { wrapper: createQueryWrapper(), initialProps: { id: "adr-1" } },
+      );
+      await waitFor(() => {
+        expect(result.current.similar.data?.results).toHaveLength(1);
+      });
+
+      act(() => result.current.similar.compareAll());
+      await waitFor(() => {
+        expect(getSimilar).toHaveBeenLastCalledWith("adr-1", "decisions", { exhaustive: true });
+      });
+
+      rerender({ id: "adr-2" });
+      await waitFor(() => {
+        expect(result.current.similar.data?.results[0]?.adr.id).toBe("adr-2-peer");
+      });
+      expect(getSimilar).toHaveBeenLastCalledWith("adr-2", "decisions", { exhaustive: false });
+      expect(result.current.similar.isComparingAll).toBe(false);
+
+      // Coming back to the first ADR starts capped again.
+      rerender({ id: "adr-1" });
+      await waitFor(() => {
+        expect(result.current.similar.data?.results[0]?.adr.id).toBe("adr-1-peer");
+      });
+      expect(getSimilar).not.toHaveBeenCalledWith("adr-2", "decisions", { exhaustive: true });
+      expect(result.current.similar.isComparingAll).toBe(false);
+    });
   });
 });

@@ -6,12 +6,14 @@
 // (resolved by useDecision) — each with the reused SimilarityMeter. Offline,
 // ranking is served by the deterministic fake embedding provider selected in the
 // API composition root when no GEMINI_API_KEY is set. A real-provider variant is
-// gated by the embedding key (Req 2.2, 2.3). ADRs are seeded into unique folders
+// gated by the embedding key (Req 2.2, 2.3). Both journeys exercise the
+// embedding strategy and skip when the run uses SIMILARITY_STRATEGY=jev (the Jev
+// journey lives in jev-similarity.spec.ts). ADRs are seeded into unique folders
 // via the proxied API; related reading is then observed through the real UI.
 
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 
-import { shot, unique, requiresGemini } from "../harness/helpers.js";
+import { shot, unique, requiresGemini, requiresEmbeddingStrategy } from "../harness/helpers.js";
 
 const AUTHOR = "E2E Author <e2e@example.com>";
 
@@ -38,6 +40,11 @@ test("shows ranked related reading and an empty related-reading state (offline)"
   page,
   request,
 }) => {
+  // Embedding-strategy journey: under SIMILARITY_STRATEGY=jev the lineage scope
+  // includes ancestor folders, so the empty-scope state below does not apply
+  // (the Jev journey lives in jev-similarity.spec.ts).
+  requiresEmbeddingStrategy();
+
   // Two ADRs sharing one unique folder → a populated own-folder scope (ranked).
   const rankedFolder = `decisions/${unique("sim-ranked")}`;
   const a1 = await createAdr(request, rankedFolder, "Similarity Alpha One");
@@ -71,6 +78,7 @@ test("ranks related reading with the real embedding provider", async ({ page, re
   // Enabled-mode variant: runs only when GEMINI_API_KEY is configured; otherwise
   // it is reported as skipped (never failed) — Req 2.2, 2.3.
   requiresGemini();
+  requiresEmbeddingStrategy();
 
   const realFolder = `decisions/${unique("sim-real")}`;
   const c1 = await createAdr(request, realFolder, "Real Similarity One");

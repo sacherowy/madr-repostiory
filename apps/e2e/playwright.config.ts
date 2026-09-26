@@ -16,6 +16,15 @@ import { defineConfig, devices } from "@playwright/test";
 
 import { paths } from "./harness/paths.js";
 import { assertBrowserInstalled, logMode, seedRepo } from "./harness/globalSetup.js";
+import { apiSimilarityEnv, resolveSimilarityMode } from "./harness/similarityMode.js";
+
+/**
+ * Similarity strategy for the run: embedding unless SIMILARITY_STRATEGY=jev is
+ * set together with JEV_ENDPOINT and JEV_API_KEY, in which case the API runs
+ * against the live Jev API. Throws at config load (failing the run loudly) when
+ * the flag is set but the endpoint or key is missing.
+ */
+const similarityMode = resolveSimilarityMode();
 
 // Provision the run BEFORE the webServer launches. Playwright sets up the
 // `webServer` plugin BEFORE it runs `globalSetup` (see
@@ -29,7 +38,7 @@ import { assertBrowserInstalled, logMode, seedRepo } from "./harness/globalSetup
 // config-assertion unit test can import this module without side effects.
 if (!process.env.VITEST) {
   assertBrowserInstalled();
-  logMode(paths.geminiApiKey);
+  logMode(paths.geminiApiKey, similarityMode);
   await seedRepo(paths.repoPath);
 }
 
@@ -84,6 +93,9 @@ export default defineConfig({
         ADR_REPO_PATH: paths.repoPath,
         SQLITE_PATH: paths.sqlitePath,
         GEMINI_API_KEY: paths.geminiApiKey,
+        // Similarity strategy: pinned to embedding, or the Jev variables when
+        // the run opted in to the live Jev API.
+        ...apiSimilarityEnv(similarityMode),
         // PORT 3000 matches the Vite `/api` proxy target (Req 1.3).
         PORT: "3000",
       },

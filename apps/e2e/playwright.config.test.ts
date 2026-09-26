@@ -14,6 +14,7 @@ import type { PlaywrightTestConfig } from "@playwright/test";
 
 import config from "./playwright.config.js";
 import { paths } from "./harness/paths.js";
+import { resolveSimilarityMode } from "./harness/similarityMode.js";
 
 // `webServer` may be a single object or an array; normalize to an array of the
 // loosely-typed shape we assert against (env/url/timeout/command).
@@ -52,6 +53,8 @@ describe("playwright.config", () => {
     expect(api?.env?.ADR_REPO_PATH).toBe(paths.repoPath);
     expect(api?.env?.SQLITE_PATH).toBe(paths.sqlitePath);
     expect(api?.env?.GEMINI_API_KEY).toBe(paths.geminiApiKey);
+    // Similarity strategy forwarded from the resolved run mode (jev-similarity).
+    expect(api?.env?.SIMILARITY_STRATEGY).toBe(resolveSimilarityMode().strategy);
 
     // Bounded readiness/abort (Req 1.5): a readiness url + a positive timeout.
     expect(api?.url).toBeDefined();
