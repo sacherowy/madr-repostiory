@@ -2,6 +2,7 @@ import type { Adr, SimilarityResult } from "@adr/shared";
 import type { GitPort } from "../ports/git.js";
 import type { JudgedAdr, JudgmentKey, JudgmentStore, PairJudgment, SimilarityJudge } from "../ports/similarityJudge.js";
 import { parseAdr } from "../adr/parse.js";
+import { SimilarityProviderError } from "./errors.js";
 import { combinedSectionText } from "../adr/sections.js";
 import { selectLineage, type LineageCandidate } from "./lineageScope.js";
 import type { FindSimilarOptions, SimilarityFinder, SimilarityFindResult } from "./similarityService.js";
@@ -35,7 +36,10 @@ function judgedAdr(adr: Adr): JudgedAdr {
  * `maxCandidates` of the lineage order are judged, or all of them when
  * `exhaustive` is requested, and the coverage is reported (4.8, 4.9, 5.6).
  *
- * Zero I/O beyond the injected ports; never calls an embedding port (7.2).
+ * Judging runs with bounded concurrency under a per-request time budget; the
+ * first provider failure or the budget rejects the whole request (7.1, 7.4,
+ * 7.6, 7.7). Zero I/O beyond the injected ports; never calls an embedding
+ * port (7.2).
  */
 export class JevSimilarityService implements SimilarityFinder {
   constructor(
@@ -65,19 +69,16 @@ export class JevSimilarityService implements SimilarityFinder {
 
     const selected = options?.exhaustive ? lineage : lineage.slice(0, this.options.maxCandidates);
 
-    const controller = new AbortController();
-    const targetJudged = judgedAdr(target);
-    const results: SimilarityResult[] = [];
-    for (const candidate of selected) {
-      const judgment = await this.judgmentFor(target, targetJudged, candidate, controller.signal);
+    const judgments = await this.judgeAll(target, selected);
+    const results: SimilarityResult[] = selected.map((candidate, i) => {
       const other = candidate.item;
-      results.push({
+      return {
         adr: { id: other.id, title: other.title, status: other.status, path: other.path },
-        score: judgment.probability,
+        score: judgments[i].probability,
         lineage: candidate.position,
-        relation: judgment.relation,
-      });
-    }
+        relation: judgments[i].relation,
+      };
+    });
 
     results.sort(
       (a, b) =>
@@ -86,6 +87,67 @@ export class JevSimilarityService implements SimilarityFinder {
         comparePaths(a.adr.path, b.adr.path)
     );
     return { kind: "ranked", results, coverage: { judged: selected.length, total: lineage.length } };
+  }
+
+  /**
+   * Judges every selected candidate with at most `concurrency` judgments in
+   * flight (7.4), sharing one AbortSignal. The first failure, or the request
+   * budget elapsing, wins: no further judgment starts and the signal aborts
+   * the ones in flight (7.6, 7.7). After a judgment failure the in-flight ones
+   * are awaited before rejecting with that first failure; the budget is a hard
+   * stop and rejects without waiting. Judgments that complete validly are
+   * cached either way (6.5). Resolves only when every candidate was judged,
+   * so no partial ranking is ever returned (7.1).
+   */
+  private async judgeAll(target: Adr, selected: LineageCandidate<Adr>[]): Promise<PairJudgment[]> {
+    const controller = new AbortController();
+    const targetJudged = judgedAdr(target);
+    const judgments: PairJudgment[] = new Array(selected.length);
+    let failure: { error: unknown } | null = null;
+    const fail = (error: unknown): void => {
+      if (failure) return;
+      failure = { error };
+      controller.abort(error);
+    };
+
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (!failure && next < selected.length) {
+        const i = next++;
+        try {
+          judgments[i] = await this.judgmentFor(target, targetJudged, selected[i], controller.signal);
+        } catch (error) {
+          fail(error);
+        }
+      }
+    };
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const budgetElapsed = new Promise<void>((resolve) => {
+      timer = setTimeout(() => {
+        fail(
+          new SimilarityProviderError(
+            "budget",
+            null,
+            `Similarity request exceeded its time budget of ${this.options.requestBudgetMs} ms`
+          )
+        );
+        resolve();
+      }, this.options.requestBudgetMs);
+    });
+
+    const workerCount = Math.max(1, Math.min(this.options.concurrency, selected.length));
+    // Workers never reject: every judgment error is routed through fail().
+    const workers = Promise.all(Array.from({ length: workerCount }, worker));
+    try {
+      await Promise.race([workers, budgetElapsed]);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    const settled = failure as { error: unknown } | null;
+    if (settled) throw settled.error;
+    return judgments;
   }
 
   private async judgmentFor(

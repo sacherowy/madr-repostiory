@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import type { GitPort, AdrFile, CommitMeta, DiffResult, TreeEntry } from "../ports/git.js";
 import type {
   JudgePair,
@@ -397,4 +397,261 @@ describe("JevSimilarityService", () => {
       expect(result.coverage).toEqual({ judged: 5, total: 5 });
     });
   });
+
+  describe("bounded concurrency, fail-fast cancellation and request budget (6.5, 7.1, 7.4, 7.6, 7.7, 8.1)", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** Target plus `n` same-folder candidates c00..; lineage order is c00, c01, ... */
+    function flatSpecs(n: number): FileSpec[] {
+      const specs: FileSpec[] = [{ path: "x/target.md", id: "target", title: "Target", blobSha: "sha-target" }];
+      for (let i = 0; i < n; i++) {
+        const k = String(i).padStart(2, "0");
+        specs.push({ path: `x/c${k}.md`, id: `c${k}`, title: `C${k}`, blobSha: `sha-c${k}` });
+      }
+      return specs;
+    }
+
+    function keyFor(k: string): JudgmentKey {
+      return { targetBlobSha: "sha-target", candidateBlobSha: `sha-c${k}`, judgmentVersion: "v1" };
+    }
+
+    /** Lets pending promise chains (git reads, awaits, settle handlers) run. */
+    function flush(): Promise<void> {
+      return new Promise((resolve) => setImmediate(resolve));
+    }
+
+    interface ControlledCall {
+      pair: JudgePair;
+      signal: AbortSignal;
+      resolve: (judgment: PairJudgment) => void;
+      reject: (error: unknown) => void;
+      /** Set once the test (or the abort) settled this call. */
+      done: boolean;
+    }
+
+    /**
+     * Instrumented judge whose calls stay pending until the test settles them.
+     * Tracks the number in flight; with `rejectOnAbort` it rejects with an
+     * "aborted" provider error as soon as its signal aborts, like the real adapter.
+     */
+    class ControlledJudge implements SimilarityJudge {
+      readonly judgmentVersion = "v1";
+      public calls: ControlledCall[] = [];
+      public inFlight = 0;
+      public maxInFlight = 0;
+
+      constructor(private readonly rejectOnAbort: boolean) {}
+
+      judge(pair: JudgePair, signal: AbortSignal): Promise<PairJudgment> {
+        this.inFlight++;
+        this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
+        return new Promise<PairJudgment>((resolve, reject) => {
+          const call: ControlledCall = {
+            pair,
+            signal,
+            done: false,
+            resolve: (judgment) => {
+              call.done = true;
+              resolve(judgment);
+            },
+            reject: (error) => {
+              call.done = true;
+              reject(error);
+            },
+          };
+          this.calls.push(call);
+          if (this.rejectOnAbort) {
+            signal.addEventListener("abort", () => call.reject(new SimilarityProviderError("aborted", null, "aborted")), {
+              once: true,
+            });
+          }
+        }).finally(() => {
+          this.inFlight--;
+        });
+      }
+    }
+
+    /** Tracks whether a request promise has settled, without leaving a rejection unhandled. */
+    function track<T>(promise: Promise<T>) {
+      const state: { settled: boolean; value?: T; error?: unknown } = { settled: false };
+      promise.then(
+        (value) => {
+          state.settled = true;
+          state.value = value;
+        },
+        (error: unknown) => {
+          state.settled = true;
+          state.error = error;
+        }
+      );
+      return state;
+    }
+
+    it("never has more judgments in flight than the configured concurrency, and uses all of it (7.4)", async () => {
+      const judge = new ControlledJudge(false);
+      const svc = new JevSimilarityService(gitOf(flatSpecs(12)), judge, new MapJudgmentStore(), {
+        ...OPTIONS,
+        concurrency: 3,
+      });
+      const state = track(svc.findSimilar("target", "."));
+
+      // Settle calls one by one (out of order) until the request completes.
+      for (let step = 0; step < 50 && !state.settled; step++) {
+        await flush();
+        expect(judge.inFlight).toBeLessThanOrEqual(3);
+        const pending = judge.calls.filter((c) => !c.done);
+        pending[pending.length - 1]?.resolve({ probability: 0.5, relation: "related" });
+      }
+
+      expect(state.error).toBeUndefined();
+      expect(state.settled).toBe(true);
+      expect(judge.calls).toHaveLength(12);
+      expect(judge.maxInFlight).toBe(3);
+    });
+
+    it("does not count cache hits against the concurrency ceiling (6.2, 7.4)", async () => {
+      const store = new MapJudgmentStore();
+      for (const k of ["00", "01", "02", "03"]) store.entries.set(keyString(keyFor(k)), { probability: 0.9, relation: "duplicate" });
+      const judge = new ControlledJudge(false);
+      const svc = new JevSimilarityService(gitOf(flatSpecs(8)), judge, store, { ...OPTIONS, concurrency: 2 });
+      const state = track(svc.findSimilar("target", "."));
+
+      await flush();
+      // The four cached candidates are served without the judge; two misses are in flight.
+      expect(judge.calls.map((c) => c.pair.candidate.title)).toEqual(["C04", "C05"]);
+      for (let step = 0; step < 20 && !state.settled; step++) {
+        for (const call of judge.calls) call.resolve({ probability: 0.1, relation: "unrelated" });
+        await flush();
+        expect(judge.inFlight).toBeLessThanOrEqual(2);
+      }
+
+      expect(state.settled).toBe(true);
+      expect(judge.calls).toHaveLength(4);
+      expect(judge.maxInFlight).toBe(2);
+    });
+
+    it("on a mid-batch failure starts no further judgments, aborts in-flight ones, waits for them and rejects with the first error (6.5, 7.1, 7.7)", async () => {
+      const judge = new ControlledJudge(false);
+      const store = new MapJudgmentStore();
+      const svc = new JevSimilarityService(gitOf(flatSpecs(5)), judge, store, { ...OPTIONS, concurrency: 2 });
+      const state = track(svc.findSimilar("target", "."));
+
+      await flush();
+      expect(judge.calls).toHaveLength(2);
+      // One shared signal per request.
+      expect(judge.calls[1].signal).toBe(judge.calls[0].signal);
+
+      judge.calls[0].resolve({ probability: 0.7, relation: "related" });
+      await flush();
+      expect(judge.calls).toHaveLength(3);
+
+      const firstError = new SimilarityProviderError("http-status", 500, "Jev responded with HTTP 500");
+      judge.calls[1].reject(firstError);
+      await flush();
+
+      expect(judge.calls[2].signal.aborted).toBe(true);
+      expect(judge.calls).toHaveLength(3); // no judgment started after the failure
+      expect(state.settled).toBe(false); // still waiting for the in-flight one to settle
+
+      judge.calls[2].reject(new SimilarityProviderError("aborted", null, "aborted"));
+      await flush();
+
+      expect(state.settled).toBe(true);
+      expect(state.error).toBe(firstError); // never the secondary "aborted"
+      expect(judge.calls).toHaveLength(3);
+      expect(store.setCalls).toEqual([{ key: keyFor("00"), judgment: { probability: 0.7, relation: "related" } }]);
+    });
+
+    it("still caches an in-flight judgment that completes validly after another one failed (6.5, 7.1)", async () => {
+      const judge = new ControlledJudge(false);
+      const store = new MapJudgmentStore();
+      const svc = new JevSimilarityService(gitOf(flatSpecs(4)), judge, store, { ...OPTIONS, concurrency: 2 });
+      const state = track(svc.findSimilar("target", "."));
+
+      await flush();
+      const firstError = new SimilarityProviderError("invalid-response", null, "bad answer");
+      judge.calls[0].reject(firstError);
+      await flush();
+      expect(judge.calls[1].signal.aborted).toBe(true);
+
+      judge.calls[1].resolve({ probability: 0.4, relation: "constrains" });
+      await flush();
+
+      expect(state.error).toBe(firstError);
+      expect(state.value).toBeUndefined(); // no partial ranking
+      expect(judge.calls).toHaveLength(2);
+      expect(store.setCalls).toEqual([{ key: keyFor("01"), judgment: { probability: 0.4, relation: "constrains" } }]);
+    });
+
+    it("rejects with the budget category when the request budget elapses, keeping completed judgments cached (6.5, 7.6)", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const judge = new ControlledJudge(true);
+      const store = new MapJudgmentStore();
+      const svc = new JevSimilarityService(gitOf(flatSpecs(4)), judge, store, {
+        ...OPTIONS,
+        concurrency: 2,
+        requestBudgetMs: 5_000,
+      });
+      const state = track(svc.findSimilar("target", "."));
+
+      await flush();
+      judge.calls[0].resolve({ probability: 0.6, relation: "related" });
+      await flush();
+      expect(judge.calls).toHaveLength(3);
+
+      vi.advanceTimersByTime(4_999);
+      await flush();
+      expect(state.settled).toBe(false);
+
+      vi.advanceTimersByTime(1);
+      await flush();
+
+      expect(state.settled).toBe(true);
+      expect(state.error).toBeInstanceOf(SimilarityProviderError);
+      expect((state.error as SimilarityProviderError).category).toBe("budget");
+      expect(judge.calls[1].signal.aborted).toBe(true);
+      expect(judge.calls[2].signal.aborted).toBe(true);
+      expect(judge.calls).toHaveLength(3); // the fourth candidate was never started
+      expect(store.setCalls).toEqual([{ key: keyFor("00"), judgment: { probability: 0.6, relation: "related" } }]);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("keeps the first judgment failure when the budget elapses while waiting for in-flight ones (7.1, 7.6)", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const judge = new ControlledJudge(false); // in-flight judgment ignores the abort
+      const svc = new JevSimilarityService(gitOf(flatSpecs(3)), judge, new MapJudgmentStore(), {
+        ...OPTIONS,
+        concurrency: 2,
+        requestBudgetMs: 5_000,
+      });
+      const state = track(svc.findSimilar("target", "."));
+
+      await flush();
+      const firstError = new SimilarityProviderError("network", null, "connection refused");
+      judge.calls[0].reject(firstError);
+      await flush();
+      expect(state.settled).toBe(false);
+
+      vi.advanceTimersByTime(5_000);
+      await flush();
+
+      expect(state.settled).toBe(true);
+      expect(state.error).toBe(firstError);
+      expect(judge.calls).toHaveLength(2);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("clears the budget timer when the request completes successfully (7.6)", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const svc = new JevSimilarityService(gitOf(flatSpecs(3)), new FakeJudge(), new MapJudgmentStore(), OPTIONS);
+
+      const result = await svc.findSimilar("target", ".");
+
+      expect(result.kind).toBe("ranked");
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
 });
+

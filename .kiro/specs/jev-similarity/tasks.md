@@ -37,7 +37,7 @@
   - _Depends: 1.2, 2.1_
   - _Requirements: 1.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.6, 4.7, 4.8, 4.9, 5.2, 5.4, 5.6, 6.1, 6.2, 6.3, 8.1_
 
-- [ ] 2.3 Add bounded concurrency, fail-fast cancellation and the request time budget to the Jev similarity service
+- [x] 2.3 Add bounded concurrency, fail-fast cancellation and the request time budget to the Jev similarity service
   - Keep at most the configured number of judgments in flight per request
   - Share one abort signal per request; on the first provider failure start no further judgments, abort those in flight, wait for them to settle and reject with that first failure (never a secondary aborted one)
   - Arm a request budget timer that aborts outstanding judgments and rejects with the budget category, and clear it when the request settles
