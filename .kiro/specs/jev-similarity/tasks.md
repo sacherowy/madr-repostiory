@@ -65,7 +65,7 @@
   - _Depends: 3.1_
   - _Requirements: 2.7, 3.1, 3.2, 3.5, 3.6, 7.1, 7.3, 7.5, 7.7, 8.2_
 
-- [ ] 3.3 (P) Implement the SQLite judgment store
+- [x] 3.3 (P) Implement the SQLite judgment store
   - Create the judgment cache table on demand in the existing SQLite file, keyed by target revision, candidate revision and judgment version, with a range check on the probability
   - Replace on write and return null for a missing key, following the existing summary store pattern
   - Tests pass for the round trip, isolation by judgment version, directional keys and rejection of an out-of-range probability by the table constraint
