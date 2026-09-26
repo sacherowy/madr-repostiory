@@ -18,8 +18,61 @@
   - Model id: `typesafe/jev-1.13`. Request body: `{ model, state, questions: { [id]: { type: "noul" | "choice" | "score", instructions, criteria } } }`. `noul` criteria are `{ true, false }`, `choice` criteria are `{ option: description }`, and `score` criteria are an ordered array.
   - The endpoint is explicitly **alpha**: request/response shapes, model ids and pricing can change in breaking ways without deprecation.
   - Jev returns **rounded** probabilities, so choice distributions can total 0.99 (Effect-TS issue #8379).
-  - `api.tokenrouter.com` is blocked by the egress proxy of the design environment (CONNECT 403), so no live response could be captured.
+  - `api.tokenrouter.com` was blocked by the egress proxy of the design environment (CONNECT 403) at design time. It is now reachable; see "Live verification against TokenRouter" below.
 - **Implications**: `JEV_ENDPOINT` is documented as the TokenRouter URL but has no default (2.2). `JEV_MODEL` defaults to the pinned `typesafe/jev-1.13`. `parseJevAnswers` tolerates distributions that do not sum to exactly 1. The alpha status is added as risk R4 in the design.
+
+### Live verification against TokenRouter (2026-09-26)
+- **Context**: Closes Risk R1 (answer shape unconfirmed). Probed `POST https://api.tokenrouter.com/api/alpha/decisions` from the Claude Code cloud environment with a real `JEV_API_KEY`, using the exact `JevRequest` shape from the design (`state: { target, candidate }`, questions `similar` (noul) and `relation` (choice)).
+- **Confirmed response shape** (HTTP 200):
+  ```json
+  {
+    "model": "typesafe/jev-1.13-20260917",
+    "answers": {
+      "similar":  { "type": "noul", "noul": 0.87 },
+      "relation": { "type": "choice", "choice": "conflicting",
+                    "probabilities": { "duplicate": 0, "conflicting": 0.7, "refines": 0.01, "related": 0.29, "unrelated": 0 },
+                    "confidence": 0.62 }
+    },
+    "usage": { "input_tokens": 548, "output_tokens": 76, "cost": 0.000023016 },
+    "id": "gen-dec-…",
+    "provider": "TypeSafe"
+  }
+  ```
+  - `noul` answer: probability at `answers.<id>.noul`.
+  - `choice` answer: chosen option at `answers.<id>.choice`, distribution at `answers.<id>.probabilities`, plus a `confidence` field.
+  - `score` answer (not used by the design): `{ type, score: 2.26, legend: { "0": …, … }, probabilities: { "0": …, … }, confidence }`; `score` is the expected level, not an integer.
+  - `usage.cost` (USD) is present in addition to token counts.
+- **Semantic sanity check** (target: "Use PostgreSQL as the primary relational database"):
+
+  | Candidate | `similar.noul` | `relation.choice` (confidence) |
+  |-----------|----------------|--------------------------------|
+  | Same decision reworded | 0.98 | duplicate (0.87) |
+  | PgBouncer pooling for that PostgreSQL | 0.83 | refines (0.77) |
+  | MySQL for billing | 0.87 | conflicting (0.62) |
+  | Nightly DB backups to S3 | 0.37 | related (0.95) |
+  | Tailwind CSS for the web app | 0.03 | unrelated (0.93) |
+
+  The ranking and relations match human judgment.
+- **Behavior**:
+  - Latency 0.5–1.4 s per pair; 4 parallel requests completed in ~1.1 s with no throttling. Cost ≈ $0.00002 per pair.
+  - **Not deterministic**: the same request repeated 3 times returned `noul` 0.36 / 0.38 / 0.41 (same `choice`). The judgment cache (6.1) is what keeps rankings stable between requests.
+  - The response `model` is a **dated snapshot** (`typesafe/jev-1.13-20260917`) of the requested alias `typesafe/jev-1.13`. If the cache key uses only the requested id, a silent snapshot upgrade would not invalidate cached judgments.
+  - A string `state` and a `noul` without `criteria` are both accepted.
+- **Error responses** (all JSON `{ error: { message, type, code } }`):
+
+  | Case | HTTP |
+  |------|------|
+  | Invalid API key | 401 `Invalid token` |
+  | Unknown model (`typesafe/jev-9.99`) and also `typesafe/jev-latest` | 403 `This token has no access to model …` |
+  | Empty `questions` | **500** `questions are required` (`code: invalid_request`) |
+  | Unknown question `type` | **500** `… type must be noul, choice, or score` (`code: invalid_request`) |
+
+  Request validation errors come back as 500 rather than 4xx, so a status code alone cannot tell a malformed request from a server fault.
+- **Implications**:
+  - `parseJevAnswers` reads `answers.similar.noul` and `answers.relation.choice` (falling back to the arg-max of `answers.relation.probabilities`). Probabilities summed to exactly 1 in all probes, but the tolerant check stays.
+  - Consider including the returned snapshot `model` in the stored judgment (or the cache key) so a snapshot change is detectable.
+  - Any retry policy must not retry 500s whose `error.code` is `invalid_request`.
+  - `typesafe/jev-latest` is not available through TokenRouter with this key; the pinned `typesafe/jev-1.13` default is correct.
 
 ### TypeSafe Jev API surface
 - **Context**: Requirement 3 needs a concrete request/response contract.

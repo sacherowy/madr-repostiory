@@ -114,7 +114,7 @@ graph TB
 | Backend / Services | TypeScript 5.5, Fastify 4.28 | Route error mapping, health field | Existing |
 | Backend / Integration | Node global `fetch` + `AbortController` | Jev HTTP calls with timeout | No new dependency; `@typesafe-ai/sdk` deliberately not adopted (see `research.md`) |
 | Data / Storage | better-sqlite3 11.x | `jev_judgment_cache` table in the existing `SQLITE_PATH` file | Derived, deletable |
-| External | TypeSafe Jev via TokenRouter, `POST https://api.tokenrouter.com/api/alpha/decisions`, model `typesafe/jev-1.13` (pinned default) | Pairwise judgments | The endpoint is **alpha**: breaking changes are possible without deprecation (Risk R4). Answer shape to be confirmed (Risk R1) |
+| External | TypeSafe Jev via TokenRouter, `POST https://api.tokenrouter.com/api/alpha/decisions`, model `typesafe/jev-1.13` (pinned default) | Pairwise judgments | The endpoint is **alpha**: breaking changes are possible without deprecation (Risk R4). Answer shape confirmed live on 2026-09-26 (Risk R1, see research.md) |
 
 ## File Structure Plan
 
@@ -567,7 +567,7 @@ interface JevRequest {
 }
 ```
 - The request body matches TokenRouter's documented decisions example: `model`, `state` (string or JSON object), and `questions` keyed by id, where `noul` carries `criteria: { true, false }` and `choice` carries `criteria: Record<option, description>`. The `score` type exists but is not used.
-- `parseJevAnswers` requires `answers.similar` to yield a finite number in [0, 1], and `answers.relation` to yield a top option that is a member of `SimilarityRelation`. It takes the chosen option (or the arg-max of the distribution) and does **not** require the distribution to sum to exactly 1, because Jev returns rounded probabilities that may total 0.99. The exact field paths are confirmed against a live TokenRouter response in the first implementation task (Risk R1). Only this function encodes them.
+- `parseJevAnswers` requires `answers.similar` to yield a finite number in [0, 1], and `answers.relation` to yield a top option that is a member of `SimilarityRelation`. It takes the chosen option (or the arg-max of the distribution) and does **not** require the distribution to sum to exactly 1, because Jev returns rounded probabilities that may total 0.99. The field paths were confirmed against a live TokenRouter response on 2026-09-26: `answers.similar.noul` and `answers.relation.choice` / `answers.relation.probabilities` (see research.md, "Live verification against TokenRouter"). Only this function encodes them.
 
 #### SqliteJudgmentStore (summary)
 - Implements `JudgmentStore` over the `jev_judgment_cache` table (see Physical Data Model) on `SQLITE_PATH`, following `SqliteSummaryStore`'s pattern (`CREATE TABLE IF NOT EXISTS`, `INSERT OR REPLACE`). The table is created only when the Jev strategy is active (6.4).
@@ -673,7 +673,7 @@ CREATE TABLE IF NOT EXISTS jev_judgment_cache (
 - Listing and parsing the whole repository per request matches the existing whole-repo embedding scope cost. An id → path index is out of scope.
 
 ## Open Questions / Risks
-- **R1 — Jev answer shape unconfirmed.** The primary docs were unreachable during design. The first implementation task confirms the `answers.*` field paths and encodes them in `parseJevAnswers` with fixtures. No other component depends on them.
+- **R1 — Jev answer shape.** *Resolved 2026-09-26*: confirmed against a live TokenRouter response (see research.md). The first implementation task encodes the confirmed paths in `parseJevAnswers` with fixtures taken from that response. No other component depends on them.
 - **R2 — Probability calibration is disputed publicly.** The score is used for ordering only, and no thresholds are introduced.
-- **R3 — Egress.** Deployments with an outbound allow-list must permit `api.tokenrouter.com`, which is currently blocked in the Claude Code cloud environment. Otherwise every Jev-mode request returns 503, which is visible in logs and `/health` checks.
+- **R3 — Egress.** Deployments with an outbound allow-list must permit `api.tokenrouter.com`, which was blocked in the Claude Code cloud environment at design time and is reachable as of 2026-09-26. Otherwise every Jev-mode request returns 503, which is visible in logs and `/health` checks.
 - **R4 — Alpha endpoint.** TokenRouter's `/api/alpha/decisions` may change its request/response shape or its model ids without deprecation. Mitigations: the model is pinned (`typesafe/jev-1.13`), the answers are validated strictly (any mismatch is a 503, never a wrong score), the prompt version and model are part of the cache key, and the embedding strategy is one restart away.
