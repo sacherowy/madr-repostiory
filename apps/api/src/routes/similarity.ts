@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { SimilarityProviderError } from "@adr/core";
 import type { Container } from "../container.js";
 
 /**
@@ -27,26 +28,52 @@ import type { Container } from "../container.js";
  * query key (`?scope=a&scope=b`) as a string array, not a string — `scope`
  * is narrowed to its first value in that case, mirroring the fix already
  * applied to `search.ts`'s analogous `q` param.
+ *
+ * `exhaustive` is parsed the same way (first value of a repeated key); only
+ * the literal `"true"` enables it, and `{ exhaustive }` is always passed to
+ * the finder, which the embedding strategy ignores (4.9, 5.7). A ranked
+ * result that carries `coverage` (jev only) gets `X-Similarity-Judged` /
+ * `X-Similarity-Candidates` headers; the body is never changed (5.1, 5.6).
+ *
+ * A `SimilarityProviderError` (any category, including "budget") maps to
+ * 503 `{ kind: "providerUnavailable" }` with a warn log carrying only the
+ * category and HTTP status — never the message, which could echo provider
+ * output (7.1, 7.5, 7.6). Every other error stays an empty 404 (5.4).
  */
 export async function similarityRoutes(app: FastifyInstance, opts: { container: Container }): Promise<void> {
   const { container } = opts;
 
   app.get("/api/adrs/:id/similar", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { scope } = request.query as { scope?: string | string[] };
+    const { scope, exhaustive: exhaustiveParam } = request.query as {
+      scope?: string | string[];
+      exhaustive?: string | string[];
+    };
     const scopeValue = Array.isArray(scope) ? scope[0] : scope;
     const scopePath = typeof scopeValue === "string" && scopeValue.length > 0 ? scopeValue : ".";
+    const exhaustiveValue = Array.isArray(exhaustiveParam) ? exhaustiveParam[0] : exhaustiveParam;
+    const exhaustive = exhaustiveValue === "true";
 
     try {
-      const result = await container.similarity.findSimilar(id, scopePath);
+      const result = await container.similarity.findSimilar(id, scopePath, { exhaustive });
 
       switch (result.kind) {
         case "ranked":
+          if (result.coverage) {
+            const { judged, total } = result.coverage;
+            reply.header("X-Similarity-Judged", String(judged));
+            reply.header("X-Similarity-Candidates", String(total));
+            if (exhaustive) request.log.info({ judged, total }, "similarity exhaustive comparison");
+          }
           return reply.status(200).send(result.results);
         case "emptyScope":
           return reply.status(200).send({ kind: "emptyScope" });
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof SimilarityProviderError) {
+        request.log.warn({ category: err.category, httpStatus: err.httpStatus }, "similarity provider unavailable");
+        return reply.status(503).send({ kind: "providerUnavailable" });
+      }
       return reply.status(404).send();
     }
   });

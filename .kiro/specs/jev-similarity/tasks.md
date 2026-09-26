@@ -88,7 +88,7 @@
   - Server tests pass showing the health response carries the strategy and no Jev values, and a startup-step test (with stubbed stderr and exit) shows an invalid configuration produces one aggregated message, exit code 1 and no container build
   - _Requirements: 1.5, 2.1, 2.6, 2.7, 5.5_
 
-- [ ] 4.3 (P) Extend the similar-ADRs route with exhaustive comparison, coverage headers and the provider-unavailable response
+- [x] 4.3 (P) Extend the similar-ADRs route with exhaustive comparison, coverage headers and the provider-unavailable response
   - Read the exhaustive query option like scope (first value of a repeated key; only the literal true enables it) and pass it to the finder
   - For ranked results that carry coverage, set the judged and total count headers; keep the response body unchanged
   - Map the typed provider failure to 503 with a provider-unavailable body and a warning log with category and HTTP status only; map every other error to 404; log judged and total for exhaustive requests

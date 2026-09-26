@@ -2,8 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Writable } from "node:stream";
 import { simpleGit } from "simple-git";
 import Fastify, { type FastifyInstance } from "fastify";
+import {
+  SimilarityProviderError,
+  type FindSimilarOptions,
+  type SimilarityFindResult,
+  type SimilarityFinder,
+  type SimilarityProviderFailure,
+} from "@adr/core";
+import type { SimilarityResult } from "@adr/shared";
 import { buildContainer, type Container } from "../container.js";
 import { similarityRoutes } from "./similarity.js";
 import { adrRoutes } from "./adrs.js";
@@ -189,5 +198,207 @@ describe("similarityRoutes", () => {
 
       expect(res.statusCode).not.toBe(500);
     });
+  });
+});
+
+/**
+ * Route-level contract tests with a substitute `SimilarityFinder` (no git, no
+ * provider): they pin how the route maps finder outcomes to HTTP — the
+ * `exhaustive` query option, the coverage headers, 503 for the typed provider
+ * failure, 404 for everything else — and what it logs (design.md
+ * "Server entrypoint, health and similarity route", Error Handling).
+ */
+describe("similarityRoutes with a substitute finder", () => {
+  interface Call {
+    id: string;
+    scopePath: string;
+    options: FindSimilarOptions | undefined;
+  }
+
+  let calls: Call[];
+  let logLines: Array<Record<string, unknown>>;
+  let outcome: () => Promise<SimilarityFindResult>;
+  let app: FastifyInstance;
+
+  const RESULTS: SimilarityResult[] = [
+    {
+      adr: {
+        id: "adr-0002",
+        path: "org/platform/adr-0002-queue.md",
+        title: "Use a queue",
+        status: "accepted",
+        date: "2026-01-01",
+        contextAndProblemStatement: "Context.",
+        decisionOutcome: "Outcome.",
+      } as unknown as SimilarityResult["adr"],
+      score: 0.92,
+      lineage: { direction: "up", level: 1 },
+      relation: "supersedes",
+    },
+  ];
+
+  beforeEach(async () => {
+    calls = [];
+    logLines = [];
+    outcome = async () => ({ kind: "ranked", results: RESULTS });
+
+    const finder: SimilarityFinder = {
+      findSimilar: (id, scopePath, options) => {
+        calls.push({ id, scopePath, options });
+        return outcome();
+      },
+    };
+    const container = { similarity: finder } as unknown as Container;
+
+    const stream = new Writable({
+      write(chunk, _enc, cb) {
+        for (const line of String(chunk).split("\n")) {
+          if (line.trim().length > 0) logLines.push(JSON.parse(line));
+        }
+        cb();
+      },
+    });
+
+    app = Fastify({ logger: { level: "info", stream } });
+    await app.register(similarityRoutes, { container });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const get = (query = "") => app.inject({ method: "GET", url: `/api/adrs/adr-0001/similar${query}` });
+  const warnLines = () => logLines.filter((l) => l.level === 40);
+  const infoWith = (key: string) => logLines.filter((l) => l.level === 30 && key in l);
+
+  const CATEGORIES: SimilarityProviderFailure[] = ["network", "timeout", "http-status", "invalid-response", "budget"];
+
+  for (const category of CATEGORIES) {
+    it(`maps a SimilarityProviderError("${category}") to 503 { kind: "providerUnavailable" } (7.1, 7.6)`, async () => {
+      const httpStatus = category === "http-status" ? 429 : null;
+      outcome = async () => {
+        throw new SimilarityProviderError(category, httpStatus, `jev ${category}`);
+      };
+
+      const res = await get();
+
+      expect(res.statusCode).toBe(503);
+      expect(res.json()).toEqual({ kind: "providerUnavailable" });
+    });
+  }
+
+  it("logs one warn line with only the category and HTTP status on a provider failure (7.5)", async () => {
+    outcome = async () => {
+      throw new SimilarityProviderError("http-status", 401, "Jev answered 401 SECRET-ADR-TEXT");
+    };
+
+    await get();
+
+    const warns = warnLines();
+    expect(warns).toHaveLength(1);
+    expect(warns[0].category).toBe("http-status");
+    expect(warns[0].httpStatus).toBe(401);
+    expect(warns[0].msg).toBe("similarity provider unavailable");
+    expect(JSON.stringify(warns[0])).not.toContain("SECRET-ADR-TEXT");
+    expect(warns[0]).not.toHaveProperty("err");
+  });
+
+  it("maps a plain Error to an empty 404 and logs no provider warning (5.4)", async () => {
+    outcome = async () => {
+      throw new Error("ADR not found");
+    };
+
+    const res = await get();
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toBe("");
+    expect(warnLines().filter((l) => l.msg === "similarity provider unavailable")).toHaveLength(0);
+  });
+
+  it("passes lineage and relation through in the body unchanged (5.1)", async () => {
+    const res = await get();
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual(RESULTS);
+  });
+
+  it("still sends the literal emptyScope object", async () => {
+    outcome = async () => ({ kind: "emptyScope" });
+
+    const res = await get();
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ kind: "emptyScope" });
+    expect(res.headers["x-similarity-judged"]).toBeUndefined();
+    expect(res.headers["x-similarity-candidates"]).toBeUndefined();
+  });
+
+  const EXHAUSTIVE_CASES: Array<[string, boolean]> = [
+    ["", false],
+    ["?exhaustive=true", true],
+    ["?exhaustive=false", false],
+    ["?exhaustive=TRUE", false],
+    ["?exhaustive=1", false],
+    ["?exhaustive=", false],
+    ["?exhaustive=true&exhaustive=false", true],
+    ["?exhaustive=false&exhaustive=true", false],
+  ];
+
+  for (const [query, expected] of EXHAUSTIVE_CASES) {
+    it(`passes { exhaustive: ${expected} } for "${query || "(absent)"}" (4.9)`, async () => {
+      await get(query);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].options).toEqual({ exhaustive: expected });
+    });
+  }
+
+  it("keeps scope handling unchanged alongside exhaustive (default '.', first value of a repeated key)", async () => {
+    await get("?exhaustive=true");
+    await get("?scope=org/platform&scope=other&exhaustive=true");
+
+    expect(calls.map((c) => [c.id, c.scopePath])).toEqual([
+      ["adr-0001", "."],
+      ["adr-0001", "org/platform"],
+    ]);
+  });
+
+  it("sets both X-Similarity-* headers for a ranked result with coverage, with an identical body (5.6, 5.1)", async () => {
+    const plain = await get();
+    outcome = async () => ({ kind: "ranked", results: RESULTS, coverage: { judged: 100, total: 150 } });
+
+    const res = await get();
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["x-similarity-judged"]).toBe("100");
+    expect(res.headers["x-similarity-candidates"]).toBe("150");
+    expect(res.body).toBe(plain.body);
+  });
+
+  it("sets no X-Similarity-* headers when the ranked result has no coverage (5.7)", async () => {
+    const res = await get("?exhaustive=true");
+
+    expect(res.headers["x-similarity-judged"]).toBeUndefined();
+    expect(res.headers["x-similarity-candidates"]).toBeUndefined();
+  });
+
+  it("logs judged and total once for an exhaustive request (Monitoring)", async () => {
+    outcome = async () => ({ kind: "ranked", results: RESULTS, coverage: { judged: 150, total: 150 } });
+
+    await get("?exhaustive=true");
+
+    const lines = infoWith("judged");
+    expect(lines).toHaveLength(1);
+    expect(lines[0].judged).toBe(150);
+    expect(lines[0].total).toBe(150);
+  });
+
+  it("does not log judged/total for a capped request", async () => {
+    outcome = async () => ({ kind: "ranked", results: RESULTS, coverage: { judged: 100, total: 150 } });
+
+    await get();
+
+    expect(infoWith("judged")).toHaveLength(0);
   });
 });
