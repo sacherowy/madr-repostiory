@@ -141,7 +141,7 @@
   - _Depends: 4.2, 4.3_
   - _Requirements: 1.4, 4.4, 5.5, 5.6, 6.2, 7.1, 8.2_
 
-- [ ] 6.2 Confirm the embedding default is unchanged across all existing suites
+- [x] 6.2 Confirm the embedding default is unchanged across all existing suites
   - Run the core and API unit suites, the web test suite and build, and the offline end-to-end suite with no Jev configuration present
   - All suites pass, including the existing similarity end-to-end journey, with no changes to embedding test expectations
   - _Depends: 5.4, 6.1_
