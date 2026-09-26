@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { simpleGit } from "simple-git";
 import type { FastifyInstance } from "fastify";
-import { buildContainer, type Container } from "./container.js";
-import { buildServer } from "./server.js";
+import { buildContainer, type Container, type ContainerConfig } from "./container.js";
+import { buildServer, containerFromConfig } from "./server.js";
+import { parseSimilarityConfig } from "./similarityConfig.js";
 
 const AUTHOR = "Test Author <test@example.com>";
 
@@ -51,7 +52,7 @@ describe("buildServer", () => {
     return res.json();
   }
 
-  it("still serves GET /health with its original response shape", async () => {
+  it("serves GET /health with its original fields plus the active similarity strategy (5.5)", async () => {
     const res = await app.inject({ method: "GET", url: "/health" });
 
     expect(res.statusCode).toBe(200);
@@ -60,6 +61,7 @@ describe("buildServer", () => {
       status: "ok",
       sourceOfTruth: "git",
       repo: body.repo,
+      similarity: { strategy: "embedding" },
     });
     expect(typeof body.repo).toBe("string");
   });
@@ -174,5 +176,137 @@ describe("buildServer", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ kind: "emptyScope" });
+  });
+});
+
+describe("GET /health under the jev strategy", () => {
+  const JEV_KEY = "health-secret-jev-key";
+  const JEV_ENDPOINT = "http://127.0.0.1:4010/decisions";
+  let repoPath: string;
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    repoPath = await initRepo();
+    const result = parseSimilarityConfig({
+      SIMILARITY_STRATEGY: "jev",
+      JEV_ENDPOINT,
+      JEV_API_KEY: JEV_KEY,
+      JEV_MODEL: "typesafe/jev-health-test",
+    });
+    if (!result.ok) throw new Error("expected a valid jev config");
+    const container = buildContainer({
+      repoPath,
+      sqlitePath: join(repoPath, "test.sqlite"),
+      gemini: { model: "fake-model", apiKey: "fake-key" },
+      similarity: result.config,
+    });
+    app = await buildServer(container);
+  });
+
+  afterEach(async () => {
+    await app.close();
+    await rm(repoPath, { recursive: true, force: true });
+  });
+
+  it("reports the strategy name read from the container and no Jev values (5.5, 2.7)", async () => {
+    const res = await app.inject({ method: "GET", url: "/health" });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.similarity).toEqual({ strategy: "jev" });
+    expect(Object.keys(body).sort()).toEqual(["repo", "similarity", "sourceOfTruth", "status"]);
+    expect(res.body).not.toContain(JEV_KEY);
+    expect(res.body).not.toContain("127.0.0.1:4010");
+    expect(res.body).not.toContain("jev-health-test");
+  });
+});
+
+describe("containerFromConfig (startup configuration gate)", () => {
+  const base: ContainerConfig = {
+    repoPath: "/unused/repo",
+    sqlitePath: "/unused/index.sqlite",
+    gemini: { model: "fake-model", apiKey: "fake-key" },
+  };
+
+  class ExitCalled extends Error {
+    constructor(readonly code: number) {
+      super(`exit ${code}`);
+    }
+  }
+
+  function stubs() {
+    const writes: string[] = [];
+    const stderr = { write: vi.fn((chunk: string) => (writes.push(chunk), true)) };
+    const exit = vi.fn((code: number): never => {
+      throw new ExitCalled(code);
+    });
+    const build = vi.fn((_cfg: ContainerConfig) => ({ similarityStrategy: "embedding" }) as unknown as Container);
+    return { writes, stderr, exit, build };
+  }
+
+  it("writes one aggregated message to stderr, exits 1 and builds no container on an invalid configuration (2.1, 2.6, 2.7)", () => {
+    const secret = "gate-secret-key-value";
+    const result = parseSimilarityConfig({
+      SIMILARITY_STRATEGY: "jev",
+      JEV_ENDPOINT: "http://api.example.com/decisions",
+      JEV_API_KEY: secret,
+      JEV_TIMEOUT_MS: "0",
+      JEV_CONCURRENCY: "abc",
+    });
+    expect(result.ok).toBe(false);
+    const { writes, stderr, exit, build } = stubs();
+
+    expect(() => containerFromConfig(base, result, { stderr, exit, build })).toThrow(ExitCalled);
+
+    expect(exit).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(build).not.toHaveBeenCalled();
+    expect(stderr.write).toHaveBeenCalledTimes(1);
+    const message = writes[0];
+    expect(message).toContain("JEV_ENDPOINT");
+    expect(message).toContain("JEV_TIMEOUT_MS");
+    expect(message).toContain("JEV_CONCURRENCY");
+    expect(message).not.toContain(secret);
+  });
+
+  it("reports an unknown strategy value in the aggregated message (2.1)", () => {
+    const result = parseSimilarityConfig({ SIMILARITY_STRATEGY: "cosine-magic" });
+    const { writes, stderr, exit, build } = stubs();
+
+    expect(() => containerFromConfig(base, result, { stderr, exit, build })).toThrow(ExitCalled);
+
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(build).not.toHaveBeenCalled();
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toContain("SIMILARITY_STRATEGY");
+    expect(writes[0]).toContain("cosine-magic");
+  });
+
+  it("builds the container with the validated similarity configuration when the parse succeeded (1.5)", () => {
+    const result = parseSimilarityConfig({
+      SIMILARITY_STRATEGY: "jev",
+      JEV_ENDPOINT: "http://127.0.0.1:4010/decisions",
+      JEV_API_KEY: "ok-key",
+    });
+    if (!result.ok) throw new Error("expected a valid jev config");
+    const { stderr, exit, build } = stubs();
+
+    const container = containerFromConfig(base, result, { stderr, exit, build });
+
+    expect(exit).not.toHaveBeenCalled();
+    expect(stderr.write).not.toHaveBeenCalled();
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(build).toHaveBeenCalledWith({ ...base, similarity: result.config });
+    expect(container).toBe(build.mock.results[0]!.value);
+  });
+
+  it("passes the embedding configuration through when the strategy is unset (1.5)", () => {
+    const result = parseSimilarityConfig({});
+    const { stderr, exit, build } = stubs();
+
+    containerFromConfig(base, result, { stderr, exit, build });
+
+    expect(build).toHaveBeenCalledWith({ ...base, similarity: { strategy: "embedding" } });
+    expect(exit).not.toHaveBeenCalled();
   });
 });

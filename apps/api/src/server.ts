@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
-import { config } from "./config.js";
-import { buildContainer, type Container } from "./container.js";
+import { config, similarityConfigResult } from "./config.js";
+import { buildContainer, type Container, type ContainerConfig } from "./container.js";
+import { formatConfigIssues, type SimilarityConfigResult } from "./similarityConfig.js";
 import { adrRoutes } from "./routes/adrs.js";
 import { relationRoutes } from "./routes/relations.js";
 import { folderRoutes } from "./routes/folders.js";
@@ -24,6 +25,8 @@ export async function buildServer(container: Container): Promise<FastifyInstance
     status: "ok",
     sourceOfTruth: "git",
     repo: config.repoPath,
+    // Only the strategy name, read from the container, never the environment or JEV_* values (5.5, 2.7).
+    similarity: { strategy: container.similarityStrategy },
   }));
 
   await app.register(adrRoutes, { container });
@@ -39,11 +42,41 @@ export async function buildServer(container: Container): Promise<FastifyInstance
   return app;
 }
 
+export interface StartupDeps {
+  stderr: { write(chunk: string): unknown };
+  exit(code: number): never;
+  build(cfg: ContainerConfig): Container;
+}
+
+const processDeps: StartupDeps = {
+  stderr: process.stderr,
+  exit: (code) => process.exit(code),
+  build: buildContainer,
+};
+
+/**
+ * Startup configuration gate: an invalid similarity configuration is reported
+ * as one aggregated message on stderr and aborts with exit code 1 before any
+ * container is built (2.1–2.7, 2.10). Otherwise the container is built once
+ * with the validated configuration for the whole process lifetime (1.5).
+ */
+export function containerFromConfig(
+  base: ContainerConfig,
+  similarity: SimilarityConfigResult,
+  deps: StartupDeps = processDeps
+): Container {
+  if (!similarity.ok) {
+    deps.stderr.write(`${formatConfigIssues(similarity.issues)}\n`);
+    return deps.exit(1);
+  }
+  return deps.build({ ...base, similarity: similarity.config });
+}
+
 // Only start listening on a real port when this file is run directly as the
 // process entrypoint (e.g. `tsx watch src/server.ts`), not when it's merely
 // imported by a test file.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const container = buildContainer(config);
+  const container = containerFromConfig(config, similarityConfigResult);
 
   buildServer(container)
     .then((app) =>

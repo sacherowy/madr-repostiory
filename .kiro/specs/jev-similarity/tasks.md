@@ -82,7 +82,7 @@
   - _Depends: 2.3, 3.1, 3.2, 3.3_
   - _Requirements: 1.3, 1.4, 1.5, 2.9, 6.4, 7.2, 8.3_
 
-- [ ] 4.2 Fail fast at startup and report the active strategy in the health endpoint
+- [x] 4.2 Fail fast at startup and report the active strategy in the health endpoint
   - Extract the entrypoint's configuration gate into a small testable startup step: when the parse failed it writes the formatted issues to stderr and exits with code 1 before any container is built; otherwise the entrypoint builds the container with the validated similarity configuration
   - Add the active strategy name, read from the container, to the health response and nothing else about similarity
   - Server tests pass showing the health response carries the strategy and no Jev values, and a startup-step test (with stubbed stderr and exit) shows an invalid configuration produces one aggregated message, exit code 1 and no container build
