@@ -17,7 +17,7 @@
   - _Requirements: 1.3, 3.1, 5.3, 5.7, 6.1, 7.1, 7.5_
 
 - [ ] 2. Core: Jev similarity strategy
-- [ ] 2.1 (P) Implement pure lineage candidate selection
+- [x] 2.1 (P) Implement pure lineage candidate selection
   - Anchor at the folder containing the target; include every ADR in the anchor and its descendants except the target, and the ADRs directly in each ancestor up to and including the repository root
   - Exclude sibling-branch folders using segment-based folder comparison, so that a folder named like a prefix of another is never treated as its ancestor
   - Label each candidate with direction and level, and return the full lineage ordered by ascending level, then down before up, then ascending path
