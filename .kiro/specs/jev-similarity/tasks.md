@@ -56,7 +56,7 @@
   - _Boundary: similarityConfig, example environment file, README configuration table_
   - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
 
-- [ ] 3.2 Implement the Jev HTTP judge adapter and answer parsing
+- [x] 3.2 Implement the Jev HTTP judge adapter and answer parsing
   - Build one decisions request per pair with the pinned model, a state holding target and candidate (title, text, direction, level), a probability question and a relation choice question whose options are exactly the shared relation label set; send the bearer key header
   - Combine the adapter's own timeout with the caller's abort signal and map outcomes to failure categories: own timeout, caller abort, fetch rejection, non-success status, and unparsable or invalid answers
   - Parse answers strictly from the confirmed live response shape: probability in range, chosen relation (falling back to the arg-max of the distribution) within the allowed set, without requiring the distribution to sum to exactly 1
@@ -146,3 +146,8 @@
   - All suites pass, including the existing similarity end-to-end journey, with no changes to embedding test expectations
   - _Depends: 5.4, 6.1_
   - _Requirements: 1.3, 5.1, 5.3, 8.3_
+
+## Implementation Notes
+- Jev config values can only be obtained through `parseSimilarityConfig` (branded type); tests build a jev config from an env object with an `http://127.0.0.1:<port>` endpoint and must keep `JEV_REQUEST_BUDGET_MS >= JEV_TIMEOUT_MS`.
+- The loopback Jev stub pattern (a `node:http` server on 127.0.0.1 port 0, closed with `closeAllConnections` + `close`) lives in `apps/api/src/infrastructure/jev/jevSimilarityJudge.test.ts`; reuse it for the 6.1 integration test.
+- The judge adapter uses `AbortSignal.any`/`AbortSignal.timeout` (Node >= 20.3).
