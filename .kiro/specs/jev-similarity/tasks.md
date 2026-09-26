@@ -26,7 +26,7 @@
   - _Boundary: selectLineage_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.8_
 
-- [ ] 2.2 Implement the Jev similarity service: candidate loading, cap, cache-first judging and ranking
+- [x] 2.2 Implement the Jev similarity service: candidate loading, cap, cache-first judging and ranking
   - List and parse all repository ADRs, locate the target by id (unknown id raises the plain not-found error), and ignore the requested scope
   - Select the lineage; an empty lineage returns the existing empty-scope result
   - Judge the first configured-maximum candidates of the lineage order, or all of them when an exhaustive comparison is requested, and report coverage as judged and total

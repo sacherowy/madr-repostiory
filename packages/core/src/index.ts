@@ -14,6 +14,7 @@ export * from "./search/searchService.js";
 export * from "./similarity/similarityService.js";
 export * from "./similarity/errors.js";
 export * from "./similarity/lineageScope.js";
+export * from "./similarity/jevSimilarityService.js";
 export * from "./adr/editingService.js";
 export * from "./feed/feedService.js";
 export * from "./summaries/summarySuggestionService.js";
