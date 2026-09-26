@@ -137,18 +137,40 @@
 
 ### Decision: Lineage computed in core as a pure function
 - **Context**: Requirement 4.
-- **Selected Approach**: `selectLineage(files, targetPath, max)` in `packages/core/src/similarity/lineageScope.ts`. It makes one recursive listing of the repository root and does all filtering in memory with POSIX path arithmetic (no `node:path` in core, which has zero I/O dependencies).
+- **Selected Approach**: `selectLineage(files, targetPath)` in `packages/core/src/similarity/lineageScope.ts`. It makes one recursive listing of the repository root and does all filtering in memory with POSIX path arithmetic (no `node:path` in core, which has zero I/O dependencies).
 - **Rationale**: Pure, exhaustively unit-testable, and `GitPort` needs no change.
+- **Revision (design review, 2026-09-26)**: the cap moved out of `selectLineage` into `JevSimilarityService`, so the full lineage size is known and can be reported as `coverage.total`.
+
+### Decision: Candidate cap with a user override ("compare all")
+- **Context**: 4.8, 4.9, 5.6, 9.4, 9.5. The product owner kept the default cap at 100 and asked that, once the cap applies, the user can decide to compare all candidates anyway.
+- **Alternatives Considered**:
+  1. Silent truncation (the original design).
+  2. A new response body variant, e.g. `{ kind: "ranked", results, coverage }`.
+  3. The unchanged body plus `X-Similarity-Judged` / `X-Similarity-Candidates` headers, and an `exhaustive=true` query parameter.
+- **Selected Approach**: Option 3. The body contract (5.1) stays exactly as it is, the embedding strategy never sends the headers (5.7), and the web client reads them same-origin through the Vite proxy.
+- **Trade-offs**: Headers are less discoverable than body fields. This is accepted in exchange for zero contract change.
+
+### Decision: Per-request time budget, fail-fast cancellation
+- **Context**: 7.6, 7.7. The per-call timeout alone allowed about 250 s per request with the defaults, and after a failure the queued calls kept running.
+- **Selected Approach**: `JEV_REQUEST_BUDGET_MS` (default 120000, must be ≥ `JEV_TIMEOUT_MS`). One `AbortController` per request is aborted by the budget timer or by the first failure. It is passed to every `judge` call, and no new calls start after it aborts.
+- **Rationale**: Bounds latency and wasted spend. Completed judgments are still cached, so a retry after a budget 503 resumes progress, which is what makes "compare all" usable on large lineages.
+- **Trade-offs**: A very large exhaustive comparison may need several user retries. There is no progress streaming (non-goal).
+
+### Decision: Visible "Related reading" failure state
+- **Context**: Requirement 9. The web app previously rendered `similar.data ?? []`, so a 503 hid the section, and a Jev outage looked like "nothing related". The product owner rejected that.
+- **Selected Approach**: A minimal change in `apps/web`: `ApiClient.getSimilar` (coverage + exhaustive), `useDecision` (`errorStatus`, `compareAll`, `retry`), and the `ContextRail` section (an error state with `role="alert"` and "Try again", plus a capped notice with `role="status"` and "Compare all N"). The app-wide `retry: false` query policy is kept.
+- **Trade-offs**: `apps/web` enters the spec's boundary. This is limited to three touch points and has no visual redesign.
 
 ### Synthesis outcomes
 - **Generalization**: Both strategies are "given an ADR, rank others". `SimilarityFinder` captures exactly that, and the lineage selector is independent of the Jev scorer. A later hybrid strategy can reuse both without interface changes. No further generalization is built now.
 - **Build vs. adopt**: The official `@typesafe-ai/sdk` was considered and rejected for now. The project calls Gemini with plain `fetch` in hand-written adapters, the API is a single POST, the SDK's retry policy would interact with our timeout/503 contract, and its version and maintenance could not be verified from this environment. Adopting it later only changes `JevSimilarityJudge`.
-- **Simplification**: The design has no strategy registry, no plugin loading and no hot reload (1.5). There is no separate "relation" endpoint and no UI work. The judgment cache is one table.
+- **Simplification**: The design has no strategy registry, no plugin loading and no hot reload (1.5). There is no separate "relation" endpoint, and UI work is limited to the "Related reading" states. The judgment cache is one table.
 
 ## Risks & Mitigations
 - **Unconfirmed Jev answer shape** — Parsing is isolated in `parseJevAnswers`. Any shape mismatch is a provider failure (3.6), never a fabricated score. Confirming the official response schema is an implementation prerequisite (first task).
 - **Calibration of probabilities is disputed** — Scores are used for ranking. The UI already shows them as a relative meter, and no thresholds are hard-coded.
-- **Cold-cache latency on large lineages** — `JEV_MAX_CANDIDATES` (default 100), concurrency (default 4), per-pair caching, and a timeout per request (default 10 s).
+- **Cold-cache latency on large lineages** — `JEV_MAX_CANDIDATES` (default 100), concurrency (default 4), per-pair caching, a timeout per call (default 10 s), and a time budget per request (default 120 s).
+- **Cost of user-triggered "compare all"** — An explicit action only, bounded per attempt by the budget, and logged with its counts.
 - **Full-repository scan per request** (listing plus parsing every ADR to find the target) — The embedding path already does this for the whole-repo scope. It is acceptable at the current repository sizes, and an id index is out of scope.
 - **ADR content is sent to a third party** — Only under the explicitly opted-in `jev` strategy. The data is documented in the design's Security section. Logs never contain content or the key.
 - **Alpha endpoint (TokenRouter `/api/alpha/decisions`)** — Pin the model, validate answers strictly, keep the embedding strategy as a one-restart fallback.

@@ -8,8 +8,8 @@ The Jev strategy also changes **which ADRs are candidates**. It walks the organi
 The strategy is selected by an application configuration flag. The existing embedding strategy remains the default and its behavior is unchanged. Misconfiguration, for example the flag set to Jev with no Jev endpoint configured, is detected at startup and is never silently tolerated.
 
 ## Boundary Context
-- **In scope**: selecting the similarity strategy through configuration; validating the Jev configuration at startup; the Jev pairwise judging adapter; lineage (down + ancestors-only-up) candidate selection for the Jev strategy; caching of Jev judgments; the error contract of the similar-ADRs endpoint under the Jev strategy; additive, optional result metadata.
-- **Out of scope**: any change to the embedding strategy's ranking, scope semantics or caching; web UI changes beyond tolerating the additive fields; the `reindex` script (it remains embedding-only); pre-filtering or hybrid scoring that combines cosine and Jev; runtime (hot) switching of the strategy without a restart.
+- **In scope**: selecting the similarity strategy through configuration; validating the Jev configuration at startup; the Jev pairwise judging adapter; lineage (down + ancestors-only-up) candidate selection for the Jev strategy; the candidate cap and the user's option to compare all candidates anyway; a per-request time budget; caching of Jev judgments; the error contract of the similar-ADRs endpoint under the Jev strategy; additive, optional result metadata; the web UI's "Related reading" error state, capped-list notice and "compare all" action.
+- **Out of scope**: any change to the embedding strategy's ranking, scope semantics or caching; web UI features that display the `lineage` or `relation` fields; the `reindex` script (it remains embedding-only); pre-filtering or hybrid scoring that combines cosine and Jev; runtime (hot) switching of the strategy without a restart.
 - **Adjacent expectations**: the existing `GET /api/adrs/:id/similar` contract (the `adr-manager` spec, Requirement 10) and the web client's `getSimilar` continue to work unchanged when the embedding strategy is active.
 
 ## Requirements
@@ -32,11 +32,12 @@ The strategy is selected by an application configuration flag. The existing embe
 2. If the `jev` strategy is selected and the Jev endpoint URL is absent or blank, then the ADR Manager shall refuse to start and shall report that the Jev endpoint is required.
 3. If the `jev` strategy is selected and the Jev API key is absent or blank, then the ADR Manager shall refuse to start and shall report that the Jev API key is required.
 4. If the `jev` strategy is selected and the Jev endpoint is not an absolute URL using `https`, or `http` with a loopback host, then the ADR Manager shall refuse to start and shall report the invalid endpoint.
-5. If the `jev` strategy is selected and an optional numeric Jev setting (request timeout, maximum candidates, request concurrency) is present but not a positive integer within its documented bounds, then the ADR Manager shall refuse to start and shall report the offending setting.
+5. If the `jev` strategy is selected and an optional numeric Jev setting (request timeout, maximum candidates, request concurrency, request time budget) is present but not a positive integer within its documented bounds, then the ADR Manager shall refuse to start and shall report the offending setting.
 6. When several configuration problems exist, the ADR Manager shall report all of them in a single startup failure rather than one per restart.
 7. The ADR Manager shall never include the Jev API key value in any startup message, log entry or HTTP response.
 8. While the `embedding` strategy is active, the ADR Manager shall not require any Jev setting and shall ignore Jev settings that are present.
 9. The ADR Manager shall make it impossible to construct the application's service container with the `jev` strategy but without a complete, validated Jev configuration.
+10. If the `jev` strategy is selected and the request time budget is shorter than the request timeout, then the ADR Manager shall refuse to start and shall report both settings.
 
 ### Requirement 3: Jev pairwise similarity scoring
 **Objective:** As an ADR author, I want each candidate ADR to be scored by Jev against the ADR I am viewing, so that the ranking reflects whether the two ADRs address the same decision rather than only whether they share vocabulary.
@@ -60,7 +61,8 @@ The strategy is selected by an application configuration flag. The existing embe
 5. The ADR Manager shall label each candidate with a direction (`down` for the anchor and its descendants, `up` for ancestors) and a level (0 for the anchor folder, the number of folders below the anchor for descendants, the number of folders above the anchor for ancestors).
 6. While the `jev` strategy is active, the ADR Manager shall ignore the request's `scope` parameter for candidate selection.
 7. If the lineage contains no candidate ADRs, then the ADR Manager shall return the existing empty-scope response.
-8. If the lineage contains more candidates than the configured maximum, then the ADR Manager shall judge only the configured maximum, selected by ascending level, then `down` before `up`, then ascending path.
+8. If the lineage contains more candidates than the configured maximum (default 100) and the request does not ask for an exhaustive comparison, then the ADR Manager shall judge only the configured maximum, selected by ascending level, then `down` before `up`, then ascending path.
+9. When a similar-ADRs request asks for an exhaustive comparison, the ADR Manager shall judge every lineage candidate regardless of the configured maximum, subject to the request time budget (Requirement 7).
 
 ### Requirement 5: Result contract compatibility
 **Objective:** As a web client developer, I want the similar-ADRs endpoint to keep its current contract under both strategies, so that the UI works without changes whichever strategy is configured.
@@ -71,6 +73,8 @@ The strategy is selected by an application configuration flag. The existing embe
 3. While the `embedding` strategy is active, the ADR Manager shall not add the `lineage` or `relation` fields.
 4. When the target ADR does not exist, the ADR Manager shall respond with not-found under both strategies.
 5. The ADR Manager shall expose the active similarity strategy name, and no other similarity setting, in the health endpoint response.
+6. While the `jev` strategy is active, the ADR Manager shall report, with every ranked response, how many lineage candidates were judged and how many exist in total, without changing the response body shape.
+7. While the `embedding` strategy is active, the ADR Manager shall ignore the exhaustive-comparison request option and shall not report candidate counts.
 
 ### Requirement 6: Judgment caching and freshness
 **Objective:** As an ADR Manager operator, I want Jev judgments to be reused until either ADR changes, so that repeated views are fast and inexpensive while results never go stale.
@@ -91,6 +95,8 @@ The strategy is selected by an application configuration flag. The existing embe
 3. The ADR Manager shall abort a Jev request that exceeds the configured timeout and treat it as a provider failure.
 4. The ADR Manager shall limit the number of concurrent Jev requests per similar-ADRs request to the configured concurrency.
 5. When a Jev request fails, the ADR Manager shall log the failure category and HTTP status (when present), without logging the API key or ADR content.
+6. If judging the candidates of one similar-ADRs request takes longer than the configured request time budget (default 120 seconds), then the ADR Manager shall abort the outstanding Jev requests and respond with the service-unavailable error.
+7. When one Jev request of a similar-ADRs request fails, the ADR Manager shall start no further Jev requests for that similar-ADRs request and shall abort the ones still in flight.
 
 ### Requirement 8: Offline testability
 **Objective:** As an ADR Manager developer, I want the Jev strategy to be testable without network access or a real Jev key, so that the existing offline test suites keep passing.
@@ -99,3 +105,15 @@ The strategy is selected by an application configuration flag. The existing embe
 1. The ADR Manager shall allow the Jev strategy's scoring, lineage selection, caching and failure handling to be exercised in automated tests with a substitute Jev judge and without network access.
 2. The ADR Manager shall allow the Jev HTTP adapter to be exercised in automated tests against a local stub endpoint.
 3. The existing unit, web and end-to-end test suites shall continue to pass without any Jev configuration.
+
+### Requirement 9: Related reading feedback in the web UI
+**Objective:** As an ADR author, I want the "Related reading" area to tell me when related decisions could not be loaded or were only partly compared, and to let me compare all candidates anyway, so that I never mistake a missing or capped list for a complete answer.
+
+#### Acceptance Criteria
+1. If the similar-ADRs request fails, then the web UI shall show the "Related reading" area with a visible message that related decisions could not be loaded, instead of hiding the area.
+2. If the similar-ADRs request fails with the service-unavailable error, then the web UI shall state that the similarity service is unavailable.
+3. When the web UI shows a failure message in the "Related reading" area, it shall offer a retry action that repeats the same request.
+4. When a ranked response reports fewer judged candidates than candidates in total, the web UI shall show how many of the total were compared and shall offer an action to compare all of them.
+5. When the user chooses to compare all candidates, the web UI shall request an exhaustive comparison, indicate that the comparison is in progress, and replace the list with the exhaustive results once they arrive; a failure is shown as in 9.1–9.3.
+6. The web UI shall keep the existing presentation of related decisions (title and similarity meter), and shall keep hiding the area when the scope holds no other ADRs.
+7. The web UI shall announce the failure message and the capped-list notice to assistive technology, and shall make the retry and compare-all actions operable by keyboard.
