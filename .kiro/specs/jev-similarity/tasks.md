@@ -74,7 +74,7 @@
   - _Requirements: 6.1, 6.4_
 
 - [ ] 4. API integration: composition, startup, health and route
-- [ ] 4.1 Select the similarity strategy in the composition root
+- [x] 4.1 Select the similarity strategy in the composition root
   - Remove the implicit default configuration of the container builder; every existing caller (server entrypoint, API and web tests) already passes a configuration and must keep compiling unchanged
   - Accept an optional similarity configuration (absent means embedding) and expose the similarity finder through the interface, plus the active strategy name
   - Under embedding wire exactly today's embedding service; under jev wire the Jev service with the HTTP judge, the SQLite judgment store and the validated options, without wiring embeddings into similarity
