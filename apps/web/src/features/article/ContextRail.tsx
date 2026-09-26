@@ -4,6 +4,7 @@ import {
   type AdrId,
   type CommitMeta,
   type RelationView,
+  type SimilarityCoverage,
   type SimilarityResult,
 } from "@adr/shared";
 import { SimilarityMeter } from "../../components/SimilarityMeter.js";
@@ -42,7 +43,28 @@ export interface ContextRailProps {
   onOpenDecision?: (id: AdrId) => void;
   /** Injectable reference instant so friendly relative dates are deterministic. */
   now?: Date;
+  /**
+   * How many lineage candidates were judged out of how many exist (jev strategy
+   * only). `judged < total` shows the capped notice and the compare-all action
+   * (Req 9.4); null/undefined (embedding) or `judged === total` shows the list only.
+   */
+  similarCoverage?: SimilarityCoverage | null;
+  /**
+   * HTTP status of a failed similar request; 0 = network error. null/undefined =
+   * no failure. 503 → provider-unavailable wording (Req 9.2), otherwise generic.
+   */
+  similarErrorStatus?: number | null;
+  /** true while an exhaustive "compare all" request is in flight (Req 9.5). */
+  similarComparing?: boolean;
+  /** Repeats the currently active similar request (Req 9.3). */
+  onRetrySimilar?: () => void;
+  /** Switches to the exhaustive similar request (Req 9.4, 9.5). */
+  onCompareAllSimilar?: () => void;
 }
+
+const SIMILAR_PROVIDER_UNAVAILABLE =
+  "Related reading is unavailable because the similarity service could not be reached.";
+const SIMILAR_LOAD_FAILED = "Related decisions could not be loaded.";
 
 /**
  * The decision article's context rail (design.md "UI compositions" → ContextRail;
@@ -58,7 +80,9 @@ export interface ContextRailProps {
  *   sentences (Req 1.4), newest-first, reusing the `relativeTime` helper.
  * - **Related reading** — the existing similarity results, each with its target
  *   title and a reused `SimilarityMeter` showing the score (Req 15.2 preserves
- *   the similarity behavior; the meter is not rebuilt).
+ *   the similarity behavior; the meter is not rebuilt). jev-similarity adds a
+ *   failure alert with "Try again", a capped-list status line with "Compare all",
+ *   and a busy state while comparing (Req 9.1–9.7).
  *
  * Pure presentational component: it takes the resolved relations/history/similar
  * arrays as props (no fetching), so it is unit-testable without a backend and
@@ -72,6 +96,11 @@ export function ContextRail({
   resolveTitle,
   onOpenDecision,
   now,
+  similarCoverage = null,
+  similarErrorStatus = null,
+  similarComparing = false,
+  onRetrySimilar,
+  onCompareAllSimilar,
 }: ContextRailProps) {
   // Titles for relation targets that are also similar decisions come for free;
   // an explicit `resolveTitle` (if provided) fills the rest; else the id shows.
@@ -87,6 +116,17 @@ export function ContextRail({
   const hasRelations = relations.length > 0;
   const hasHistory = history.length > 0;
   const hasSimilar = similar.length > 0;
+  // Related reading states (design.md ContextRail "Related reading" table):
+  // an error replaces the list (and any capped notice) but keeps the heading;
+  // with no error, an empty result keeps the area hidden (Req 9.1, 9.6).
+  const similarFailed = similarErrorStatus !== null;
+  const showRelatedReading = similarFailed || hasSimilar;
+  const isCapped =
+    !similarFailed &&
+    hasSimilar &&
+    similarCoverage !== null &&
+    similarCoverage.judged < similarCoverage.total;
+  const isComparing = !similarFailed && similarComparing;
 
   return (
     <div className="context-rail" data-testid="context-rail">
@@ -147,31 +187,74 @@ export function ContextRail({
         </section>
       ) : null}
 
-      {hasSimilar ? (
-        <section className="context-rail__group" data-testid="context-rail-related-reading">
+      {showRelatedReading ? (
+        <section
+          className="context-rail__group"
+          data-testid="context-rail-related-reading"
+          aria-busy={isComparing ? true : undefined}
+        >
           <h2 className="context-rail__heading">Related reading</h2>
-          <ul className="context-rail__list">
-            {similar.map(({ adr, score }) => (
-              <li
-                key={adr.id}
-                className="context-rail__item context-rail__related"
-                data-testid="context-rail-related"
-              >
-                {onOpenDecision ? (
-                  <button
-                    type="button"
-                    className="context-rail__link"
-                    onClick={() => onOpenDecision(adr.id)}
+          {similarFailed ? (
+            <>
+              <p className="context-rail__notice" role="alert">
+                {similarErrorStatus === 503 ? SIMILAR_PROVIDER_UNAVAILABLE : SIMILAR_LOAD_FAILED}
+              </p>
+              {onRetrySimilar ? (
+                <button
+                  type="button"
+                  className="btn btn--secondary context-rail__action"
+                  onClick={onRetrySimilar}
+                >
+                  Try again
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <ul className="context-rail__list">
+                {similar.map(({ adr, score }) => (
+                  <li
+                    key={adr.id}
+                    className="context-rail__item context-rail__related"
+                    data-testid="context-rail-related"
                   >
-                    {adr.title}
-                  </button>
-                ) : (
-                  <span className="context-rail__sentence">{adr.title}</span>
-                )}
-                <SimilarityMeter score={score} data-testid="context-rail-similarity-meter" />
-              </li>
-            ))}
-          </ul>
+                    {onOpenDecision ? (
+                      <button
+                        type="button"
+                        className="context-rail__link"
+                        onClick={() => onOpenDecision(adr.id)}
+                      >
+                        {adr.title}
+                      </button>
+                    ) : (
+                      <span className="context-rail__sentence">{adr.title}</span>
+                    )}
+                    <SimilarityMeter score={score} data-testid="context-rail-similarity-meter" />
+                  </li>
+                ))}
+              </ul>
+              {isCapped && similarCoverage ? (
+                <>
+                  <p className="context-rail__notice" role="status">
+                    Compared {similarCoverage.judged} of {similarCoverage.total} related
+                    decisions.
+                  </p>
+                  {onCompareAllSimilar ? (
+                    <button
+                      type="button"
+                      className="btn btn--secondary context-rail__action"
+                      onClick={onCompareAllSimilar}
+                      disabled={isComparing}
+                    >
+                      {isComparing
+                        ? `Comparing all ${similarCoverage.total}…`
+                        : `Compare all ${similarCoverage.total}`}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          )}
         </section>
       ) : null}
     </div>

@@ -116,7 +116,7 @@
   - _Depends: 5.1_
   - _Requirements: 9.1, 9.3, 9.5_
 
-- [ ] 5.3 (P) Render the error, capped and comparing states in the Related reading area
+- [x] 5.3 (P) Render the error, capped and comparing states in the Related reading area
   - Keep the hidden state for an empty scope and the existing list with the similarity meter when coverage is absent or complete
   - Show a status line "Compared {judged} of {total} related decisions." with a "Compare all {total}" button when fewer were judged than exist; while comparing, disable the button, change its label to the in-progress wording and mark the section busy
   - On failure keep the heading and show an alert message (provider wording for 503, generic wording otherwise) with a "Try again" button
@@ -151,3 +151,4 @@
 - Jev config values can only be obtained through `parseSimilarityConfig` (branded type); tests build a jev config from an env object with an `http://127.0.0.1:<port>` endpoint and must keep `JEV_REQUEST_BUDGET_MS >= JEV_TIMEOUT_MS`.
 - The loopback Jev stub pattern (a `node:http` server on 127.0.0.1 port 0, closed with `closeAllConnections` + `close`) lives in `apps/api/src/infrastructure/jev/jevSimilarityJudge.test.ts`; reuse it for the 6.1 integration test.
 - The judge adapter uses `AbortSignal.any`/`AbortSignal.timeout` (Node >= 20.3).
+- 5.3 added the test-only devDependency `@testing-library/user-event` to apps/web: design.md Testing Strategy requires `userEvent.keyboard`, which conflicts with the "No new npm dependencies" line under Allowed Dependencies; there are still no new runtime dependencies.

@@ -352,6 +352,20 @@
   text-decoration: underline;
 }
 
+/* Related reading feedback (jev-similarity, Req 9.1–9.7): the failure alert and
+   the capped-list status line read as rail prose; the retry / compare-all
+   actions reuse `.btn--secondary` and sit left-aligned under the text. */
+.context-rail__notice {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-900);
+}
+
+.context-rail__action {
+  align-self: flex-start;
+}
+
 /* ----------------------------------------------------------------------- */
 /* Technical view escape hatch (task 6.4, Req 7 / 1.6)                      */
 /* The engineer-facing counterpart of the article: raw MADR bytes + path,   */
