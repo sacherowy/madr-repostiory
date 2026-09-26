@@ -143,7 +143,7 @@ function DecisionView({
           <ContextRail
             relations={decision.relations.data ?? []}
             history={decision.history.data ?? []}
-            similar={decision.similar.data ?? []}
+            similar={decision.similar.data?.results ?? []}
             resolveTitle={resolveTitle}
             onOpenDecision={onOpenDecision}
           />

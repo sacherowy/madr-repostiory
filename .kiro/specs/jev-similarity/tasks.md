@@ -107,7 +107,7 @@
   - _Depends: 1.1_
   - _Requirements: 9.2, 9.4, 9.5_
 
-- [ ] 5.2 Extend the decision hook's similar query with error status, compare-all and retry
+- [x] 5.2 Extend the decision hook's similar query with error status, compare-all and retry
   - Expose results with coverage, the failure flag and failure status, and an in-progress flag for the exhaustive comparison
   - Switch to the exhaustive query on compare-all, keep the capped data visible while it is pending, and reset the flag when the viewed ADR changes; keep both query keys under the prefix already invalidated after a save
   - Retry refetches the currently active query; keep the app-wide no-automatic-retry behavior
