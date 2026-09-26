@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Foundation: shared similarity contracts and the core strategy seam
+- [x] 1. Foundation: shared similarity contracts and the core strategy seam
 - [x] 1.1 Add the additive similarity result metadata to the shared types
   - Introduce the relation label set (duplicate, supersedes, conflicts, constrains, related, unrelated), the lineage position (direction and level) and the coverage pair (judged, total)
   - Extend the similarity result with optional lineage and relation fields, leaving the existing adr and score fields untouched
@@ -16,7 +16,7 @@
   - Existing embedding similarity tests pass unchanged, plus a new test showing the embedding service ignores the exhaustive option and returns no coverage
   - _Requirements: 1.3, 3.1, 5.3, 5.7, 6.1, 7.1, 7.5_
 
-- [ ] 2. Core: Jev similarity strategy
+- [x] 2. Core: Jev similarity strategy
 - [x] 2.1 (P) Implement pure lineage candidate selection
   - Anchor at the folder containing the target; include every ADR in the anchor and its descendants except the target, and the ADRs directly in each ancestor up to and including the repository root
   - Exclude sibling-branch folders using segment-based folder comparison, so that a folder named like a prefix of another is never treated as its ancestor
@@ -45,7 +45,7 @@
   - Unit tests pass for: an instrumented judge never exceeding the concurrency ceiling, a mid-batch failure (first error propagated, no calls started after it, in-flight signals aborted, earlier valid judgments cached), and the budget elapsing under fake timers (budget rejection, completed judgments cached)
   - _Requirements: 6.5, 7.1, 7.2, 7.4, 7.6, 7.7, 8.1_
 
-- [ ] 3. API: similarity configuration and Jev adapters
+- [x] 3. API: similarity configuration and Jev adapters
 - [x] 3.1 (P) Implement the similarity configuration parser with aggregated validation and document the variables
   - Parse the strategy setting (trimmed, case-insensitive; absent or blank means embedding) and, only under jev, the endpoint, API key, model and the four numeric settings with their defaults and bounds
   - Accept only absolute https endpoints, or http with a loopback host; enforce the budget-not-shorter-than-timeout rule only when both values are individually valid
@@ -73,7 +73,7 @@
   - _Depends: 1.2_
   - _Requirements: 6.1, 6.4_
 
-- [ ] 4. API integration: composition, startup, health and route
+- [x] 4. API integration: composition, startup, health and route
 - [x] 4.1 Select the similarity strategy in the composition root
   - Remove the implicit default configuration of the container builder; every existing caller (server entrypoint, API and web tests) already passes a configuration and must keep compiling unchanged
   - Accept an optional similarity configuration (absent means embedding) and expose the similarity finder through the interface, plus the active strategy name
@@ -97,7 +97,7 @@
   - _Depends: 4.1_
   - _Requirements: 4.9, 5.1, 5.4, 5.6, 5.7, 7.1, 7.5, 7.6_
 
-- [ ] 5. Web: Related reading feedback
+- [x] 5. Web: Related reading feedback
 - [x] 5.1 (P) Extend the API client's similar-ADRs call with exhaustive requests, coverage and failure status
   - Append the exhaustive query option only when requested
   - Return coverage when both count headers are present and parse as non-negative integers, otherwise null
@@ -132,7 +132,7 @@
   - _Depends: 5.2, 5.3_
   - _Requirements: 9.1, 9.4, 9.5_
 
-- [ ] 6. Validation
+- [x] 6. Validation
 - [x] 6.1 Add an API integration test of the Jev strategy end to end against a local stub
   - Place the test in a dedicated Jev-strategy integration test file in the API app, reusing the loopback stub endpoint pattern established by the judge adapter tests in 3.2
   - Build a server whose container uses a jev configuration obtained from the parser with a loopback stub endpoint and a temporary repository with a nested folder hierarchy
