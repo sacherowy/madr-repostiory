@@ -7,7 +7,7 @@
   - Workspace typecheck passes and the existing shared, core, api and web test suites stay green with no call-site changes
   - _Requirements: 3.5, 4.5, 5.2, 5.3, 5.6_
 
-- [ ] 1.2 Introduce the strategy seam, the typed provider failure and the judging/caching ports in core
+- [x] 1.2 Introduce the strategy seam, the typed provider failure and the judging/caching ports in core
   - Declare the similarity finder contract (find similar by id, scope and options) with an exhaustive-comparison option, and an optional coverage on the ranked result variant
   - Make the existing embedding similarity service implement the contract; it accepts and ignores the options argument and never reports coverage, with no ranking, scope or cache change
   - Add the typed provider-failure error carrying a failure category (network, timeout, http-status, invalid-response, budget, aborted) and an optional HTTP status, with messages free of secrets and ADR content

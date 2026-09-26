@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { GitPort, AdrFile, CommitMeta, DiffResult, TreeEntry } from "../ports/git.js";
 import type { EmbeddingProvider, EmbeddingStore } from "../ports/embeddings.js";
-import { SimilarityService } from "./similarityService.js";
+import { SimilarityService, type SimilarityFinder } from "./similarityService.js";
 
 /**
  * In-memory fake GitPort test double, mirroring ComparisonService's /
@@ -356,6 +356,36 @@ describe("SimilarityService", () => {
       const svc = new SimilarityService(git, store, provider);
 
       await expect(svc.findSimilar("adr-9999", "decisions")).rejects.toThrow();
+    });
+    it("implements SimilarityFinder, ignores the exhaustive option and never reports coverage (1.3, 5.7)", async () => {
+      const files = new Map([
+        ["decisions/0001-target.md", { content: adrRaw("adr-0001", "Target"), blobSha: "sha-1" }],
+        ["decisions/0002-close.md", { content: adrRaw("adr-0002", "Close"), blobSha: "sha-2" }],
+        ["decisions/0003-far.md", { content: adrRaw("adr-0003", "Far"), blobSha: "sha-3" }],
+      ]);
+      const store = new FakeEmbeddingStore(
+        new Map([
+          ["sha-1", [1, 0, 0]],
+          ["sha-2", [0.9, 0.1, 0]],
+          ["sha-3", [0, 1, 0]],
+        ])
+      );
+      const provider = new FakeEmbeddingProvider(new Map());
+      const finder: SimilarityFinder = new SimilarityService(new FakeGitPort(files), store, provider);
+
+      const plain = await finder.findSimilar("adr-0001", "decisions");
+      const exhaustive = await finder.findSimilar("adr-0001", "decisions", { exhaustive: true });
+      const notExhaustive = await finder.findSimilar("adr-0001", "decisions", { exhaustive: false });
+
+      expect(exhaustive).toEqual(plain);
+      expect(notExhaustive).toEqual(plain);
+      if (exhaustive.kind !== "ranked") throw new Error("expected ranked");
+      expect(exhaustive).not.toHaveProperty("coverage");
+      expect(exhaustive.coverage).toBeUndefined();
+      for (const result of exhaustive.results) {
+        expect(result).not.toHaveProperty("lineage");
+        expect(result).not.toHaveProperty("relation");
+      }
     });
   });
 });

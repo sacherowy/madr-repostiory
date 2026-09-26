@@ -1,4 +1,4 @@
-import type { Adr, SimilarityResult } from "@adr/shared";
+import type { Adr, SimilarityCoverage, SimilarityResult } from "@adr/shared";
 import type { GitPort } from "../ports/git.js";
 import type { EmbeddingProvider, EmbeddingStore } from "../ports/embeddings.js";
 import { parseAdr } from "../adr/parse.js";
@@ -6,8 +6,24 @@ import { combinedSectionText } from "../adr/sections.js";
 import { cosine } from "./cosine.js";
 
 export type SimilarityFindResult =
-  | { kind: "ranked"; results: SimilarityResult[] }
+  | {
+      kind: "ranked";
+      results: SimilarityResult[];
+      /** jev only (5.6, 5.7) */
+      coverage?: SimilarityCoverage;
+    }
   | { kind: "emptyScope" };
+
+export interface FindSimilarOptions {
+  /** Judge every lineage candidate, ignoring the cap (4.9). Ignored by the embedding strategy (5.7). */
+  exhaustive?: boolean;
+}
+
+/** Strategy seam shared by the embedding and Jev similarity implementations. */
+export interface SimilarityFinder {
+  /** Throws Error when `id` is not found; throws SimilarityProviderError on provider failure. */
+  findSimilar(id: string, scopePath: string, options?: FindSimilarOptions): Promise<SimilarityFindResult>;
+}
 
 /**
  * Ranks ADRs within a folder subtree by embedding similarity to a given
@@ -18,15 +34,22 @@ export type SimilarityFindResult =
  *
  * Zero I/O beyond the injected ports: GitPort, EmbeddingStore,
  * EmbeddingProvider.
+ *
+ * Accepts and ignores FindSimilarOptions and never reports coverage (5.7);
+ * it never throws SimilarityProviderError.
  */
-export class SimilarityService {
+export class SimilarityService implements SimilarityFinder {
   constructor(
     private readonly git: GitPort,
     private readonly store: EmbeddingStore,
     private readonly provider: EmbeddingProvider
   ) {}
 
-  async findSimilar(id: string, scopePath: string): Promise<SimilarityFindResult> {
+  async findSimilar(
+    id: string,
+    scopePath: string,
+    _options?: FindSimilarOptions
+  ): Promise<SimilarityFindResult> {
     const files = await this.git.listAdrFiles(scopePath);
     const adrs: Adr[] = [];
     for (const file of files) {
