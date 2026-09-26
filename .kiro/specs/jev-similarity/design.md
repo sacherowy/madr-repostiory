@@ -1,7 +1,7 @@
 # Design Document — jev-similarity
 
 ## Overview
-**Purpose**: This feature gives ADR Manager operators an alternative way to rank similar ADRs. TypeSafe **Jev** judges each candidate pairwise against the target ADR, and the candidates come from the target folder's **lineage**: its whole subtree downward, and only the ADRs sitting directly in each ancestor folder upward.
+**Purpose**: This feature gives ADR Manager operators an alternative way to rank similar ADRs. TypeSafe **Jev**, accessed through **TokenRouter**'s decisions endpoint, judges each candidate pairwise against the target ADR, and the candidates come from the target folder's **lineage**: its whole subtree downward, and only the ADRs sitting directly in each ancestor folder upward.
 
 **Users**: Operators select the strategy with one configuration flag. ADR authors see the same "Related reading" list, now ranked by Jev's probability that two ADRs address the same or an overlapping decision. Each result additionally carries its lineage position and relation kind.
 
@@ -40,7 +40,7 @@
 - The dependency direction is `@adr/shared` (types) → `@adr/core` (ports, pure services) → `apps/api` (config → infrastructure adapters → container → routes → server). Imports go only rightward-to-leftward in that chain, and never from core into `apps/api`.
 - Core uses only `GitPort`, `SimilarityJudge`, `JudgmentStore`, `parseAdr` and `combinedSectionText`. No `node:*` imports, no `fetch`.
 - `apps/api` may use the global `fetch`/`AbortController` (Node ≥ 18) and `better-sqlite3`. No new npm dependencies.
-- External: the Jev HTTP endpoint named by `JEV_ENDPOINT`, reached only by `JevSimilarityJudge`.
+- External: the Jev decisions endpoint named by `JEV_ENDPOINT`, reached only by `JevSimilarityJudge`. The supported access route is TokenRouter (`https://api.tokenrouter.com/api/alpha/decisions`). Any endpoint that speaks the same decisions request/response contract (for example a local stub) is also accepted.
 
 ### Revalidation Triggers
 - Any change to the `SimilarityResult` shape or to the 200/404/503 semantics of `/api/adrs/:id/similar` → re-check `apps/web` `getSimilar` and the E2E similarity journey.
@@ -81,7 +81,7 @@ graph TB
         StorePort[JudgmentStore port]
         GitPort[GitPort]
     end
-    JevApi[Jev HTTP endpoint]
+    JevApi[TokenRouter decisions endpoint]
 
     Env --> Parser
     Parser --> Entry
@@ -114,7 +114,7 @@ graph TB
 | Backend / Services | TypeScript 5.5, Fastify 4.28 | Route error mapping, health field | Existing |
 | Backend / Integration | Node global `fetch` + `AbortController` | Jev HTTP calls with timeout | No new dependency; `@typesafe-ai/sdk` deliberately not adopted (see `research.md`) |
 | Data / Storage | better-sqlite3 11.x | `jev_judgment_cache` table in the existing `SQLITE_PATH` file | Derived, deletable |
-| External | TypeSafe Jev, `POST {JEV_ENDPOINT}`, model `jev-latest` by default | Pairwise judgments | Answer shape to be confirmed (Risk R1) |
+| External | TypeSafe Jev via TokenRouter, `POST https://api.tokenrouter.com/api/alpha/decisions`, model `typesafe/jev-1.13` (pinned default) | Pairwise judgments | The endpoint is **alpha**: breaking changes are possible without deprecation (Risk R4). Answer shape to be confirmed (Risk R1) |
 
 ## File Structure Plan
 
@@ -500,13 +500,14 @@ export function formatConfigIssues(issues: readonly ConfigIssue[]): string;
 | Variable | Required when | Default | Rule | Req |
 |----------|---------------|---------|------|-----|
 | `SIMILARITY_STRATEGY` | never | `embedding` | trimmed, case-insensitive; `embedding` or `jev` | 1.1, 1.2, 2.1 |
-| `JEV_ENDPOINT` | strategy = jev | none | absolute URL; `https:` or `http:` with host `localhost`, `127.0.0.1` or `[::1]` | 2.2, 2.4 |
-| `JEV_API_KEY` | strategy = jev | none | non-blank; value never echoed | 2.3, 2.7 |
-| `JEV_MODEL` | never | `jev-latest` | non-blank after trim if present | — |
+| `JEV_ENDPOINT` | strategy = jev | none (documented value: `https://api.tokenrouter.com/api/alpha/decisions`) | absolute URL; `https:` or `http:` with host `localhost`, `127.0.0.1` or `[::1]` | 2.2, 2.4 |
+| `JEV_API_KEY` | strategy = jev | none | TokenRouter API key; non-blank; value never echoed | 2.3, 2.7 |
+| `JEV_MODEL` | never | `typesafe/jev-1.13` | non-blank after trim if present; a pinned version rather than a `latest` alias, so that cached judgments stay tied to one model (6.1) | — |
 | `JEV_TIMEOUT_MS` | never | `10000` | integer 100–60000 | 2.5, 7.3 |
 | `JEV_MAX_CANDIDATES` | never | `100` | integer 1–1000 | 2.5, 4.8 |
 | `JEV_CONCURRENCY` | never | `4` | integer 1–16 | 2.5, 7.4 |
 
+- `JEV_ENDPOINT` deliberately has **no default**, even though TokenRouter is the documented value. Selecting `jev` is therefore never enough on its own: the operator must also name the endpoint, and forgetting it fails startup (2.2).
 - Under `embedding`, `JEV_*` variables are not read (2.8).
 - `ValidatedJevConfig` values are produced only inside `parseSimilarityConfig`. The brand symbol is module-private, so object literals cannot satisfy `SimilarityConfig`'s `jev` member (2.9).
 - `formatConfigIssues` produces a single multi-line message: a header, then one line per issue, then a pointer to `.env.example` (2.6).
@@ -542,7 +543,7 @@ export function parseJevAnswers(body: unknown): PairJudgment | null;
 ##### API Contract (outbound)
 | Method | Endpoint | Request | Response | Errors |
 |--------|----------|---------|----------|--------|
-| POST | `{JEV_ENDPOINT}` | `JevRequest` (below), headers `Authorization: Bearer {JEV_API_KEY}`, `Content-Type: application/json` | `{ model, answers: { similar, relation }, usage }` | non-2xx → `http-status`; abort → `timeout`; fetch rejection → `network`; `parseJevAnswers` null or JSON error → `invalid-response` |
+| POST | `{JEV_ENDPOINT}` (TokenRouter: `https://api.tokenrouter.com/api/alpha/decisions`) | `JevRequest` (below), headers `Authorization: Bearer {JEV_API_KEY}`, `Content-Type: application/json` | `{ model, answers: { similar, relation }, usage }` | non-2xx → `http-status`; abort → `timeout`; fetch rejection → `network`; `parseJevAnswers` null or JSON error → `invalid-response` |
 
 ```typescript
 interface JevRequest {
@@ -565,7 +566,8 @@ interface JevRequest {
   };
 }
 ```
-- `parseJevAnswers` requires `answers.similar` to yield a finite number in [0, 1], and `answers.relation` to yield a top option that is a member of `SimilarityRelation`. The exact field paths are confirmed against the official Jev documentation in the first implementation task (Risk R1). Only this function encodes them.
+- The request body matches TokenRouter's documented decisions example: `model`, `state` (string or JSON object), and `questions` keyed by id, where `noul` carries `criteria: { true, false }` and `choice` carries `criteria: Record<option, description>`. The `score` type exists but is not used.
+- `parseJevAnswers` requires `answers.similar` to yield a finite number in [0, 1], and `answers.relation` to yield a top option that is a member of `SimilarityRelation`. It takes the chosen option (or the arg-max of the distribution) and does **not** require the distribution to sum to exactly 1, because Jev returns rounded probabilities that may total 0.99. The exact field paths are confirmed against a live TokenRouter response in the first implementation task (Risk R1). Only this function encodes them.
 
 #### SqliteJudgmentStore (summary)
 - Implements `JudgmentStore` over the `jev_judgment_cache` table (see Physical Data Model) on `SQLITE_PATH`, following `SqliteSummaryStore`'s pattern (`CREATE TABLE IF NOT EXISTS`, `INSERT OR REPLACE`). The table is created only when the Jev strategy is active (6.4).
@@ -661,7 +663,7 @@ CREATE TABLE IF NOT EXISTS jev_judgment_cache (
 - There is no new E2E journey. The existing offline `similarity.spec.ts` runs unchanged under the embedding default and acts as the regression guard (1.3, 5.1, 8.3).
 
 ## Security Considerations
-- Under the `jev` strategy, ADR titles and section text are sent to the configured Jev endpoint. This only happens after the operator explicitly opts in via `SIMILARITY_STRATEGY=jev`, and it is documented in `.env.example` and the README.
+- Under the `jev` strategy, ADR titles and section text are sent to the configured endpoint. With TokenRouter this means two third parties: TokenRouter as the router, and TypeSafe as the model provider. This only happens after the operator explicitly opts in via `SIMILARITY_STRATEGY=jev`, and it is documented in `.env.example` and the README.
 - `JEV_API_KEY` is held only in `ValidatedJevConfig` and the outbound `Authorization` header. It is never logged, returned by `/health`, or included in error messages (2.7).
 - Plain `http` is allowed only for loopback hosts (test stubs, local proxies). All remote traffic is `https` (2.4).
 
@@ -673,4 +675,5 @@ CREATE TABLE IF NOT EXISTS jev_judgment_cache (
 ## Open Questions / Risks
 - **R1 — Jev answer shape unconfirmed.** The primary docs were unreachable during design. The first implementation task confirms the `answers.*` field paths and encodes them in `parseJevAnswers` with fixtures. No other component depends on them.
 - **R2 — Probability calibration is disputed publicly.** The score is used for ordering only, and no thresholds are introduced.
-- **R3 — Egress.** Deployments with an outbound allow-list must permit the `JEV_ENDPOINT` host. Otherwise every Jev-mode request returns 503, which is visible in logs and `/health` checks.
+- **R3 — Egress.** Deployments with an outbound allow-list must permit `api.tokenrouter.com`, which is currently blocked in the Claude Code cloud environment. Otherwise every Jev-mode request returns 503, which is visible in logs and `/health` checks.
+- **R4 — Alpha endpoint.** TokenRouter's `/api/alpha/decisions` may change its request/response shape or its model ids without deprecation. Mitigations: the model is pinned (`typesafe/jev-1.13`), the answers are validated strictly (any mismatch is a 503, never a wrong score), the prompt version and model are part of the cache key, and the embedding strategy is one restart away.

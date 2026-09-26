@@ -10,6 +10,17 @@
 
 ## Research Log
 
+### Access route: TokenRouter
+- **Context**: The product owner chose TokenRouter as the access path to Jev.
+- **Sources Consulted**: The TokenRouter curl example provided by the product owner; OpenRouter's Jev documentation (it exposes the same `/api/alpha/decisions` path); the Effect-TS issue #8379.
+- **Findings**:
+  - Endpoint: `POST https://api.tokenrouter.com/api/alpha/decisions`, with the headers `Authorization: Bearer <key>` and `Content-Type: application/json`.
+  - Model id: `typesafe/jev-1.13`. Request body: `{ model, state, questions: { [id]: { type: "noul" | "choice" | "score", instructions, criteria } } }`. `noul` criteria are `{ true, false }`, `choice` criteria are `{ option: description }`, and `score` criteria are an ordered array.
+  - The endpoint is explicitly **alpha**: request/response shapes, model ids and pricing can change in breaking ways without deprecation.
+  - Jev returns **rounded** probabilities, so choice distributions can total 0.99 (Effect-TS issue #8379).
+  - `api.tokenrouter.com` is blocked by the egress proxy of the design environment (CONNECT 403), so no live response could be captured.
+- **Implications**: `JEV_ENDPOINT` is documented as the TokenRouter URL but has no default (2.2). `JEV_MODEL` defaults to the pinned `typesafe/jev-1.13`. `parseJevAnswers` tolerates distributions that do not sum to exactly 1. The alpha status is added as risk R4 in the design.
+
 ### TypeSafe Jev API surface
 - **Context**: Requirement 3 needs a concrete request/response contract.
 - **Sources Consulted**: The TypeSafe blog and docs (`typesafe.ai`, `docs.typesafe.ai`) were **not reachable** from the design environment (egress policy blocked them). Secondary sources were found through web search: jev-agent.com API reference, jevmodel.org API examples, MarkTechPost articles (2026-09-19, 2026-09-23), beam.ai, and alexmolas.com "Jev can't be calibrated" (2026-09-23).
@@ -87,9 +98,12 @@
 - **Cold-cache latency on large lineages** — `JEV_MAX_CANDIDATES` (default 100), concurrency (default 4), per-pair caching, and a timeout per request (default 10 s).
 - **Full-repository scan per request** (listing plus parsing every ADR to find the target) — The embedding path already does this for the whole-repo scope. It is acceptable at the current repository sizes, and an id index is out of scope.
 - **ADR content is sent to a third party** — Only under the explicitly opted-in `jev` strategy. The data is documented in the design's Security section. Logs never contain content or the key.
-- **Egress policy** — Environments with an allow-list must permit the Jev endpoint host. Otherwise every request fails with 503, which is loud, not silent.
+- **Alpha endpoint (TokenRouter `/api/alpha/decisions`)** — Pin the model, validate answers strictly, keep the embedding strategy as a one-restart fallback.
+- **Egress policy** — Environments with an allow-list must permit `api.tokenrouter.com`. Otherwise every request fails with 503, which is loud, not silent.
 
 ## References
+- [Jev Documentation – TypeSafe Decision Model on OpenRouter](https://openrouter.ai/docs/guides/community/jev) — `/api/alpha/decisions` contract, `typesafe/jev-1.13`
+- [Effect-TS issue #8379](https://github.com/Effect-TS/effect/issues/8379) — rounded probability distributions
 - [Introducing System One Models & Jev (TypeSafe)](https://typesafe.ai/blog/introducing-system-one-models-and-jev) — primary announcement (not reachable from the design environment)
 - [Jev API reference – /v1/systemone (Jagent)](https://jev-agent.com/api-reference) — request shape, question types
 - [Jev API Examples: Choice, Score, and Noul](https://jevmodel.org/api/) — JSON examples
