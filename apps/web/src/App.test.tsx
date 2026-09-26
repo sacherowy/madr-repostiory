@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -228,5 +228,68 @@ describe("App (portal shell — task 8.1 / Req 2.1, 2.6, 15.5)", () => {
     await waitFor(() => expect(screen.getByTestId("topic-feed")).toBeInTheDocument());
     fireEvent.click(screen.getByText("Standardize on PostgreSQL"));
     await waitFor(() => expect(screen.getByTestId("article-page")).toBeInTheDocument());
+  });
+
+  // jev-similarity task 5.4 (Req 9.1, 9.4, 9.5): the decision view wires the
+  // similar query's failure status, coverage, comparing flag and the retry /
+  // compare-all callbacks from useDecision into ContextRail's Related reading.
+  // Only `getSimilar` is overridden on top of the real test-server client.
+  describe("Related reading wiring (jev-similarity 5.4)", () => {
+    function openDecision(id: string) {
+      usePortalStore.setState({ view: { kind: "decision", id, technical: false } });
+    }
+
+    it("shows the error state with Try again instead of hiding the area when the similar request fails (Req 9.1)", async () => {
+      const { id } = await seedAdr({ title: "Adopt event sourcing" });
+      const getSimilar = vi.fn<ApiClient["getSimilar"]>().mockResolvedValue({ ok: false, status: 503 });
+      openDecision(id);
+      renderApp(<App apiClient={{ ...client, getSimilar }} />);
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Related reading is unavailable because the similarity service could not be reached."
+      );
+      const area = screen.getByTestId("context-rail-related-reading");
+      expect(area).toHaveTextContent("Related reading");
+      expect(area).toContainElement(alert);
+
+      // "Try again" is wired to the hook's retry: it repeats the request.
+      const callsBefore = getSimilar.mock.calls.length;
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => expect(getSimilar.mock.calls.length).toBeGreaterThan(callsBefore));
+      await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    });
+
+    it("shows no error when the similar request succeeds, and flows coverage into the capped notice with Compare all (Req 9.4, 9.5)", async () => {
+      const { id } = await seedAdr({ title: "Adopt event sourcing" });
+      await seedAdr({ title: "Adopt event streaming" });
+      const getSimilar = vi.fn<ApiClient["getSimilar"]>(async (adrId, scope, options) => {
+        const real = await client.getSimilar(adrId, scope, options);
+        if (!real.ok || real.kind !== "ranked") return real;
+        // Capped on the default request, complete on the exhaustive one.
+        return {
+          ...real,
+          coverage: options?.exhaustive ? { judged: 3, total: 3 } : { judged: 1, total: 3 },
+        };
+      });
+      openDecision(id);
+      renderApp(<App apiClient={{ ...client, getSimilar }} />);
+
+      await waitFor(() => expect(screen.getByTestId("context-rail-related")).toBeInTheDocument());
+      // errorStatus null → no failure alert.
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Compared 1 of 3 related decisions.");
+
+      fireEvent.click(screen.getByRole("button", { name: "Compare all 3" }));
+      await waitFor(() =>
+        expect(getSimilar).toHaveBeenCalledWith(id, expect.anything(), { exhaustive: true })
+      );
+      // The exhaustive result is complete, so the capped notice disappears.
+      await waitFor(() =>
+        expect(screen.queryByText(/Compared 1 of 3/)).not.toBeInTheDocument()
+      );
+      expect(screen.getByTestId("context-rail-related")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
   });
 });

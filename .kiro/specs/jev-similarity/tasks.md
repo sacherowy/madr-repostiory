@@ -126,7 +126,7 @@
   - _Depends: 1.1_
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-- [ ] 5.4 Wire the similar query state into the Related reading area
+- [x] 5.4 Wire the similar query state into the Related reading area
   - Pass the new props (coverage, failure status, the comparing flag and the retry and compare-all callbacks) from the decision hook into the context rail in the app shell, on top of the results list already wired in 5.2
   - Web test suite and web production build pass, and the decision view shows the error state instead of hiding the area when the similar request fails
   - _Depends: 5.2, 5.3_
