@@ -133,7 +133,7 @@
   - _Requirements: 9.1, 9.4, 9.5_
 
 - [ ] 6. Validation
-- [ ] 6.1 Add an API integration test of the Jev strategy end to end against a local stub
+- [x] 6.1 Add an API integration test of the Jev strategy end to end against a local stub
   - Place the test in a dedicated Jev-strategy integration test file in the API app, reusing the loopback stub endpoint pattern established by the judge adapter tests in 3.2
   - Build a server whose container uses a jev configuration obtained from the parser with a loopback stub endpoint and a temporary repository with a nested folder hierarchy
   - Assert that a similar-ADRs request returns only lineage candidates ranked by the stub's probabilities with lineage and relation fields and both count headers, that a repeated request is served from the cache without new stub calls, that a stub failure returns 503 with the provider-unavailable body, and that health reports the jev strategy
@@ -152,3 +152,4 @@
 - The loopback Jev stub pattern (a `node:http` server on 127.0.0.1 port 0, closed with `closeAllConnections` + `close`) lives in `apps/api/src/infrastructure/jev/jevSimilarityJudge.test.ts`; reuse it for the 6.1 integration test.
 - The judge adapter uses `AbortSignal.any`/`AbortSignal.timeout` (Node >= 20.3).
 - 5.3 added the test-only devDependency `@testing-library/user-event` to apps/web: design.md Testing Strategy requires `userEvent.keyboard`, which conflicts with the "No new npm dependencies" line under Allowed Dependencies; there are still no new runtime dependencies.
+- `apps/api` `test:integration` had never matched any file (vitest positional args are substring filters, not globs); 6.1 changed it to `vitest run --dir src .integration.test.ts`.
