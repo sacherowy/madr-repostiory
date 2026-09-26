@@ -106,9 +106,38 @@ export interface AdrCompareView {
   fields: FieldComparison[];
 }
 
+/** The relation labels Jev may assign to a candidate/target pair (3.5). */
+export const SIMILARITY_RELATIONS = [
+  "duplicate",
+  "supersedes",
+  "conflicts",
+  "constrains",
+  "related",
+  "unrelated",
+] as const;
+
+export type SimilarityRelation = (typeof SIMILARITY_RELATIONS)[number];
+
+/** A candidate's position relative to the target's folder (4.5). */
+export interface LineagePosition {
+  direction: "down" | "up";
+  /** 0 = anchor folder; >0 = folders below (down) or above (up) the anchor. */
+  level: number;
+}
+
 export interface SimilarityResult {
   adr: AdrSummary;
   score: number;
+  /** Present only under the jev strategy (5.2, 5.3). */
+  lineage?: LineagePosition;
+  /** Present only under the jev strategy (3.5). */
+  relation?: SimilarityRelation;
+}
+
+/** How many lineage candidates were judged out of how many exist (5.6). judged <= total. */
+export interface SimilarityCoverage {
+  judged: number;
+  total: number;
 }
 
 export interface CreateAdrRequest {

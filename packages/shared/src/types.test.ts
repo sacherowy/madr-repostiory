@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { SIMILARITY_RELATIONS } from "./types.js";
 import type {
   AdrId,
   AdrStatus,
@@ -26,6 +27,9 @@ import type {
   FeedCard,
   SummarySuggestionResult,
   RawAdrContent,
+  SimilarityRelation,
+  LineagePosition,
+  SimilarityCoverage,
 } from "./types.js";
 
 describe("view types", () => {
@@ -402,5 +406,45 @@ describe("Adr and UpdateAdrRequest section fields replace the single body field"
     const typesPath = fileURLToPath(new URL("./types.ts", import.meta.url));
     const source = readFileSync(typesPath, "utf-8");
     expect(source).not.toMatch(/\bbody\s*:\s*string\b/);
+  });
+});
+
+describe("jev similarity result metadata (3.5, 4.5, 5.2, 5.3, 5.6)", () => {
+  const adr: AdrSummary = {
+    id: "0003-use-redis",
+    title: "Use Redis",
+    status: "proposed",
+    path: "decisions/0003-use-redis.md",
+  };
+
+  it("exposes exactly the six relation labels in a fixed order (3.5)", () => {
+    expect(SIMILARITY_RELATIONS).toEqual([
+      "duplicate",
+      "supersedes",
+      "conflicts",
+      "constrains",
+      "related",
+      "unrelated",
+    ]);
+    const label: SimilarityRelation = SIMILARITY_RELATIONS[0];
+    expect(label).toBe("duplicate");
+  });
+
+  it("constructs a SimilarityResult carrying lineage and relation (4.5, 5.2)", () => {
+    const lineage: LineagePosition = { direction: "up", level: 2 };
+    const result: SimilarityResult = { adr, score: 0.91, lineage, relation: "constrains" };
+    expect(result.lineage).toEqual({ direction: "up", level: 2 });
+    expect(result.relation).toBe("constrains");
+  });
+
+  it("keeps SimilarityResult valid without the additive fields (5.3)", () => {
+    const result: SimilarityResult = { adr, score: 0.5 };
+    expect(result.lineage).toBeUndefined();
+    expect(result.relation).toBeUndefined();
+  });
+
+  it("constructs a SimilarityCoverage pairing judged with total (5.6)", () => {
+    const coverage: SimilarityCoverage = { judged: 100, total: 240 };
+    expect(coverage.judged).toBeLessThanOrEqual(coverage.total);
   });
 });

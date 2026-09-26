@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Foundation: shared similarity contracts and the core strategy seam
-- [ ] 1.1 Add the additive similarity result metadata to the shared types
+- [x] 1.1 Add the additive similarity result metadata to the shared types
   - Introduce the relation label set (duplicate, supersedes, conflicts, constrains, related, unrelated), the lineage position (direction and level) and the coverage pair (judged, total)
   - Extend the similarity result with optional lineage and relation fields, leaving the existing adr and score fields untouched
   - Workspace typecheck passes and the existing shared, core, api and web test suites stay green with no call-site changes
