@@ -98,7 +98,7 @@
   - _Requirements: 4.9, 5.1, 5.4, 5.6, 5.7, 7.1, 7.5, 7.6_
 
 - [ ] 5. Web: Related reading feedback
-- [ ] 5.1 (P) Extend the API client's similar-ADRs call with exhaustive requests, coverage and failure status
+- [x] 5.1 (P) Extend the API client's similar-ADRs call with exhaustive requests, coverage and failure status
   - Append the exhaustive query option only when requested
   - Return coverage when both count headers are present and parse as non-negative integers, otherwise null
   - Map a rejected fetch to a failure with status 0 and keep non-success statuses such as 503 as failures carrying their status

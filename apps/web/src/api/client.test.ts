@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -616,6 +616,8 @@ describe("createApiClient", () => {
       expect(result.results).toHaveLength(1);
       expect(result.results[0].adr.id).toBe(sibling.id);
       expect(typeof result.results[0].score).toBe("number");
+      // The embedding strategy never sends the X-Similarity-* headers (9.4).
+      expect(result.coverage).toBeNull();
     });
 
     it("returns ok:true with kind:'emptyScope' when alone in scope", async () => {
@@ -733,5 +735,112 @@ describe("createApiClient", () => {
       if (result.ok) throw new Error("expected failure");
       expect(result.status).toBe(404);
     });
+  });
+});
+
+/**
+ * The embedding backend above never emits coverage headers, a 503 or a
+ * network error, so these cases drive `getSimilar` through a stubbed
+ * global `fetch` instead (design.md "ApiClient.getSimilar"; 9.2, 9.4, 9.5).
+ */
+describe("createApiClient.getSimilar with a stubbed fetch", () => {
+  const BASE = "http://api.test";
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json", ...headers },
+    });
+  }
+
+  function requestedUrl(): URL {
+    return new URL(String(fetchMock.mock.calls[0][0]));
+  }
+
+  it("returns coverage from X-Similarity-Judged / X-Similarity-Candidates (9.4)", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([], 200, { "X-Similarity-Judged": "100", "X-Similarity-Candidates": "240" }),
+    );
+
+    const result = await createApiClient(BASE).getSimilar("adr-1", "decisions");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.kind !== "ranked") throw new Error("expected ranked success");
+    expect(result.coverage).toEqual({ judged: 100, total: 240 });
+  });
+
+  it.each([
+    ["only the judged header", { "X-Similarity-Judged": "100" }],
+    ["only the candidates header", { "X-Similarity-Candidates": "240" }],
+    ["a non-numeric count", { "X-Similarity-Judged": "abc", "X-Similarity-Candidates": "240" }],
+    ["a negative count", { "X-Similarity-Judged": "-1", "X-Similarity-Candidates": "240" }],
+    ["a fractional count", { "X-Similarity-Judged": "1.5", "X-Similarity-Candidates": "240" }],
+    ["an empty count", { "X-Similarity-Judged": "", "X-Similarity-Candidates": "240" }],
+  ])("returns coverage null for %s (9.4)", async (_label, headers) => {
+    fetchMock.mockResolvedValue(jsonResponse([], 200, headers));
+
+    const result = await createApiClient(BASE).getSimilar("adr-1", "decisions");
+
+    if (!result.ok || result.kind !== "ranked") throw new Error("expected ranked success");
+    expect(result.coverage).toBeNull();
+  });
+
+  it("appends exhaustive=true only when requested (9.5)", async () => {
+    fetchMock.mockImplementation(async () => jsonResponse([]));
+    const client = createApiClient(BASE);
+
+    await client.getSimilar("adr-1", "decisions", { exhaustive: true });
+    const exhaustiveUrl = requestedUrl();
+    expect(exhaustiveUrl.pathname).toBe("/api/adrs/adr-1/similar");
+    expect(exhaustiveUrl.searchParams.get("scope")).toBe("decisions");
+    expect(exhaustiveUrl.searchParams.get("exhaustive")).toBe("true");
+
+    fetchMock.mockClear();
+    await client.getSimilar("adr-1", undefined, { exhaustive: true });
+    expect(requestedUrl().search).toBe("?exhaustive=true");
+
+    for (const call of [
+      () => client.getSimilar("adr-1", "decisions"),
+      () => client.getSimilar("adr-1", "decisions", { exhaustive: false }),
+      () => client.getSimilar("adr-1", "decisions", {}),
+    ]) {
+      fetchMock.mockClear();
+      await call();
+      expect(requestedUrl().searchParams.has("exhaustive")).toBe(false);
+    }
+  });
+
+  it("returns ok:false with status 503 when the similarity service is unavailable (9.2)", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ kind: "providerUnavailable" }, 503));
+
+    const result = await createApiClient(BASE).getSimilar("adr-1", "decisions");
+
+    expect(result).toEqual({ ok: false, status: 503 });
+  });
+
+  it("returns ok:false with status 0 when fetch rejects (network error)", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const result = await createApiClient(BASE).getSimilar("adr-1", "decisions", { exhaustive: true });
+
+    expect(result).toEqual({ ok: false, status: 0 });
+  });
+
+  it("keeps emptyScope unchanged (no coverage field)", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ kind: "emptyScope" }));
+
+    const result = await createApiClient(BASE).getSimilar("adr-1", "decisions");
+
+    expect(result).toEqual({ ok: true, kind: "emptyScope" });
   });
 });

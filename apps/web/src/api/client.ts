@@ -11,6 +11,7 @@ import type {
   RelationView,
   SearchHit,
   CommitMeta,
+  SimilarityCoverage,
   SimilarityResult,
   SummarySuggestionResult,
   UpdateAdrRequest,
@@ -79,9 +80,24 @@ type CompareAdrsResult =
 type SearchResult = { ok: true; hits: SearchHit[] } | ApiFailure;
 
 type GetSimilarResult =
-  | { ok: true; kind: "ranked"; results: SimilarityResult[] }
+  | { ok: true; kind: "ranked"; results: SimilarityResult[]; coverage: SimilarityCoverage | null }
   | { ok: true; kind: "emptyScope" }
   | ApiFailure;
+
+/** A non-negative integer count header, or `null` when absent or malformed. */
+function parseCountHeader(value: string | null): number | null {
+  return value !== null && /^\d+$/.test(value) ? Number(value) : null;
+}
+
+/**
+ * `coverage` requires BOTH `X-Similarity-*` headers to be well-formed; the
+ * embedding strategy never sends them, so it always yields `null` (9.4).
+ */
+function readSimilarityCoverage(headers: Headers): SimilarityCoverage | null {
+  const judged = parseCountHeader(headers.get("X-Similarity-Judged"));
+  const total = parseCountHeader(headers.get("X-Similarity-Candidates"));
+  return judged !== null && total !== null ? { judged, total } : null;
+}
 
 type GetFeedResult = { ok: true; cards: FeedCard[] } | ApiFailure;
 
@@ -107,7 +123,7 @@ export interface ApiClient {
   getVersionDiff(id: string, from: string, to: string): Promise<GetVersionDiffResult>;
   compareAdrs(a: string, b: string): Promise<CompareAdrsResult>;
   search(q: string): Promise<SearchResult>;
-  getSimilar(id: string, scope?: string): Promise<GetSimilarResult>;
+  getSimilar(id: string, scope?: string, options?: { exhaustive?: boolean }): Promise<GetSimilarResult>;
   getFeed(): Promise<GetFeedResult>;
   getRawAdr(id: AdrId): Promise<GetRawAdrResult>;
   getSummarySuggestion(id: AdrId): Promise<GetSummarySuggestionResult>;
@@ -267,13 +283,22 @@ export function createApiClient(baseUrl: string = ""): ApiClient {
       return { ok: false, status: res.status };
     },
 
-    async getSimilar(id, scope) {
-      const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
-      const res = await fetch(`${baseUrl}/api/adrs/${encodeURIComponent(id)}/similar${query}`);
+    async getSimilar(id, scope, options) {
+      const params: string[] = [];
+      if (scope) params.push(`scope=${encodeURIComponent(scope)}`);
+      if (options?.exhaustive === true) params.push("exhaustive=true");
+      const query = params.length > 0 ? `?${params.join("&")}` : "";
+      let res: Response;
+      try {
+        res = await fetch(`${baseUrl}/api/adrs/${encodeURIComponent(id)}/similar${query}`);
+      } catch {
+        // A rejected fetch (network error) is a generic failure, status 0 (9.1).
+        return { ok: false, status: 0 };
+      }
       if (res.status === 200) {
         const data = (await res.json()) as SimilarityResult[] | { kind: "emptyScope" };
         if (Array.isArray(data)) {
-          return { ok: true, kind: "ranked", results: data };
+          return { ok: true, kind: "ranked", results: data, coverage: readSimilarityCoverage(res.headers) };
         }
         return { ok: true, kind: "emptyScope" };
       }
