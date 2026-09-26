@@ -14,6 +14,7 @@ import { test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { paths } from "./paths.js";
+import { jevFlagSet } from "./similarityMode.js";
 
 /**
  * Reduce an arbitrary label to filesystem- AND title-safe characters: only
@@ -62,6 +63,24 @@ export function geminiKeyMissing(): boolean {
  */
 export function requiresGemini(): void {
   test.skip(geminiKeyMissing(), "requires GEMINI_API_KEY (real-provider mode)");
+}
+
+/**
+ * Gate a live-Jev test: SKIPS (does not fail) unless the run opted in to the
+ * Jev similarity strategy with SIMILARITY_STRATEGY=jev. The config has already
+ * failed the run if the flag is set without JEV_ENDPOINT/JEV_API_KEY, so the
+ * flag alone means the API is running against the live Jev API.
+ */
+export function requiresJev(): void {
+  test.skip(!jevFlagSet(), "requires SIMILARITY_STRATEGY=jev with JEV_ENDPOINT and JEV_API_KEY (live Jev mode)");
+}
+
+/**
+ * Gate an embedding-strategy test: SKIPS it when the run uses the Jev strategy,
+ * whose lineage scope and scores differ from the embedding strategy's.
+ */
+export function requiresEmbeddingStrategy(): void {
+  test.skip(jevFlagSet(), "embedding-strategy journey; the run uses SIMILARITY_STRATEGY=jev");
 }
 
 /**

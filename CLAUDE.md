@@ -22,7 +22,7 @@ Kiro-style Spec-Driven Development on an agentic SDLC
 
 ## Environment Notes
 - **Playwright browser is pre-provisioned.** A Chromium build ships in the runtime image at `/opt/pw-browsers/` (e.g. `chromium-1194`), and `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` is set. Do NOT conclude the browser is missing by checking `~/.cache/ms-playwright` (the default location, which is empty here) — resolve the real path via `PLAYWRIGHT_BROWSERS_PATH` or `npx playwright install --dry-run`. No `playwright install` (network download) is needed.
-- **The E2E suite runs offline.** `pnpm --filter @adr/e2e test:e2e` launches the API + web dev servers and drives the real browser; it works without network or a real `GEMINI_API_KEY` (offline mode). The only test that skips offline is the real-embedding similarity variant (needs a live Gemini key). Use `pnpm --filter @adr/e2e test:unit` for the harness/config vitest assertions.
+- **The E2E suite runs offline.** `pnpm --filter @adr/e2e test:e2e` launches the API + web dev servers and drives the real browser; it works without network or a real `GEMINI_API_KEY` (offline mode). Offline, the real-embedding similarity variant (needs a live Gemini key) and the live-Jev journeys in `tests/jev-similarity.spec.ts` skip. To run against the live Jev API set `SIMILARITY_STRATEGY=jev`, `JEV_ENDPOINT` and `JEV_API_KEY` (the run fails fast if the flag is set without both); the embedding-strategy similarity journeys then skip. Use `pnpm --filter @adr/e2e test:unit` for the harness/config vitest assertions.
 - **Web tests/build:** `pnpm --filter @adr/web test` (vitest, jsdom + real Fastify backend) and `pnpm --filter @adr/web build` (vite).
 
 ## Minimal Workflow
